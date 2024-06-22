@@ -1,0 +1,12 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 19
+  build:
+    commands:
+      - sam build --use-container --build-image amazon/aws-sam-cli-build-image-go1.x
+  post_build:
+    commands:
+      - sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
