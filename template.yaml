@@ -6,10 +6,14 @@ Description: >
   Sample SAM Template for bootstrap
 
 Parameters:
-  Domain:
+  ApplicationDomain:
     Type: String
     Default: "https://battleshiper.megakuul.ch"
     Description: "Domain where the Battleshiper API is accessed by the end users."
+  CognitoDomain:
+    Type: String
+    Default: "battleshiper"
+    Description: "Domain prefix where the Battleshiper Cognito provider is hosted on."
 
 Globals:
   Function:
@@ -28,6 +32,12 @@ Resources:
         - AttributeDataType: String
           Name: email
           Required: true
+
+  BattleshiperUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties: 
+      Domain: !Ref CognitoDomain
+      UserPoolId: !Ref BattleshiperUserPool
   
   BattleshiperUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -43,9 +53,9 @@ Resources:
         - "profile"
         - "email"
       CallbackURLs:
-        - !Sub "${Domain}/auth/callback"
+        - !Sub "${ApplicationDomain}/auth/callback"
       LogoutURLs:
-        - !Sub "${Domain}/auth/logout"
+        - !Sub "${ApplicationDomain}/auth/logout"
 
   BattleshiperApi:
     Type: AWS::Serverless::Api
@@ -91,10 +101,10 @@ Resources:
         Variables:
           CLIENT_ID: !Ref BattleshiperUserPoolClient
           CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
-          REDIRECT_URI: !Sub "${Domain}/callback"
+          REDIRECT_URI: !Sub "${ApplicationDomain}/callback"
           USER_POOL_ID: !Ref BattleshiperUserPool
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: 'your-domain.auth.region.amazoncognito.com'
+          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
           
           MOCK_USER_AUTH: true
 
