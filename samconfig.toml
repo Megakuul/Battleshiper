@@ -30,3 +30,7 @@ watch = true
 
 [default.local_start_api.parameters]
 container_host_interface = "0.0.0.0"
+
+[default.local]
+[default.local.parameters]
+parameter_overrides = "Domain=http://localhost:3000"

@@ -5,7 +5,12 @@ Description: >
   
   Sample SAM Template for bootstrap
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Parameters:
+  Domain:
+    Type: String
+    Default: "https://battleshiper.megakuul.ch"
+    Description: "Domain where the Battleshiper API is accessed by the end users."
+
 Globals:
   Function:
     Timeout: 5
@@ -14,23 +19,33 @@ Resources:
   BattleshiperUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: "cognitopool-test"
+      UserPoolName: "battleshiper-auth-pool"
       Policies:
         PasswordPolicy:
           MinimumLength: 8
-      UsernameAttributes:
-        - email
+      MfaConfiguration: OPTIONAL
       Schema:
         - AttributeDataType: String
           Name: email
-          Required: false
+          Required: true
   
   BattleshiperUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref BattleshiperUserPool
-      ClientName: "cognitopoolclient-test"
-      GenerateSecret: false
+      ClientName: "battleshiper-auth-client"
+      GenerateSecret: true
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - "code"
+      AllowedOAuthScopes:
+        - "openid"
+        - "profile"
+        - "email"
+      CallbackURLs:
+        - !Sub "${Domain}/auth/callback"
+      LogoutURLs:
+        - !Sub "${Domain}/auth/logout"
 
   BattleshiperApi:
     Type: AWS::Serverless::Api
@@ -42,39 +57,57 @@ Resources:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt BattleshiperUserPool.Arn
 
-  BattleshiperProfileFunc:
+  BattleshiperAuthFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
-      CodeUri: api/profile
-      Handler: profile
+      CodeUri: api/auth
+      Handler: auth
       Runtime: provided.al2023
       Architectures:
         - x86_64
       Events:
-        CatchAll:
+        Authorize:
           Type: Api
           Properties:
-            Path: /profile
+            Path: /auth/authorize
             Method: GET
-            RestApiId: !Ref: CoreApi
-            Auth:
-              Authorizer: CognitoAuthorizer
+            RestApiId: !Ref BattleshiperApi
+        Callback:
+          Type: Api
+          Properties:
+            Path: /auth/callback
+            Method: GET
+            RestApiId: !Ref BattleshiperApi
+        Logout:
+          Type: Api
+          Properties:
+            Path: /auth/logout
+            Method: GET
+            RestApiId: !Ref BattleshiperApi
+
       Environment:
         Variables:
-          PARAM1: VALUE
+          CLIENT_ID: !Ref BattleshiperUserPoolClient
+          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          REDIRECT_URI: !Sub "${Domain}/callback"
+          USER_POOL_ID: !Ref BattleshiperUserPool
+          AWS_REGION: !Ref AWS::Region
+          COGNITO_DOMAIN: 'your-domain.auth.region.amazoncognito.com'
+          
+          MOCK_USER_AUTH: true
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  ProfileFuncAPI:
+  BattleshiperAuthFuncAPI:
     Description: "API Gateway endpoint URL for Prod environment for First Function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  ProfileFunc:
+  BattleshiperAuthFunc:
     Description: "First Lambda Function ARN"
-    Value: !GetAtt ProfileFunc.Arn
-  ProfileFuncIamRole:
+    Value: !GetAtt BattleshiperAuthFunc.Arn
+  BattleshiperAuthFuncIamRole:
     Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt ProfileFunc.Arn
+    Value: !GetAtt BattleshiperAuthFunc.Arn
