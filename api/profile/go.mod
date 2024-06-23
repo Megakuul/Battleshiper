@@ -1,4 +1,4 @@
-require github.com/aws/aws-lambda-go v1.13.3
+require github.com/aws/aws-lambda-go v1.47.0
 
 module github.com/megakuul/battleshiper/api/profile
 

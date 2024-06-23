@@ -11,22 +11,57 @@ Globals:
     Timeout: 5
 
 Resources:
-  ProfileFunc:
+  BattleshiperUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: "cognitopool-test"
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+      UsernameAttributes:
+        - email
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: false
+  
+  BattleshiperUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref BattleshiperUserPool
+      ClientName: "cognitopoolclient-test"
+      GenerateSecret: false
+
+  BattleshiperApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: 
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt BattleshiperUserPool.Arn
+
+  BattleshiperProfileFunc:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
     Properties:
       CodeUri: api/profile
       Handler: profile
-      Runtime: provided.al2
+      Runtime: provided.al2023
       Architectures:
         - x86_64
-      Tracing: Active
       Events:
         CatchAll:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
-            Path: /hello
+            Path: /profile
             Method: GET
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+            RestApiId: !Ref: CoreApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Environment:
         Variables:
           PARAM1: VALUE
 

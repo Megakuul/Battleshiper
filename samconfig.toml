@@ -29,7 +29,4 @@ resolve_s3 = true
 watch = true
 
 [default.local_start_api.parameters]
-warm_containers = "EAGER"
-
-[default.local_start_lambda.parameters]
-warm_containers = "EAGER"
+container_host_interface = "0.0.0.0"

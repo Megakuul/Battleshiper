@@ -1,34 +1,23 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
+	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-type Response struct {
-	Message string `json:"message"`
-}
+var (
+	userPoolID  = "your_user_pool_id"
+	region      = "your_aws_region"
+	appClientID = "your_app_client_id"
+)
 
-func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	response := Response{
-		Message: "Hello, World!",
-	}
-	body, err := json.Marshal(response)
-	if err != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       `{"error": "Internal Server Error"}`,
-		}, nil
-	}
+func handler(request events.APIGatewayV2HTTPRequest) (events.APIGatewayProxyResponse, error) {
+
 	return events.APIGatewayProxyResponse{
+		Body:       fmt.Sprintln(request.Cookies),
 		StatusCode: 200,
-		Body:       string(body),
-		Headers: map[string]string{
-			"Content-Type": "application/json",
-		},
 	}, nil
 }
 
