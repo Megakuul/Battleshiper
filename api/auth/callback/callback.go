@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 )
@@ -25,7 +26,7 @@ type TokenResponse struct {
 // AccessToken request spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 // with ClientSecret: https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 // Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
-func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clientId, clientSecret, redirectUri string) (events.APIGatewayV2HTTPResponse, error) {
+func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clientId, clientSecret, redirectUri, frontendRedirect string) (events.APIGatewayV2HTTPResponse, error) {
 
 	authCode := request.QueryStringParameters["code"]
 
@@ -60,11 +61,28 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clie
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
 
-	// Add token stuff to cookies
+	accessTokenCookie := &http.Cookie{
+		Name:     "access_token",
+		Value:    tokenRes.AccessToken,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
+	}
+
+	refreshTokenCookie := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    tokenRes.RefreshToken,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	}
+
 	return events.APIGatewayV2HTTPResponse{
-		StatusCode: 302,
+		StatusCode: http.StatusFound,
 		Headers: map[string]string{
-			"Location": authUrl,
+			"Location":   frontendRedirect,
+			"Set-Cookie": fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
 		},
 	}, nil
 }
