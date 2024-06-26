@@ -64,7 +64,7 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clie
 	accessTokenCookie := &http.Cookie{
 		Name:     "access_token",
 		Value:    tokenRes.AccessToken,
-		HttpOnly: true,
+		HttpOnly: false,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),

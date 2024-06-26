@@ -1,18 +1,18 @@
 package logout
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 )
 
 // HandleLogout logs the user out and revokes the used tokens.
-func HandleLogout(request events.APIGatewayV2HTTPRequest, region string) (events.APIGatewayV2HTTPResponse, error) {
+func HandleLogout(request events.APIGatewayV2HTTPRequest, cognitoClient *cognitoidentityprovider.Client, rootCtx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 
 	clearCookieHeader := fmt.Sprintf(
 		"%s, %s",
@@ -34,13 +34,11 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, region string) (events
 		}, nil
 	}
 
-	svc := cognitoidentityprovider.New(session.New(), aws.NewConfig().WithRegion(region))
-
 	input := &cognitoidentityprovider.GlobalSignOutInput{
 		AccessToken: aws.String(accessTokenCookie.Value),
 	}
 
-	_, err = svc.GlobalSignOut(input)
+	_, err = cognitoClient.GlobalSignOut(rootCtx, input)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusInternalServerError,

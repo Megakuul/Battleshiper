@@ -1,88 +1,79 @@
 package refresh
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"` // Expiration time of the access token
+type RefreshResponse struct {
+	AccessToken string `json:"AccessToken"`
+	Error       string `json:"Error"`
 }
 
-// HandleCallback is the route the user is redirected from after authorization.
-// It exchanges authCode, clientId and clientSecret with Access-, ID- and Refreshtoken.
-// Follows the horrible OAuth2.0 standard which Cognito complies with:
-// AccessToken request spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
-// with ClientSecret: https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
-// Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
-func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clientId, clientSecret, redirectUri, frontendRedirect string) (events.APIGatewayV2HTTPResponse, error) {
+// HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
+func HandleRefresh(request events.APIGatewayV2HTTPRequest, cognitoClient *cognitoidentityprovider.Client, rootCtx context.Context, clientId string) (events.APIGatewayV2HTTPResponse, error) {
 
-	authCode := request.QueryStringParameters["code"]
-
-	data := url.Values{}
-	data.Set("grant_type", "authorization_code")
-	data.Set("client_id", clientId)
-	data.Set("client_secret", clientSecret)
-	data.Set("code", authCode)
-	data.Set("redirect_uri", redirectUri)
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/oauth2/token", providerDomain), bytes.NewBufferString(data.Encode()))
+	refreshToken, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusUnauthorized,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: "User is not logged in",
+		}, nil
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+	input := &cognitoidentityprovider.InitiateAuthInput{
+		AuthFlow: types.AuthFlowTypeRefreshTokenAuth,
+		AuthParameters: map[string]string{
+			"REFRESH_TOKEN": refreshToken,
+		},
+		ClientId: aws.String(clientId),
 	}
 
-	var tokenRes TokenResponse
-	if err := json.Unmarshal(body, &tokenRes); err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+	res, err := cognitoClient.InitiateAuth(rootCtx, input)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusUnauthorized,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: fmt.Sprintf("Failed to acquire refresh token: %s", err.Error()),
+		}, nil
 	}
 
 	accessTokenCookie := &http.Cookie{
 		Name:     "access_token",
-		Value:    tokenRes.AccessToken,
-		HttpOnly: true,
+		Value:    *res.AuthenticationResult.AccessToken,
+		HttpOnly: false,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
-		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
+		Expires:  time.Now().Add(time.Duration(res.AuthenticationResult.ExpiresIn) * time.Second),
 	}
 
 	refreshTokenCookie := &http.Cookie{
 		Name:     "refresh_token",
-		Value:    tokenRes.RefreshToken,
+		Value:    *res.AuthenticationResult.RefreshToken,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	}
 
 	return events.APIGatewayV2HTTPResponse{
-		StatusCode: http.StatusFound,
+		StatusCode: http.StatusOK,
 		Headers: map[string]string{
-			"Location":   frontendRedirect,
-			"Set-Cookie": fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
+			"Content-Type": "text/plain",
+			"Set-Cookie":   fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
 		},
+		Body: "Updated access_token successful",
 	}, nil
 }
