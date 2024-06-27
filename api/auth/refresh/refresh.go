@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/megakuul/battleshiper/api/auth/router"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
@@ -19,9 +20,10 @@ type RefreshResponse struct {
 }
 
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
-func HandleRefresh(request events.APIGatewayV2HTTPRequest, cognitoClient *cognitoidentityprovider.Client, rootCtx context.Context, clientId string) (events.APIGatewayV2HTTPResponse, error) {
+func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
 
-	refreshToken, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
+	// Parse cookie by creating a http.Request and reading the cookie from there.
+	oldRefreshTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusUnauthorized,
@@ -35,12 +37,12 @@ func HandleRefresh(request events.APIGatewayV2HTTPRequest, cognitoClient *cognit
 	input := &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow: types.AuthFlowTypeRefreshTokenAuth,
 		AuthParameters: map[string]string{
-			"REFRESH_TOKEN": refreshToken,
+			"REFRESH_TOKEN": oldRefreshTokenCookie.Value,
 		},
-		ClientId: aws.String(clientId),
+		ClientId: aws.String(routeCtx.ClientID),
 	}
 
-	res, err := cognitoClient.InitiateAuth(rootCtx, input)
+	res, err := routeCtx.CognitoClient.InitiateAuth(transportCtx, input)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusUnauthorized,

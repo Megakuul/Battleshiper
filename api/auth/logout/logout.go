@@ -9,10 +9,11 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/megakuul/battleshiper/api/auth/router"
 )
 
 // HandleLogout logs the user out and revokes the used tokens.
-func HandleLogout(request events.APIGatewayV2HTTPRequest, cognitoClient *cognitoidentityprovider.Client, rootCtx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
 
 	clearCookieHeader := fmt.Sprintf(
 		"%s, %s",
@@ -20,9 +21,8 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, cognitoClient *cognito
 		(&http.Cookie{Name: "refresh_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
 	)
 
-	req := &http.Request{Header: http.Header{"Cookie": request.Cookies}}
-
-	accessTokenCookie, err := req.Cookie("access_token")
+	// Parse cookie by creating a http.Request and reading the cookie from there.
+	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusOK,
@@ -38,7 +38,7 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, cognitoClient *cognito
 		AccessToken: aws.String(accessTokenCookie.Value),
 	}
 
-	_, err = cognitoClient.GlobalSignOut(rootCtx, input)
+	_, err = routeCtx.CognitoClient.GlobalSignOut(transportCtx, input)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -56,6 +56,6 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, cognitoClient *cognito
 			"Content-Type": "text/plain",
 			"Set-Cookie":   clearCookieHeader,
 		},
-		Body: fmt.Sprintf("Logged out successful"),
+		Body: "Successfully logged out",
 	}, nil
 }

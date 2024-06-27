@@ -78,33 +78,46 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        Authorize:
+        Auth:
           Type: Api
           Properties:
-            Path: /auth/authorize
-            Method: GET
+            Path: /auth/{proxy+}
+            Method: ANY
             RestApiId: !Ref BattleshiperApi
-        Callback:
-          Type: Api
-          Properties:
-            Path: /auth/callback
-            Method: GET
-            RestApiId: !Ref BattleshiperApi
-        Logout:
-          Type: Api
-          Properties:
-            Path: /auth/logout
-            Method: GET
-            RestApiId: !Ref BattleshiperApi
-
       Environment:
         Variables:
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
-          REDIRECT_URI: !Sub "${ApplicationDomain}/callback"
-          USER_POOL_ID: !Ref BattleshiperUserPool
           AWS_REGION: !Ref AWS::Region
           COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+          CLIENT_ID: !Ref BattleshiperUserPoolClient
+          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          REDIRECT_URI: !Sub "${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "${ApplicationDomain}"
+
+          MOCK_USER_AUTH: true
+
+  BattleshiperConfigFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: api/config
+      Handler: config
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Events:
+        Auth:
+          Type: Api
+          Properties:
+            Path: /config/{proxy+}
+            Method: ANY
+            RestApiId: !Ref BattleshiperApi
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+          CLIENT_ID: !Ref BattleshiperUserPoolClient
+          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
           
           MOCK_USER_AUTH: true
 

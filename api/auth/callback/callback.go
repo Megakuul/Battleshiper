@@ -2,14 +2,17 @@ package callback
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/megakuul/battleshiper/api/auth/router"
 )
 
 type TokenResponse struct {
@@ -26,20 +29,27 @@ type TokenResponse struct {
 // AccessToken request spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 // with ClientSecret: https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 // Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
-func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clientId, clientSecret, redirectUri, frontendRedirect string) (events.APIGatewayV2HTTPResponse, error) {
+func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
 
 	authCode := request.QueryStringParameters["code"]
 
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
-	data.Set("client_id", clientId)
-	data.Set("client_secret", clientSecret)
+	data.Set("client_id", routeCtx.ClientID)
+	data.Set("client_secret", routeCtx.ClientSecret)
 	data.Set("code", authCode)
-	data.Set("redirect_uri", redirectUri)
+	data.Set("redirect_uri", routeCtx.RedirectURI)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/oauth2/token", providerDomain), bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequestWithContext(transportCtx, "POST", fmt.Sprintf("%s/oauth2/token", routeCtx.CognitoDomain), bytes.NewBufferString(data.Encode()))
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+		log.Printf("ERROR CALLBACK: %v\n", err)
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusInternalServerError,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: "Failed to create request for authentication provider",
+		}, nil
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -47,18 +57,39 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clie
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+		log.Printf("ERROR CALLBACK: %v\n", err)
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusInternalServerError,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: "Failed to contact authentication provider",
+		}, nil
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+		log.Printf("ERROR CALLBACK: %v\n", err)
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusInternalServerError,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: "Failed to contact authentication provider",
+		}, nil
 	}
 
 	var tokenRes TokenResponse
 	if err := json.Unmarshal(body, &tokenRes); err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
+		log.Printf("ERROR CALLBACK: %v\n", err)
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusInternalServerError,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: "Failed to read response from authentication provider",
+		}, nil
 	}
 
 	accessTokenCookie := &http.Cookie{
@@ -81,7 +112,7 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, providerDomain, clie
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: http.StatusFound,
 		Headers: map[string]string{
-			"Location":   frontendRedirect,
+			"Location":   routeCtx.FrontendRedirectURI,
 			"Set-Cookie": fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
 		},
 	}, nil

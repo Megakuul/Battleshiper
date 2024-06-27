@@ -6,10 +6,8 @@ toolchain go1.22.4
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
-	github.com/aws/aws-sdk-go v1.54.8
 	github.com/aws/aws-sdk-go-v2/config v1.27.21
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.40.1
-	github.com/softlayer/softlayer-go v1.1.5
 )
 
 require (
@@ -23,12 +21,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.21.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.25.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.29.1 // indirect
-	github.com/softlayer/xmlrpc v0.0.0-20200409220501-5f089df7cb7e // indirect
-	golang.org/x/text v0.14.0 // indirect
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.0
 	github.com/aws/smithy-go v1.20.2 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
