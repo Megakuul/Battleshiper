@@ -11,12 +11,10 @@ import (
 
 // RouteContext provides data to route handlers.
 type RouteContext struct {
-	CognitoClient       *cognitoidentityprovider.Client
-	CognitoDomain       string
-	ClientID            string
-	ClientSecret        string
-	RedirectURI         string
-	FrontendRedirectURI string
+	CognitoClient *cognitoidentityprovider.Client
+	CognitoDomain string
+	ClientID      string
+	ClientSecret  string
 }
 
 // Router is a simple router that provides a lambda handler function,

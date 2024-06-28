@@ -20,6 +20,75 @@ Globals:
     Timeout: 5
 
 Resources:
+
+  BattleshiperVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.100.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  BattleshiperVPCInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  BattleshiperVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref BattleshiperVPCInternetGateway
+      VpcId: !Ref BattleshiperVPC
+  
+  BattleshiperApiSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+
+  BattleshiperApiSubnetInternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref BattleshiperVPCInternetGateway
+  
+  BattleshiperApiSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.10.0/24"
+      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperApiSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperApiSubnet1
+      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
+
+  BattleshiperApiSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.20.0/24"
+      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperApiSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperApiSubnet2
+      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
+
+  BattleshiperDbSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.110.0/24"
+      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperDbSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.120.0/24"
+      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+
   BattleshiperUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -58,14 +127,9 @@ Resources:
         - !Sub "${ApplicationDomain}/auth/logout"
 
   BattleshiperApi:
-    Type: AWS::Serverless::Api
+    Type: AWS::Serverless::HttpApi
     Properties:
       StageName: Prod
-      Auth:
-        DefaultAuthorizer: 
-        Authorizers:
-          CognitoAuthorizer:
-            UserPoolArn: !GetAtt BattleshiperUserPool.Arn
 
   BattleshiperAuthFunc:
     Type: AWS::Serverless::Function
@@ -77,13 +141,19 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperApiSubnet1
+          - !Ref BattleshiperApiSubnet2
+        SecurityGroupIds:
+          - !Ref 
       Events:
         Auth:
-          Type: Api
+          Type: HttpApi
           Properties:
-            Path: /auth/{proxy+}
+            Path: /api/auth/{proxy+}
             Method: ANY
-            RestApiId: !Ref BattleshiperApi
+            ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
@@ -93,44 +163,40 @@ Resources:
           REDIRECT_URI: !Sub "${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "${ApplicationDomain}"
 
-          MOCK_USER_AUTH: true
-
-  BattleshiperConfigFunc:
+  BattleshiperUserFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
-      CodeUri: api/config
-      Handler: config
+      CodeUri: api/user
+      Handler: user
       Runtime: provided.al2023
       Architectures:
         - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperApiSubnet1
+          - !Ref BattleshiperApiSubnet2
+        SecurityGroupIds:
+          - !Ref 
       Events:
         Auth:
-          Type: Api
+          Type: HttpApi
           Properties:
-            Path: /config/{proxy+}
+            Path: /api/user/{proxy+}
             Method: ANY
-            RestApiId: !Ref BattleshiperApi
+            ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
           COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
           CLIENT_ID: !Ref BattleshiperUserPoolClient
           CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
-          
-          MOCK_USER_AUTH: true
+
+
+
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  BattleshiperAuthFuncAPI:
-    Description: "API Gateway endpoint URL for Prod environment for First Function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  BattleshiperAuthFunc:
-    Description: "First Lambda Function ARN"
-    Value: !GetAtt BattleshiperAuthFunc.Arn
-  BattleshiperAuthFuncIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt BattleshiperAuthFunc.Arn
+  BattleshiperAPI:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api"

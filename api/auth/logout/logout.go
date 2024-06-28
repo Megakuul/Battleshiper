@@ -22,7 +22,7 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.C
 	)
 
 	// Parse cookie by creating a http.Request and reading the cookie from there.
-	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
+	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusOK,

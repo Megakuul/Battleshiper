@@ -40,10 +40,10 @@ func main() {
 		FrontendRedirectURI: FRONTEND_REDIRECT_URI,
 	})
 
-	httpRouter.AddRoute("GET /api/auth/authorize", authorize.HandleAuthorization)
-	httpRouter.AddRoute("GET /api/auth/callback", callback.HandleCallback)
-	httpRouter.AddRoute("POST /api/auth/refresh", refresh.HandleRefresh)
-	httpRouter.AddRoute("POST /api/auth/logout", logout.HandleLogout)
+	httpRouter.AddRoute("GET", "/api/auth/authorize", authorize.HandleAuthorization)
+	httpRouter.AddRoute("GET", "/api/auth/callback", callback.HandleCallback)
+	httpRouter.AddRoute("POST", "/api/auth/refresh", refresh.HandleRefresh)
+	httpRouter.AddRoute("POST", "/api/auth/logout", logout.HandleLogout)
 
 	lambda.Start(httpRouter.Route)
 }
