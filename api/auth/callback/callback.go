@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/megakuul/battleshiper/api/auth/router"
+	"github.com/megakuul/battleshiper/api/auth/routecontext"
 )
 
 type TokenResponse struct {
@@ -29,7 +29,7 @@ type TokenResponse struct {
 // AccessToken request spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 // with ClientSecret: https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 // Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
-func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
+func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
 	authCode := request.QueryStringParameters["code"]
 

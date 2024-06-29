@@ -4,12 +4,17 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/megakuul/battleshiper/api/router"
+
 	"github.com/megakuul/battleshiper/api/user/info"
-	"github.com/megakuul/battleshiper/api/user/router"
+	"github.com/megakuul/battleshiper/api/user/routecontext"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -20,20 +25,42 @@ var (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Printf("ERROR INITIALIZATION: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
 	if err != nil {
-		log.Printf("ERROR INITIALIZATION: Failed to load sdk configuration: %v\n", err)
+		return err
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
-	httpRouter := router.NewRouter(router.RouteContext{
-		CognitoClient: awsCognitoClient,
-		CognitoDomain: COGNITO_DOMAIN,
-		ClientID:      CLIENT_ID,
-		ClientSecret:  CLIENT_SECRET,
+	databaseClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		if err = databaseClient.Disconnect(ctx); err != nil {
+			log.Printf("ERROR CLEANUP: %v\n", err)
+		}
+		cancel()
+	}()
+
+	httpRouter := router.NewRouter[routecontext.Context](routecontext.Context{
+		DatabaseClient: databaseClient,
+		CognitoClient:  awsCognitoClient,
+		CognitoDomain:  COGNITO_DOMAIN,
+		ClientID:       CLIENT_ID,
+		ClientSecret:   CLIENT_SECRET,
 	})
 
 	httpRouter.AddRoute("GET", "/api/user/info", info.HandleInfo)
 
 	lambda.Start(httpRouter.Route)
+
+	return nil
 }

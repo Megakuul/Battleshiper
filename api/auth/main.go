@@ -8,11 +8,13 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/megakuul/battleshiper/api/router"
+
 	"github.com/megakuul/battleshiper/api/auth/authorize"
 	"github.com/megakuul/battleshiper/api/auth/callback"
 	"github.com/megakuul/battleshiper/api/auth/logout"
 	"github.com/megakuul/battleshiper/api/auth/refresh"
-	"github.com/megakuul/battleshiper/api/auth/router"
+	"github.com/megakuul/battleshiper/api/auth/routecontext"
 )
 
 var (
@@ -25,13 +27,20 @@ var (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Printf("ERROR INITIALIZATION: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
 	if err != nil {
-		log.Printf("ERROR INITIALIZATION: Failed to load sdk configuration: %v\n", err)
+		return err
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
-	httpRouter := router.NewRouter(router.RouteContext{
+	httpRouter := router.NewRouter[routecontext.Context](routecontext.Context{
 		CognitoClient:       awsCognitoClient,
 		CognitoDomain:       COGNITO_DOMAIN,
 		ClientID:            CLIENT_ID,
@@ -46,4 +55,6 @@ func main() {
 	httpRouter.AddRoute("POST", "/api/auth/logout", logout.HandleLogout)
 
 	lambda.Start(httpRouter.Route)
+
+	return nil
 }

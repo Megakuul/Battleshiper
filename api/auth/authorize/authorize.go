@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/megakuul/battleshiper/api/auth/router"
+	"github.com/megakuul/battleshiper/api/auth/routecontext"
 )
 
 // HandleAuthorization redirects the user to the authorization endpoint of the Cognito provider.
 // Based on https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html
-func HandleAuthorization(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
+func HandleAuthorization(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	// Hardcoded default scopes are openid (to enable openid connect) and profile (to acquire basic user information).
 	authScopes := "openid profile"
 

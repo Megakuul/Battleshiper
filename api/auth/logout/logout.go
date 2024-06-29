@@ -9,11 +9,11 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/megakuul/battleshiper/api/auth/router"
+	"github.com/megakuul/battleshiper/api/auth/routecontext"
 )
 
 // HandleLogout logs the user out and revokes the used tokens.
-func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
+func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
 	clearCookieHeader := fmt.Sprintf(
 		"%s, %s",

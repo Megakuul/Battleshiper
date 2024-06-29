@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/megakuul/battleshiper/api/auth/router"
+	"github.com/megakuul/battleshiper/api/auth/routecontext"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
@@ -20,7 +20,7 @@ type RefreshResponse struct {
 }
 
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
-func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx router.RouteContext) (events.APIGatewayV2HTTPResponse, error) {
+func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
 	// Parse cookie by creating a http.Request and reading the cookie from there.
 	oldRefreshTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")

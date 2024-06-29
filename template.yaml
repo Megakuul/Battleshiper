@@ -21,6 +21,10 @@ Globals:
 
 Resources:
 
+
+
+  # Network
+
   BattleshiperVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -75,6 +79,19 @@ Resources:
       SubnetId: !Ref BattleshiperApiSubnet2
       RouteTableId: !Ref BattleshiperApiSubnetRouteTable
 
+  BattleshiperApiSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.30.0/24"
+      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperApiSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperApiSubnet3
+      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
+
   BattleshiperDbSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -88,6 +105,49 @@ Resources:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.120.0/24"
       AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperDbSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.130.0/24"
+      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperDbReceiverGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "battleshiper-db-receiver"
+      GroupDescription: "Allows access to DocumentDB with group battleshiper-db-access"
+      VpcId: !Ref BattleshiperVPC
+
+  BattleshiperDbAccessGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "battleshiper-db-access"
+      GroupDescription: "Allows DocumentDB access from battleshiper-db-receiver"
+      VpcId: !Ref BattleshiperVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          DestinationSecurityGroupId: !GetAtt BattleshiperDbReceiverGroup.GroupId
+
+  BattleshiperApiEgressGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "battleshiper-api-egress"
+      GroupDescription: "Allows HTTPS egress traffic"
+      VpcId: !Ref BattleshiperVPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+
+
+
+  # Auth provider
 
   BattleshiperUserPool:
     Type: AWS::Cognito::UserPool
@@ -126,6 +186,61 @@ Resources:
       LogoutURLs:
         - !Sub "${ApplicationDomain}/auth/logout"
 
+
+
+  # Database
+
+  BattleshiperDbAdminSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-db-cluster-admin-credentials"
+      Description: "Secret for battleshiper db administrator credentials."
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 60
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperDbApiSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-db-cluster-api-credentials"
+      Description: "Secret for battleshiper api access credentials."
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "api"}'
+        GenerateStringKey: "password"
+        PasswordLength: 40
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperDbApiSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref BattleshiperDbApiSecret
+      TargetId: !Ref BattleshiperDb
+      TargetType: "AWS::DocDB::DBCluster"
+
+  BattleshiperDb:
+    Type: AWS::DocDBElastic::Cluster
+    Properties:
+      AdminUserName: !Sub '{{resolve:secretsmanager:BattleshiperDbAdminSecret:SecretString:username}}'
+      # Admin password is set to the secret's ARN.
+      # This usage is not documented unfortunaly: https://github.com/aws/aws-cdk/issues/28935.
+      AdminUserPassword: !Ref BattleshiperDbAdminSecret
+      AuthType: "SECRET_ARN"
+      ClusterName: "battleshiper-db-cluster"
+      ShardCapacity: 2
+      ShardCount: 1
+      ShardInstanceCount: 3
+      SubnetIds: 
+        - !Ref BattleshiperDbSubnet1
+        - !Ref BattleshiperDbSubnet2
+        - !Ref BattleshiperDbSubnet3
+      VpcSecurityGroupIds:
+        - !Ref BattleshiperDbAccessGroup
+
+
+  # Api
+
   BattleshiperApi:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -145,8 +260,9 @@ Resources:
         SubnetIds:
           - !Ref BattleshiperApiSubnet1
           - !Ref BattleshiperApiSubnet2
+          - !Ref BattleshiperApiSubnet3
         SecurityGroupIds:
-          - !Ref 
+          - !Ref BattleshiperApiEgressGroup
       Events:
         Auth:
           Type: HttpApi
@@ -177,8 +293,10 @@ Resources:
         SubnetIds:
           - !Ref BattleshiperApiSubnet1
           - !Ref BattleshiperApiSubnet2
+          - !Ref BattleshiperApiSubnet3
         SecurityGroupIds:
-          - !Ref 
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperApiEgressGroup
       Events:
         Auth:
           Type: HttpApi
@@ -192,6 +310,9 @@ Resources:
           COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
           CLIENT_ID: !Ref BattleshiperUserPoolClient
           CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
 
 
 
@@ -200,3 +321,7 @@ Outputs:
   BattleshiperAPI:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api"
+
+  BattleshiperDbAdminSecret:
+    Description: "Secret where the credentials of the database admin are"
+    Value: !Ref BattleshiperDbAdminSecret
