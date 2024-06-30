@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -9,19 +10,23 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/megakuul/battleshiper/lib/bootstrap/database"
 	"github.com/megakuul/battleshiper/lib/router"
 
 	"github.com/megakuul/battleshiper/api/user/info"
 	"github.com/megakuul/battleshiper/api/user/routecontext"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
-	REGION         = os.Getenv("AWS_REGION")
-	COGNITO_DOMAIN = os.Getenv("COGNITO_DOMAIN")
-	CLIENT_ID      = os.Getenv("CLIENT_ID")
-	CLIENT_SECRET  = os.Getenv("CLIENT_SECRET")
+	REGION              = os.Getenv("AWS_REGION")
+	COGNITO_DOMAIN      = os.Getenv("COGNITO_DOMAIN")
+	CLIENT_ID           = os.Getenv("CLIENT_ID")
+	CLIENT_SECRET       = os.Getenv("CLIENT_SECRET")
+	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
 )
 
 func main() {
@@ -34,11 +39,15 @@ func main() {
 func run() error {
 	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
-	databaseClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
+	if err != nil {
+		return err
+	}
+	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
 	if err != nil {
 		return err
 	}
@@ -50,7 +59,7 @@ func run() error {
 		cancel()
 	}()
 
-	httpRouter := router.NewRouter[routecontext.Context](routecontext.Context{
+	httpRouter := router.NewRouter(routecontext.Context{
 		DatabaseClient: databaseClient,
 		CognitoClient:  awsCognitoClient,
 		CognitoDomain:  COGNITO_DOMAIN,

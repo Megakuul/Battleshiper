@@ -40,7 +40,7 @@ func run() error {
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
-	httpRouter := router.NewRouter[routecontext.Context](routecontext.Context{
+	httpRouter := router.NewRouter(routecontext.Context{
 		CognitoClient:       awsCognitoClient,
 		CognitoDomain:       COGNITO_DOMAIN,
 		ClientID:            CLIENT_ID,

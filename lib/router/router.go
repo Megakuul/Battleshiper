@@ -1,3 +1,4 @@
+// router package is used to route api gateway requests to multiple handlers based on the http path.
 package router
 
 import (

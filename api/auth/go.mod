@@ -1,13 +1,12 @@
 module github.com/megakuul/battleshiper/api/auth
 
-go 1.21
-
-toolchain go1.22.4
+go 1.22.4
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.21
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.40.1
+	github.com/megakuul/battleshiper/lib/router v0.1.0
 )
 
 require (

@@ -219,6 +219,21 @@ Resources:
       TargetId: !Ref BattleshiperDb
       TargetType: "AWS::DocDB::DBCluster"
 
+  BattleshiperDbApiSecretPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-db-cluster-api-credentials-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource:
+              - !Ref BattleshiperDbApiSecret
+      Roles: 
+        - !Ref BattleshiperUserFuncRole
+
   BattleshiperDb:
     Type: AWS::DocDBElastic::Cluster
     Properties:
@@ -246,6 +261,20 @@ Resources:
     Properties:
       StageName: Prod
 
+  BattleshiperAuthFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
   BattleshiperAuthFunc:
     Type: AWS::Serverless::Function
     Metadata:
@@ -263,6 +292,7 @@ Resources:
           - !Ref BattleshiperApiSubnet3
         SecurityGroupIds:
           - !Ref BattleshiperApiEgressGroup
+      Role: !GetAtt BattleshiperAuthFuncRole.Arn
       Events:
         Auth:
           Type: HttpApi
@@ -279,8 +309,26 @@ Resources:
           REDIRECT_URI: !Sub "${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "${ApplicationDomain}"
 
+  BattleshiperUserFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
   BattleshiperUserFunc:
     Type: AWS::Serverless::Function
+    # Function must depend on policies attached to the role
+    # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
+    DependsOn: 
+      - BattleshiperDbApiSecretPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -297,6 +345,7 @@ Resources:
         SecurityGroupIds:
           - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
+      Role: !GetAtt BattleshiperUserFuncRole.Arn
       Events:
         Auth:
           Type: HttpApi
