@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/megakuul/battleshiper/api/router"
+	"github.com/megakuul/battleshiper/lib/router"
 
 	"github.com/megakuul/battleshiper/api/auth/authorize"
 	"github.com/megakuul/battleshiper/api/auth/callback"

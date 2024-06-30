@@ -1,4 +1,4 @@
-module github.com/megakuul/battleshiper/api/router
+module github.com/megakuul/battleshiper/lib/router
 
 go 1.22.4
 
