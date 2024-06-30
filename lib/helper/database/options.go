@@ -1,4 +1,3 @@
-// database package abstracts fetching and construction of the database connection options.
 package database
 
 import (

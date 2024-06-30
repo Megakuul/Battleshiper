@@ -7,9 +7,9 @@ import (
 
 // Context provides data to route handlers.
 type Context struct {
-	DatabaseClient *mongo.Client
-	CognitoClient  *cognitoidentityprovider.Client
-	CognitoDomain  string
-	ClientID       string
-	ClientSecret   string
+	Database      *mongo.Database
+	CognitoClient *cognitoidentityprovider.Client
+	CognitoDomain string
+	ClientID      string
+	ClientSecret  string
 }

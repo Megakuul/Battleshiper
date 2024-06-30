@@ -58,13 +58,14 @@ func run() error {
 		}
 		cancel()
 	}()
+	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		DatabaseClient: databaseClient,
-		CognitoClient:  awsCognitoClient,
-		CognitoDomain:  COGNITO_DOMAIN,
-		ClientID:       CLIENT_ID,
-		ClientSecret:   CLIENT_SECRET,
+		Database:      databaseHandle,
+		CognitoClient: awsCognitoClient,
+		CognitoDomain: COGNITO_DOMAIN,
+		ClientID:      CLIENT_ID,
+		ClientSecret:  CLIENT_SECRET,
 	})
 
 	httpRouter.AddRoute("GET", "/api/user/info", info.HandleInfo)

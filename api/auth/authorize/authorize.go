@@ -12,7 +12,7 @@ import (
 // Based on https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html
 func HandleAuthorization(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	// Hardcoded default scopes are openid (to enable openid connect) and profile (to acquire basic user information).
-	authScopes := "openid profile"
+	authScopes := "openid profile email"
 
 	// Format is based on the cognito endpoint spec: https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html
 	authUrl := fmt.Sprintf(
