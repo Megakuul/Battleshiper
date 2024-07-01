@@ -1,4 +1,7 @@
+// Contains database types for the user collection.
 package user
+
+const USER_COLLECTION = "users"
 
 type Subscriptions struct {
 	DailyPipelineExecutions int `bson:"daily_pipeline_executions"`

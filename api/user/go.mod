@@ -38,4 +38,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
+	github.com/megakuul/battleshiper/lib/helper v0.1.0 // indirect
+	github.com/megakuul/battleshiper/lib/model v0.1.0 // indirect
 )

@@ -14,7 +14,25 @@ import (
 
 // HandleLogout logs the user out and revokes the used tokens.
 func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	cookie, code, err := runHandleLogout(request, transportCtx, routeCtx)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: code,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: err.Error(),
+		}, nil
+	}
+	return events.APIGatewayV2HTTPResponse{
+		StatusCode: code,
+		Headers: map[string]string{
+			"Set-Cookie": cookie,
+		},
+	}, nil
+}
 
+func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
 	clearCookieHeader := fmt.Sprintf(
 		"%s, %s",
 		(&http.Cookie{Name: "access_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
@@ -24,14 +42,7 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.C
 	// Parse cookie by creating a http.Request and reading the cookie from there.
 	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusOK,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-				"Set-Cookie":   clearCookieHeader,
-			},
-			Body: "User is already logged out",
-		}, nil
+		return clearCookieHeader, http.StatusOK, nil
 	}
 
 	input := &cognitoidentityprovider.GlobalSignOutInput{
@@ -40,22 +51,8 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.C
 
 	_, err = routeCtx.CognitoClient.GlobalSignOut(transportCtx, input)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusInternalServerError,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-				"Set-Cookie":   clearCookieHeader,
-			},
-			Body: fmt.Sprintf("Failed to sign out globally: %v", err),
-		}, nil
+		return clearCookieHeader, http.StatusInternalServerError, fmt.Errorf("Failed to sign out globally: %v", err)
 	}
 
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": "text/plain",
-			"Set-Cookie":   clearCookieHeader,
-		},
-		Body: "Successfully logged out",
-	}, nil
+	return clearCookieHeader, http.StatusOK, nil
 }

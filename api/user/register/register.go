@@ -1,4 +1,4 @@
-package info
+package register
 
 import (
 	"context"
@@ -16,22 +16,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type subscriptions struct {
-	DailyPipelineExecutions int `json:"daily_pipeline_executions"`
-	DefaultDeployments      int `json:"default_deployments"`
-}
-
-type infoResponse struct {
-	Name       string `json:"name"`
-	Nickname   string `json:"nickname"`
-	Email      string `json:"email"`
-	PictureURL string `json:"picture_url"`
-
-	Subscriptions subscriptions `json:"subscriptions"`
-}
-
-// HandleInfo fetches user information from the database cluster.
-func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+// HandleRegister registers a user in the database (if not existent) based on the cognito user attributes.
+func HandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	response, code, err := runHandleInfo(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
@@ -61,7 +47,7 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*infoResponse, int, error) {
+func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
 	userAttributes, err := auth.FetchUserAttributes(request, transportCtx, routeCtx.CognitoClient)
 	if err != nil {
 		return nil, http.StatusUnauthorized, fmt.Errorf("failed to acquire user information: %v", err)

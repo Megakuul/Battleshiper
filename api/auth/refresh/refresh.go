@@ -21,17 +21,30 @@ type RefreshResponse struct {
 
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
 func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	cookie, code, err := runHandleRefresh(request, transportCtx, routeCtx)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: code,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: err.Error(),
+		}, nil
+	}
+	return events.APIGatewayV2HTTPResponse{
+		StatusCode: code,
+		Headers: map[string]string{
+			"Set-Cookie": cookie,
+		},
+	}, nil
+}
+
+func runHandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
 
 	// Parse cookie by creating a http.Request and reading the cookie from there.
 	oldRefreshTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("refresh_token")
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusUnauthorized,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: "User is not logged in",
-		}, nil
+		return "", http.StatusUnauthorized, fmt.Errorf("user is not logged in")
 	}
 
 	input := &cognitoidentityprovider.InitiateAuthInput{
@@ -44,13 +57,7 @@ func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.
 
 	res, err := routeCtx.CognitoClient.InitiateAuth(transportCtx, input)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusUnauthorized,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: fmt.Sprintf("Failed to acquire refresh token: %s", err.Error()),
-		}, nil
+		return "", http.StatusUnauthorized, fmt.Errorf("failed to acquire refresh token: %s", err.Error())
 	}
 
 	accessTokenCookie := &http.Cookie{
@@ -70,12 +77,5 @@ func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.
 		Path:     "/",
 	}
 
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: http.StatusOK,
-		Headers: map[string]string{
-			"Content-Type": "text/plain",
-			"Set-Cookie":   fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
-		},
-		Body: "Updated access_token successful",
-	}, nil
+	return fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie), http.StatusOK, nil
 }

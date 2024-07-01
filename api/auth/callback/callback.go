@@ -31,6 +31,27 @@ type TokenResponse struct {
 // Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
 func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
+	cookie, code, err := runHandleCallback(request, transportCtx, routeCtx)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: code,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: err.Error(),
+		}, nil
+	}
+	return events.APIGatewayV2HTTPResponse{
+		StatusCode: code,
+		Headers: map[string]string{
+			"Location":   routeCtx.FrontendRedirectURI,
+			"Set-Cookie": cookie,
+		},
+	}, nil
+}
+
+func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
+
 	authCode := request.QueryStringParameters["code"]
 
 	data := url.Values{}
@@ -43,53 +64,28 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context
 	req, err := http.NewRequestWithContext(transportCtx, "POST", fmt.Sprintf("%s/oauth2/token", routeCtx.CognitoDomain), bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		log.Printf("ERROR CALLBACK: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusInternalServerError,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: "Failed to create request for authentication provider",
-		}, nil
+		return "", http.StatusInternalServerError, fmt.Errorf("Failed to create request for authentication provider")
 	}
-
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
 		log.Printf("ERROR CALLBACK: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusInternalServerError,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: "Failed to contact authentication provider",
-		}, nil
+		return "", http.StatusInternalServerError, fmt.Errorf("Failed to contact authentication provider")
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Printf("ERROR CALLBACK: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusInternalServerError,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: "Failed to contact authentication provider",
-		}, nil
+		return "", http.StatusInternalServerError, fmt.Errorf("Failed to contact authentication provider")
 	}
 
 	var tokenRes TokenResponse
 	if err := json.Unmarshal(body, &tokenRes); err != nil {
 		log.Printf("ERROR CALLBACK: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: http.StatusInternalServerError,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: "Failed to read response from authentication provider",
-		}, nil
+		return "", http.StatusInternalServerError, fmt.Errorf("Failed to read response from authentication provider")
 	}
 
 	accessTokenCookie := &http.Cookie{
@@ -109,11 +105,5 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context
 		Path:     "/",
 	}
 
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: http.StatusFound,
-		Headers: map[string]string{
-			"Location":   routeCtx.FrontendRedirectURI,
-			"Set-Cookie": fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie),
-		},
-	}, nil
+	return fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie), http.StatusFound, nil
 }
