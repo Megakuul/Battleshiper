@@ -11,4 +11,5 @@ type Subscriptions struct {
 type User struct {
 	Sub           string        `bson:"sub"`
 	Subscriptions Subscriptions `bson:"subscriptions"`
+	ProjectIds    []string      `bson:"project_ids"`
 }

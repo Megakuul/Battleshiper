@@ -42,7 +42,7 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 	// Parse cookie by creating a http.Request and reading the cookie from there.
 	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
 	if err != nil {
-		return clearCookieHeader, http.StatusOK, nil
+		return clearCookieHeader, http.StatusNoContent, nil
 	}
 
 	input := &cognitoidentityprovider.GlobalSignOutInput{
@@ -51,8 +51,8 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 
 	_, err = routeCtx.CognitoClient.GlobalSignOut(transportCtx, input)
 	if err != nil {
-		return clearCookieHeader, http.StatusInternalServerError, fmt.Errorf("Failed to sign out globally: %v", err)
+		return clearCookieHeader, http.StatusInternalServerError, fmt.Errorf("failed to sign out globally: %v", err)
 	}
 
-	return clearCookieHeader, http.StatusOK, nil
+	return clearCookieHeader, http.StatusNoContent, nil
 }

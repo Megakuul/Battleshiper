@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/lib/helper/database"
@@ -63,7 +62,13 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
-	index.SetupIndexes(databaseHandle.Collection("user"), context.TODO(), bson.D{user.UserIndex{Sub: 1}}, true)
+	index.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []index.Index{
+		index.Index{
+			FieldNames:   []string{"sub"},
+			SortingOrder: 1,
+			Unique:       true,
+		},
+	})
 
 	httpRouter := router.NewRouter(routecontext.Context{
 		Database:      databaseHandle,

@@ -77,5 +77,5 @@ func runHandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx conte
 		Path:     "/",
 	}
 
-	return fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie), http.StatusOK, nil
+	return fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie), http.StatusNoContent, nil
 }

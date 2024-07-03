@@ -77,17 +77,7 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 	var userDoc user.User
 	err = userCollection.FindOne(transportCtx, bson.M{"sub": subAttr}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
-		newDoc := user.User{
-			Sub: subAttr,
-			Subscriptions: user.Subscriptions{
-				DailyPipelineExecutions: 0,
-				DefaultDeployments:      0,
-			},
-		}
-		_, err := userCollection.InsertOne(transportCtx, newDoc)
-		if err != nil {
-			return nil, http.StatusBadRequest, fmt.Errorf("user record was not found and insertion of default record failed")
-		}
+		return nil, http.StatusUnauthorized, fmt.Errorf("user does not exist")
 	} else if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
 	}
