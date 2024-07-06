@@ -1,0 +1,32 @@
+{
+  "name": "@megakuul/adapter-battleshiper",
+  "description": "",
+  "keywords": [],
+  "version": "0.1.0",
+  "author": "Megakuul",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/megakuul/battleshiper",
+    "directory": "adapter-battleshiper"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "index.d.ts",
+  "files": [
+    "src",
+    "index.js",
+    "index.d.ts"
+  ],
+  "devDependencies": {
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "^2.5.18"
+  }
+}
