@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from '../adapter-battleshiper/index.js';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

@@ -1,0 +1,27 @@
+name: publish adapter-battleshiper to npm
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "adapter-battleshiper/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - name: publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+        run: |
+          cd adapter-battleshiper
+          npm ci
+          npm publish --access public
