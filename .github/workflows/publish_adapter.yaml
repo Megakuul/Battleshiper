@@ -19,9 +19,8 @@ jobs:
         with:
           node-version: latest
       - name: publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
         run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_ACCESS_TOKEN }}" > ~/.npmrc
           cd adapter-battleshiper
           npm ci
           npm publish --access public

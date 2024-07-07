@@ -3,11 +3,11 @@
   "description": "",
   "keywords": [
     "adapter",
-		"deploy",
-		"hosting",
-		"svelte",
-		"sveltekit",
-		"battleshiper"
+    "deploy",
+    "hosting",
+    "svelte",
+    "sveltekit",
+    "battleshiper"
   ],
   "version": "0.1.0",
   "author": "Megakuul",
@@ -15,7 +15,7 @@
   "private": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/megakuul/battleshiper",
+    "url": "git+https://github.com/megakuul/battleshiper.git",
     "directory": "adapter-battleshiper"
   },
   "type": "module",

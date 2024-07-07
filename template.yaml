@@ -555,6 +555,7 @@ Resources:
       ValidationMethod: "DNS"
       DomainValidationOption:
         - DomainName: !Sub "*.${ApplicationDomain}"
+          ValidationDomain: !Ref ApplicationDomain
           
 
 
@@ -579,23 +580,53 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref BattleshiperCertificate
+          SslSupportMethod: "sni-only"
+          MinimumProtocolVersion: "TLSv1.2_2021"
         Origins:
           - Id: "battleshiper-static-bucket"
             DomainName: !GetAtt BattleshiperStaticBucket.DomainName
             OriginAccessControlId: !GetAtt BattleshiperCoreCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-project-api-gateway"
-            DomainName: !GetAtt
+            DomainName: !GetAtt BattleshiperProjectApiGateway.DistributionDomainName
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
-
-
         DefaultCacheBehavior:
           TargetOriginId: "battleshiper-project-api-gateway"
+          AllowedMethods:
+            - GET
+            - HEAD
+            - POST
           ViewerProtocolPolicy: "redirect-to-https"
+          Compress: true
+          ViewerProtocolPolicy: redirect-to-https
+          FunctionAssociations: !TODO
         CacheBehaviors:
-
-
+          - PathPattern: "/_app/*"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CacheMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            FunctionAssociations: !TODO
+          - PathPattern: "/*.*"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CacheMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            FunctionAssociations: !TODO
         Aliases:
           - !Sub "*.${ApplicationDomain}"
       Tags:
@@ -619,12 +650,20 @@ Resources:
         Enabled: true
         PriceClass: "PriceClass_All"
         ViewerCertificate:
-          AcmCertificateArn: 
+          AcmCertificateArn: !Ref BattleshiperCertificate
+          SslSupportMethod: "sni-only"
+          MinimumProtocolVersion: "TLSv1.2_2021"
         Origins:
           - Id: "battleshiper-static-bucket"
             DomainName: !GetAtt BattleshiperStaticBucket.DomainName
             OriginAccessControlId: !GetAtt BattleshiperPrerenderCDNOriginAccessControl.Id
             S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: "battleshiper-static-bucket"
+          AllowedMethods:
+            - GET
+            - HEAD
+          ViewerProtocolPolicy: redirect-to-https
         Aliases:
           - !Sub "prerender.${ApplicationDomain}"
       Tags:
@@ -637,5 +676,13 @@ Outputs:
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api"
 
   BattleshiperDbAdminSecret:
-    Description: "Secret where the credentials of the database admin are"
+    Description: "Secret where the credentials of the database admin are stored"
     Value: !Ref BattleshiperDbAdminSecret
+
+  CertificateDomainValidation:
+    Description: "Domain options to validate the certificate via DNS."
+    Value: !Join
+      - "\n"
+      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Name
+      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Type
+      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Value
