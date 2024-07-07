@@ -1,7 +1,14 @@
 {
   "name": "@megakuul/adapter-battleshiper",
   "description": "",
-  "keywords": [],
+  "keywords": [
+    "adapter",
+		"deploy",
+		"hosting",
+		"svelte",
+		"sveltekit",
+		"battleshiper"
+  ],
   "version": "0.1.0",
   "author": "Megakuul",
   "license": "MIT",
@@ -24,9 +31,13 @@
     "index.js",
     "index.d.ts"
   ],
-  "devDependencies": {
-  },
   "peerDependencies": {
     "@sveltejs/kit": "^2.5.18"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.140"
+  },
+  "dependencies": {
+    "esbuild": "^0.23.0"
   }
 }
