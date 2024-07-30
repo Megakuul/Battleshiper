@@ -563,8 +563,21 @@ Resources:
 
 
 
-
   # Cloudfront distributions
+
+  BattleshiperCoreCDNRouteFunc:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: "battleshiper-core-cdn-route-func"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Function to route core cdn requests to a path based on the requested host.
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        
+        function handler(event) {
+
+        }
 
   BattleshiperCoreCDNOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
