@@ -75,7 +75,7 @@
 	};
 </script>
 
-<div class={cn('my-6 flex flex-row items-center space-x-2 text-xs sm:text-lg md:text-2xl lg:text-3xl xl:text-5xl', className)}>
+<div class={cn('my-6 flex flex-row items-center space-x-2 text-xl md:text-2xl lg:text-4xl xl:text-6xl text-nowrap', className)}>
 	<Motion
 		let:motion
 		initial={{

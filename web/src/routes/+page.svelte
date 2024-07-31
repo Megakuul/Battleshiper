@@ -1,8 +1,8 @@
 <script>
-    import Battleship from "$lib/components/Battleship.svelte";
-import GridBackground from "$lib/components/GridBackground.svelte";
-    import Spotlight from "$lib/components/Spotlight.svelte";
-    import Typewriter from "$lib/components/Typewriter.svelte";
+  import Battleship from "$lib/components/Battleship.svelte";
+	import GridBackground from "$lib/components/GridBackground.svelte";
+  import Spotlight from "$lib/components/Spotlight.svelte";
+  import Typewriter from "$lib/components/Typewriter.svelte";
 
 </script>
 
@@ -13,15 +13,25 @@ import GridBackground from "$lib/components/GridBackground.svelte";
 
 <GridBackground gridBlockSize={64} gridColor="rgba(255, 255, 255, 0.2)">
 	<Spotlight
-		srcPercentX="{-80}"
-		srcPercentY="{-60}"
-		destPercentX="{-70}"
-		destPercentY="{-40}"
-		rotationDeg="{90}"
+		fill="rgba(255, 255, 255, 0.7)"
+		srcPercentX="{-90}"
+		srcPercentY="{-20}"
+		destPercentX="{-60}"
+		destPercentY="{-10}"
+		rotationDeg="{-45}"
 		className="md:left-60 md:-top-20" 
 	/>
-	<div class="w-full flex flex-col lg:flex-row justify-between">
-		<h1>
+	<Spotlight
+		fill="rgba(255, 255, 255, 0.7)"
+		srcPercentX="{90}"
+		srcPercentY="{-45}"
+		destPercentX="{70}"
+		destPercentY="{-40}"
+		rotationDeg="{125}"
+		className="md:left-60 md:-top-20" 
+	/>
+	<div class="w-11/12 flex flex-col-reverse lg:flex-row gap-8 justify-between items-center">
+		<h1 class="w-full">
 			<Typewriter
 				prefix={{
 					word: "Wanna go ", className: "bg-gradient-to-b from-neutral-200 to-neutral-500 bg-clip-text font-bold text-transparent"
@@ -45,7 +55,7 @@ import GridBackground from "$lib/components/GridBackground.svelte";
 				cursorClassName="bg-gradient-to-b from-neutral-200 to-neutral-500"
 			/>
 		</h1>
-		<Battleship className=""></Battleship>
+		<Battleship className="w-full"></Battleship>
 	</div>
 
 </GridBackground>
