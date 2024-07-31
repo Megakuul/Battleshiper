@@ -6,7 +6,7 @@
  
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 237 84% 0%;
     --foreground: 210 40% 98%;
   }
 }
@@ -15,10 +15,12 @@
   * {
     @apply border-border;
   }
-  html::-webkit-scrollbar {
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
   }
-  html {
+  html, body {
+    animation: none;
+    overflow-x: hidden;
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
     font-family: "Ubuntu", "Roboto";

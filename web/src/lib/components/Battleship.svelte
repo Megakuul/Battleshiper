@@ -8,16 +8,22 @@
 </script>
 
 <div class={cn("relative flex justify-center", className)}>
+  <img class="battleship w-11/12" alt="Battleship" src={Battleship} />
   <div class="wave-container absolute bottom-0 w-full h-[20%] overflow-hidden">
     <img class="wave absolute top-0 left-0" alt="wave" src={Wave} />
     <img class="wave delay-1 absolute top-0 left-0" alt="wave" src={Wave} />
     <img class="wave delay-2 absolute top-0 left-0" alt="wave" src={Wave} />
     <img class="wave delay-3 absolute top-0 left-0" alt="wave" src={Wave} />
   </div>
-  <img class="w-11/12" alt="Battleship" src={Battleship} />
 </div>
 
 <style>
+
+  .battleship {
+    opacity: 0;
+    animation: show-battleship 4s ease-out forwards;
+  }
+
   .wave-container {
     mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
     -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
@@ -41,6 +47,17 @@
   }
   .wave.delay-3 {
     animation-delay: 9s;
+  }
+
+  @keyframes show-battleship {
+    0% {
+      opacity: 0;
+      transform: translate(20%, -10%);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0%, 0%);
+    }
   }
 
   @keyframes show-wave {

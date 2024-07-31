@@ -15,7 +15,7 @@
 
 <div
 	style="background-image: url('data:image/svg+xml;utf8,{GRIDSVG}');"
-	class={cn("relative flex h-screen w-full items-center justify-center bg-black bg-opacity-20", className)}
+	class={cn("relative w-full bg-black bg-opacity-20", className)}
 >
 	{#if showFade}
 		<div

@@ -1,17 +1,22 @@
 <script>
+	import EdgeIcon from "$lib/assets/EdgeIcon.svg"
+	import WorkflowIcon from "$lib/assets/WorkflowIcon.svg"
   import Battleship from "$lib/components/Battleship.svelte";
+  import Beam from "$lib/components/Beam.svelte";
 	import GridBackground from "$lib/components/GridBackground.svelte";
   import Spotlight from "$lib/components/Spotlight.svelte";
+    import SvelteIcon from "$lib/components/SvelteIcon.svelte";
   import Typewriter from "$lib/components/Typewriter.svelte";
+    import PinContainer from "$lib/components/ui/pin/PinContainer.svelte";
 
 </script>
 
 <svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
+	<title>Home | Battleshiper</title>
+	<meta name="description" content="Deploy your SvelteKit applications on automated, scalable infrastructure with no configuration worries." />
 </svelte:head>
 
-<GridBackground gridBlockSize={64} gridColor="rgba(255, 255, 255, 0.2)">
+<GridBackground gridBlockSize={64} gridColor="rgba(255, 255, 255, 0.2)" className="flex justify-center">
 	<Spotlight
 		fill="rgba(255, 255, 255, 0.7)"
 		srcPercentX="{-90}"
@@ -30,7 +35,7 @@
 		rotationDeg="{125}"
 		className="md:left-60 md:-top-20" 
 	/>
-	<div class="w-11/12 flex flex-col-reverse lg:flex-row gap-8 justify-between items-center">
+	<div class="10/12 sm:w-8/12 flex flex-col gap-16 my-24 sm:my-32">
 		<h1 class="w-full">
 			<Typewriter
 				prefix={{
@@ -51,18 +56,61 @@
 					]},
 				]}
 				duration={1.5}
-				className="w-full"
+				className="w-full flex justify-center"
 				cursorClassName="bg-gradient-to-b from-neutral-200 to-neutral-500"
 			/>
 		</h1>
-		<Battleship className="w-full"></Battleship>
+		<Battleship className="w-full "></Battleship>
 	</div>
-
 </GridBackground>
 
-<section>
+<Beam gradientStart="black" gradientVia="#757F9A" gradientEnd="#D7DDE8" className="flow-root z-0">
+	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
+		<h1 class="text-3xl lg:text-4xl font-bold">Deploy SvelteKit in Seconds</h1>
+		<PinContainer title="/kit.svelte.dev" href="https://kit.svelte.dev" containerClassName="my-16">
+			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+				<h2 class="max-w-xs text-base font-bold text-slate-100">SvelteKit</h2>
+				<div class="text-base font-normal text-slate-500">
+					Battleshiper leverages Serverless Functions to power the GOAT framework.
+				</div>
+				<div class="mt-4 flex w-full h-full justify-center items-center bg-slate-900 brightness-75 rounded-lg">
+					<SvelteIcon class="w-2/3 h-2/3" />
+				</div>
+			</div>
+		</PinContainer>
+	</div>
 
-</section>
+	<div class="flex flex-col-reverse lg:flex-row justify-evenly items-center my-64">
+		<PinContainer title="/project" href="/project" containerClassName="my-16">
+			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+				<h2 class="max-w-xs text-base font-bold text-slate-100">Edge Caching</h2>
+				<div class="text-base font-normal text-slate-500">
+					Prerendered pages and lazy-loaded chunks are cached directly at the Edge.
+				</div>
+				<div class="mt-4 flex w-full h-full justify-center items-center bg-slate-900 brightness-75 rounded-lg">
+					<img alt="Edge Computing Icon" src={EdgeIcon} class="w-2/3 h-2/3" />
+				</div>
+			</div>
+		</PinContainer>
+		<h1 class="text-3xl lg:text-4xl font-bold">Profit from Global Edge Caching</h1>
+	</div>
+
+	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
+		<h1 class="text-3xl lg:text-4xl font-bold">CI/CD? Relax.</h1>
+		<PinContainer title="/deployment" href="/deployment" containerClassName="my-16">
+			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+				<h2 class="max-w-xs text-base font-bold text-slate-100">Automated Deployment</h2>
+				<div class="text-base font-normal text-slate-500">
+					Your Application is automatically built and deployed to Battleshiper.
+				</div>
+				<div class="mt-4 flex w-full h-full justify-center items-center bg-slate-900 brightness-75 rounded-lg">
+					<img alt="Workflow Icon" src={WorkflowIcon} class="w-2/3 h-2/3" />
+				</div>
+			</div>
+		</PinContainer>
+	</div>
+
+</Beam>
 
 <style>
 </style>
