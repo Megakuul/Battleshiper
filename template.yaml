@@ -1,19 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  bootstrap
-  
-  Sample SAM Template for bootstrap
 
 Parameters:
   ApplicationDomain:
     Type: String
-    Default: "battleshiper.megakuul.ch"
     Description: "Domain used for the battleshiper deployment."
+  ApplicationDomainCertificateArn:
+    Type: String
+    Description: "ARN of the ACM certificate for the ApplicationDomain."
   CognitoDomain:
     Type: String
-    Default: "battleshiper"
-    Description: "Domain prefix where the Battleshiper Cognito provider is hosted on."
+    Description: "Domain prefix where the battleshiper cognito provider is hosted on. This must be globally unique."
+
 
 Globals:
   Function:
@@ -21,9 +19,10 @@ Globals:
 
 Resources:
 
-
-
-  # Network
+  # Using ugly separator comments because cloudformation is dogwater:
+  # ============================================
+  # =========== Network ========================
+  # ============================================
 
   BattleshiperVPC:
     Type: AWS::EC2::VPC
@@ -147,7 +146,9 @@ Resources:
 
 
 
-  # Auth provider
+  # ============================================
+  # =========== Cognito ========================
+  # ============================================
 
   BattleshiperUserPool:
     Type: AWS::Cognito::UserPool
@@ -156,11 +157,20 @@ Resources:
       Policies:
         PasswordPolicy:
           MinimumLength: 8
-      MfaConfiguration: OPTIONAL
       Schema:
         - AttributeDataType: String
           Name: email
           Required: true
+
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE    
+      AutoVerifiedAttributes:
+        - email
+      EnabledMfas:
+        - "SOFTWARE_TOKEN_MFA"
+      MfaConfiguration: "ON"
 
   BattleshiperUserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -183,12 +193,15 @@ Resources:
         - "email"
       CallbackURLs:
         - !Sub "https://${ApplicationDomain}/auth/callback"
+      DefaultRedirectURI: !Sub "https://${ApplicationDomain}/auth/callback"
       LogoutURLs:
         - !Sub "https://${ApplicationDomain}/auth/logout"
 
 
 
-  # Database
+  # ============================================
+  # =========== Database =======================
+  # ============================================
 
   BattleshiperDbAdminSecret:
     Type: AWS::SecretsManager::Secret
@@ -256,11 +269,14 @@ Resources:
         - !Ref BattleshiperDbAccessGroup
 
 
-  # Api
+  # ============================================
+  # =========== API ============================
+  # ============================================
 
   BattleshiperApi:
     Type: AWS::Serverless::HttpApi
     Properties:
+      Name: "battleshiper-api"
       StageName: Prod
 
   BattleshiperAuthFuncRole:
@@ -349,7 +365,7 @@ Resources:
           - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperUserFuncRole.Arn
       Events:
-        Auth:
+        User:
           Type: HttpApi
           Properties:
             Path: /api/user/{proxy+}
@@ -403,7 +419,7 @@ Resources:
           - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperAdminFuncRole.Arn
       Events:
-        Auth:
+        Admin:
           Type: HttpApi
           Properties:
             Path: /api/admin/{proxy+}
@@ -457,7 +473,7 @@ Resources:
           - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperResourceFuncRole.Arn
       Events:
-        Auth:
+        Resource:
           Type: HttpApi
           Properties:
             Path: /api/resource/{proxy+}
@@ -473,8 +489,52 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
 
+  BattleshiperPipelineFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
 
-  # S3 Storage bucket
+  BattleshiperPipelineFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: api/pipeline
+      Handler: pipeline
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Role: !GetAtt BattleshiperPipelineFuncRole.Arn
+      Events:
+      Events:
+        Pipeline:
+          Type: HttpApi
+          Properties:
+            Path: /api/pipeline/{proxy+}
+            Method: ANY
+            ApiId: !Ref BattleshiperApi
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+          CLIENT_ID: !Ref BattleshiperUserPoolClient
+          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+
+  # ============================================
+  # =========== S3 Storage =====================
+  # ============================================
 
   BattleshiperStaticBucket:
     Type: AWS::S3::Bucket
@@ -545,63 +605,79 @@ Resources:
         - !Ref BattleshiperResourceFuncRole
 
 
-  # Certificate
+  # ============================================
+  # =========== CDN Proxy ======================
+  # ============================================
 
-
-  BattleshiperCertificate:
-    Type: AWS::CertificateManager::Certificate
+  BattleshiperCDNRouteStore:
+    Type: AWS::CloudFront::KeyValueStore
     Properties:
-      DomainName: !Sub "*.${ApplicationDomain}"
-      ValidationMethod: "DNS"
-      DomainValidationOption:
-        - DomainName: !Sub "*.${ApplicationDomain}"
-          ValidationDomain: !Ref ApplicationDomain
-          
+      Name: "battleshiper-cdn-route-store"
+      Comment: "Store used to lookup the path based on the requested host."
 
-
-  # Project API gateway
-
-
-
-  # Cloudfront distributions
-
-  BattleshiperCoreCDNRouteFunc:
+  BattleshiperCDNRouteFunc:
     Type: AWS::CloudFront::Function
     Properties:
-      Name: "battleshiper-core-cdn-route-func"
+      Name: "battleshiper-cdn-route-func"
       AutoPublish: true
       FunctionConfig:
-        Comment: Function to route core cdn requests to a path based on the requested host.
+        Comment: "Function to route cdn requests to a path based on the requested host."
         Runtime: cloudfront-js-2.0
-      FunctionCode: |
-        
-        function handler(event) {
+        KeyValueStoreAssociations:
+          - KeyValueStoreARN: !GetAtt BattleshiperCDNRouteStore.Arn
+      FunctionCode: !Sub |
+        import cf from "cloudfront";
 
+        const kvsHandle = cf.kvs("${BattleshiperCDNRouteStore.Id}");
+
+        async function handler(event) {
+          let request = event.request;
+
+          try {
+            const authorityHeader = request.headers[":authority"];
+            const hostHeader = request.headers["host"];
+            
+            const host = authorityHeader ? authorityHeader.value : hostHeader.value;
+            if (!host) {
+              throw new Error("No host specified");
+            }
+
+            const pathSegments = request.uri.split('/');
+            
+            const project = await kvsHandle.get(host, { format: "string" });
+            pathSegments.splice(1, 0, project);
+            
+            request.uri = pathSegments.join('/')
+            return request;
+          } catch (err) {
+            request.uri = "/404.html";
+            return request;
+          }
         }
 
-  BattleshiperCoreCDNOriginAccessControl:
+  BattleshiperCDNOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        Name: "battleshiper-core-cdn-origin-access"
+        Name: "battleshiper-cdn-origin-access"
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  BattleshiperCoreCDN:
+  BattleshiperCDN:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Enabled: true
         PriceClass: "PriceClass_All"
         ViewerCertificate:
-          AcmCertificateArn: !Ref BattleshiperCertificate
+          AcmCertificateArn: !Ref ApplicationDomainCertificateArn
           SslSupportMethod: "sni-only"
           MinimumProtocolVersion: "TLSv1.2_2021"
         Origins:
           - Id: "battleshiper-static-bucket"
             DomainName: !GetAtt BattleshiperStaticBucket.DomainName
-            OriginAccessControlId: !GetAtt BattleshiperCoreCDNOriginAccessControl.Id
+            OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-project-api-gateway"
             DomainName: !GetAtt BattleshiperProjectApiGateway.DistributionDomainName
@@ -616,7 +692,9 @@ Resources:
           ViewerProtocolPolicy: "redirect-to-https"
           Compress: true
           ViewerProtocolPolicy: redirect-to-https
-          FunctionAssociations: !TODO
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
         CacheBehaviors:
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-static-bucket"
@@ -628,7 +706,9 @@ Resources:
               - HEAD
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
-            FunctionAssociations: !TODO
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
           - PathPattern: "/*.*"
             TargetOriginId: "battleshiper-static-bucket"
             AllowedMethods:
@@ -639,49 +719,80 @@ Resources:
               - HEAD
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
-            FunctionAssociations: !TODO
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
         Aliases:
           - !Sub "*.${ApplicationDomain}"
       Tags:
         - Key: "Name"
-          Value: "battleshiper-core-cdn"
+          Value: "battleshiper-cdn"
 
 
-  BattleshiperPrerenderCDNOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
+  # ============================================
+  # =========== Codebuild Pipeline =============
+  # ============================================
+
+  BattleshiperPipelineEventBus:
+    Type: AWS::Events::EventBus
     Properties:
-      OriginAccessControlConfig:
-        Name: "battleshiper-prerender-cdn-origin-access"
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
+      Name: "battleshiper-pipeline-eventbus"
 
-  BattleshiperPrerenderCDN:
-    Type: AWS::CloudFront::Distribution
+  BattleshiperPipelineBuildFuncRole:
+    Type: AWS::IAM::Role
     Properties:
-      DistributionConfig:
-        Enabled: true
-        PriceClass: "PriceClass_All"
-        ViewerCertificate:
-          AcmCertificateArn: !Ref BattleshiperCertificate
-          SslSupportMethod: "sni-only"
-          MinimumProtocolVersion: "TLSv1.2_2021"
-        Origins:
-          - Id: "battleshiper-static-bucket"
-            DomainName: !GetAtt BattleshiperStaticBucket.DomainName
-            OriginAccessControlId: !GetAtt BattleshiperPrerenderCDNOriginAccessControl.Id
-            S3OriginConfig: {}
-        DefaultCacheBehavior:
-          TargetOriginId: "battleshiper-static-bucket"
-          AllowedMethods:
-            - GET
-            - HEAD
-          ViewerProtocolPolicy: redirect-to-https
-        Aliases:
-          - !Sub "prerender.${ApplicationDomain}"
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-prerender-cdn"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineBuildFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/build
+      Handler: build
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Role: !GetAtt BattleshiperBuildFuncRole.Arn
+      Events:
+        GithubEvent:
+          Type: HttpApi
+          Properties:
+            Path: /api/
+            Method: ANY
+            ApiId: !Ref BattleshiperApi
+        Push:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: "battleshiper-pipeline-push-rule"
+            EventBusName: !GetAtt BattleshiperPipelineEventBus.Arn
+            State: ENABLED
+            RetryPolicy:
+              MaximumEventAgeInSeconds: 120
+              MaximumRetryAttempts: 5
+            Pattern:
+              source:
+                - "aws.partner/github.com"
+              detail-type:
+                - "PushEvent"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+          CLIENT_ID: !Ref BattleshiperUserPoolClient
+          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
+    
 
 Outputs:
   BattleshiperAPI:
@@ -691,11 +802,3 @@ Outputs:
   BattleshiperDbAdminSecret:
     Description: "Secret where the credentials of the database admin are stored"
     Value: !Ref BattleshiperDbAdminSecret
-
-  CertificateDomainValidation:
-    Description: "Domain options to validate the certificate via DNS."
-    Value: !Join
-      - "\n"
-      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Name
-      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Type
-      - - !GetAtt BattleshiperCertificate.DomainValidationOptions[0].ResourceRecord.Value

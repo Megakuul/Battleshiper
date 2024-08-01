@@ -85,7 +85,7 @@
 			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Edge Caching</h2>
 				<div class="text-base font-normal text-slate-500">
-					Prerendered pages and lazy-loaded chunks are cached directly at the Edge.
+					Assets and lazy-loaded chunks are cached directly at the Edge.
 				</div>
 				<div class="mt-4 flex w-full h-full justify-center items-center bg-slate-900 brightness-75 rounded-lg">
 					<img alt="Edge Computing Icon" src={EdgeIcon} class="w-2/3 h-2/3" />
