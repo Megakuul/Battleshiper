@@ -12,6 +12,7 @@ import (
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/model/role"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
@@ -35,12 +36,12 @@ func HandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context
 func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
-		return nil, http.StatusUnauthorized, fmt.Errorf("no user_token provided")
+		return http.StatusUnauthorized, fmt.Errorf("no user_token provided")
 	}
 
 	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenCookie.Value)
 	if err != nil {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
+		return http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
@@ -51,7 +52,7 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		newDoc := user.User{
 			Id:             userToken.Id,
 			Provider:       "github",
-			Roles:          map[role.ROLE]struct{}{role.USER: struct{}{}},
+			Roles:          map[role.ROLE]struct{}{role.USER: {}},
 			RefreshToken:   "",
 			SubscriptionId: "",
 			ProjectIds:     []string{},

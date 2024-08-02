@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -78,7 +79,7 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
 
-	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, githubUser.ID, "github", githubUser.Name, githubUser.AvatarURL)
+	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
 		return "", http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
 	}
@@ -115,7 +116,7 @@ func refreshByAccessToken(transportCtx context.Context, routeCtx routecontext.Co
 		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
 
-	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, githubUser.ID, "github", githubUser.Name, githubUser.AvatarURL)
+	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
 		return "", http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
 	}

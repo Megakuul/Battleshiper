@@ -13,25 +13,16 @@ import (
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/role"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type subscriptionOutput struct {
-	Name                    string `json:"name"`
-	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
-	Deployments             int    `json:"deployments"`
+type deleteProjectInput struct {
+	ProjectId string `json:"project_id"`
 }
 
-type infoOutput struct {
-	Id        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Roles     map[role.ROLE]struct{} `json:"roles"`
-	Provider  string                 `json:"provider"`
-	AvatarURL string                 `json:"avatar_url"`
-
-	Subscription *subscriptionOutput `json:"subscriptions"`
+type deleteProjectOutput struct {
+	Message string `json:"message"`
 }
 
 // HandleInfo fetches user information from the database cluster.
@@ -65,7 +56,13 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*infoOutput, int, error) {
+func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*deleteProjectOutput, int, error) {
+
+	var deleteProjectInput deleteProjectInput
+	err := json.Unmarshal([]byte(request.Body), &deleteProjectInput)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
+	}
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -81,11 +78,11 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user does not exist")
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
+
+	userDoc.Roles
 
 	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
@@ -97,7 +94,7 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
 	}
 
-	return &infoOutput{
+	return &findOutput{
 		Id:        userToken.Id,
 		Name:      userToken.Username,
 		Roles:     userDoc.Roles,

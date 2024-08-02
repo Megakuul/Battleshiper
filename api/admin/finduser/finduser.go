@@ -24,7 +24,7 @@ type subscriptionOutput struct {
 	Deployments             int    `json:"deployments"`
 }
 
-type infoOutput struct {
+type userOutput struct {
 	Id        string                 `json:"id"`
 	Name      string                 `json:"name"`
 	Roles     map[role.ROLE]struct{} `json:"roles"`
@@ -32,6 +32,10 @@ type infoOutput struct {
 	AvatarURL string                 `json:"avatar_url"`
 
 	Subscription *subscriptionOutput `json:"subscriptions"`
+}
+
+type findOutput struct {
+	Users []userOutput `json:"users"`
 }
 
 // HandleInfo fetches user information from the database cluster.

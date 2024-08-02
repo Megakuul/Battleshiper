@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -73,7 +74,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return "", http.StatusInternalServerError, fmt.Errorf("failed to update user refresh_token")
 	}
 
-	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, githubUser.ID, "github", githubUser.Name, githubUser.AvatarURL)
+	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
 		return "", http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
 	}
