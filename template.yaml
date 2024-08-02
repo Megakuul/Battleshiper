@@ -216,8 +216,37 @@ Resources:
 
 
   # ============================================
-  # =========== Github Secret Policy ===========
+  # =========== Auth Secrets ===================
   # ============================================
+
+  BattleshiperJwtCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-jwt-credentials"
+      Description: "Battleshiper jwt secret used to sign and verify user tokens."
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: "secret"
+        PasswordLength: 40
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperJwtCredentialPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-jwt-credentials-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource: !Ref BattleshiperJwtCredentials
+      Roles:
+        - !Ref BattleshiperAuthFuncRole
+        - !Ref BattleshiperUserFuncRole
+        - !Ref BattleshiperAdminFuncRole
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
 
   BattleshiperGhClientCredentialPolicy:
     Type: AWS::IAM::Policy
@@ -289,6 +318,8 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
@@ -343,7 +374,11 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -395,7 +430,11 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -447,7 +486,11 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -488,7 +531,11 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
+          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -496,20 +543,20 @@ Resources:
 
 
   # ============================================
-  # =========== S3 Storage =====================
+  # =========== Project S3 Storage =============
   # ============================================
 
-  BattleshiperStaticBucket:
+  BattleshiperProjectStaticBucket:
     Type: AWS::S3::Bucket
     Properties:
       Tags:
         - Key: "Name"
           Value: "battleshiper-static-bucket"
 
-  BattleshiperStaticBucketBucketPolicy:
+  BattleshiperProjectStaticBucketBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref BattleshiperStaticBucket
+      Bucket: !Ref BattleshiperProjectStaticBucket
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -517,7 +564,7 @@ Resources:
               - "s3:GetObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperStaticBucket.Arn
+              - !GetAtt BattleshiperProjectStaticBucket.Arn
             Principal:
               Service: cloudfront.amazonaws.com
             Condition:
@@ -526,7 +573,7 @@ Resources:
                   - !TODO Cloudfront
                   - !TODO Cloudfront prerender
 
-  BattleshiperStaticBucketPolicy:
+  BattleshiperProjectStaticBucketPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: "battleshiper-static-bucket-access"
@@ -539,18 +586,18 @@ Resources:
               - "s3:PutObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperStaticBucket.Arn
+              - !GetAtt BattleshiperProjectStaticBucket.Arn
       Roles: 
         - !Ref BattleshiperResourceFuncRole
 
-  BattleshiperFunctionBucket:
+  BattleshiperProjectFunctionBucket:
     Type: AWS::S3::Bucket
     Properties:
       Tags:
         - Key: "Name"
           Value: "battleshiper-function-bucket"
   
-  BattleshiperFunctionBucketPolicy:
+  BattleshiperProjectFunctionBucketPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: "battleshiper-function-bucket-access"
@@ -563,14 +610,77 @@ Resources:
               - "s3:PutObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperFunctionBucket.Arn
+              - !GetAtt BattleshiperProjectFunctionBucket.Arn
       Roles:
         - !Ref BattleshiperResourceFuncRole
+
+
+
+  # ============================================
+  # =========== Project API Gateway ============
+  # ============================================
+
+  BattleshiperProjectApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: "battleshiper-project-api"
+      StageName: Prod
+
 
 
   # ============================================
   # =========== CDN Proxy ======================
   # ============================================
+
+  BattleshiperCDNWebCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-web-cache-policy"
+        DefaultTTL: 86400 # 1 day
+        MinTTL: 1 # 1 second
+        MaxTTL: 31536000 # 1 year
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  BattleshiperCDNApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-api-cache-policy"
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  BattleshiperCDNApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: "battleshiper-api-origin-policy"
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: allExcept
+          Headers:
+            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host
+        QueryStringsConfig:
+          QueryStringBehavior: all
 
   BattleshiperCDNRouteStore:
     Type: AWS::CloudFront::KeyValueStore
@@ -638,29 +748,50 @@ Resources:
           SslSupportMethod: "sni-only"
           MinimumProtocolVersion: "TLSv1.2_2021"
         Origins:
-          - Id: "battleshiper-static-bucket"
-            DomainName: !GetAtt BattleshiperStaticBucket.DomainName
+          - Id: "battleshiper-project-static-bucket"
+            DomainName: !GetAtt BattleshiperProjectStaticBucket.DomainName
             OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
             S3OriginConfig: {}
-          - Id: "battleshiper-project-api-gateway"
-            DomainName: !GetAtt BattleshiperProjectApiGateway.DistributionDomainName
+          - Id: "battleshiper-api"
+            DomainName: !GetAtt BattleshiperApi.ApiEndpoint
+            CustomOriginConfig:
+              OriginProtocolPolicy: "https-only"
+          - Id: "battleshiper-project-api"
+            DomainName: !GetAtt BattleshiperProjectApi.ApiEndpoint
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
         DefaultCacheBehavior:
-          TargetOriginId: "battleshiper-project-api-gateway"
+          TargetOriginId: "battleshiper-project-api"
           AllowedMethods:
             - GET
             - HEAD
             - POST
           ViewerProtocolPolicy: "redirect-to-https"
-          Compress: true
           ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
+          OriginRequestPolicyId: !Ref BattleshiperCDNApiOriginRequestPolicy
           FunctionAssociations:
             - EventType: viewer-request
               FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
+
         CacheBehaviors:
+          - PathPattern: "/api/*"
+            TargetOriginId: "battleshiper-api"
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            Compress: false
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
+            OriginRequestPolicyId: !Ref BattleshiperCDNApiOriginRequestPolicy
+
           - PathPattern: "/_app/*"
-            TargetOriginId: "battleshiper-static-bucket"
+            TargetOriginId: "battleshiper-project-static-bucket"
             AllowedMethods:
               - GET
               - HEAD
@@ -669,11 +800,13 @@ Resources:
               - HEAD
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
             FunctionAssociations:
               - EventType: viewer-request
                 FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
+
           - PathPattern: "/*.*"
-            TargetOriginId: "battleshiper-static-bucket"
+            TargetOriginId: "battleshiper-project-static-bucket"
             AllowedMethods:
               - GET
               - HEAD
@@ -682,9 +815,11 @@ Resources:
               - HEAD
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
             FunctionAssociations:
               - EventType: viewer-request
                 FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
+
         Aliases:
           - !Sub "*.${ApplicationDomain}"
       Tags:

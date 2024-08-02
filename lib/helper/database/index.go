@@ -1,5 +1,4 @@
-// Contains tools to create indexes on the database.
-package index
+package database
 
 import (
 	"context"

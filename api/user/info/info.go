@@ -17,15 +17,15 @@ import (
 )
 
 type subscriptions struct {
-	DailyPipelineExecutions int `json:"daily_pipeline_executions"`
-	DefaultDeployments      int `json:"default_deployments"`
+	Name                    string `json:"name"`
+	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
+	DefaultDeployments      int    `json:"default_deployments"`
 }
 
 type infoResponse struct {
-	Name       string `json:"name"`
-	Nickname   string `json:"nickname"`
-	Email      string `json:"email"`
-	PictureURL string `json:"picture_url"`
+	Name      string `json:"name"`
+	Provider  string `json:"provider"`
+	AvatarURL string `json:"avatar_url"`
 
 	Subscriptions subscriptions `json:"subscriptions"`
 }
