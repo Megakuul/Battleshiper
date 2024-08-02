@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"go.mongodb.org/mongo-driver/bson"
 )

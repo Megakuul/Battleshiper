@@ -4,11 +4,12 @@ go 1.22.4
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
-	github.com/aws/aws-sdk-go-v2 v1.30.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.23
-	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.41.1
+	github.com/megakuul/battleshiper/lib/helper v0.1.1
+	github.com/megakuul/battleshiper/lib/model v0.1.3
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
+	golang.org/x/oauth2 v0.21.0
 )
 
 require (
@@ -25,6 +26,7 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.30.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.23 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.13 // indirect
@@ -37,6 +39,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
-	github.com/megakuul/battleshiper/lib/helper v0.1.0 // indirect
-	github.com/megakuul/battleshiper/lib/model v0.1.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 )

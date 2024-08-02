@@ -33,28 +33,28 @@ func HandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context
 }
 
 func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
-	userAttributes, err := auth.FetchUserAttributes(request, transportCtx, routeCtx.CognitoClient)
+	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
-		return http.StatusUnauthorized, fmt.Errorf("failed to acquire user information: %v", err)
+		return nil, http.StatusUnauthorized, fmt.Errorf("no user_token provided")
 	}
 
-	subAttr := userAttributes["sub"]
-	if subAttr == "" {
-		return http.StatusBadRequest, fmt.Errorf("openid connect user attribute 'sub' was not provided by the auth provider")
+	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenCookie.Value)
+	if err != nil {
+		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
 
 	var userDoc user.User
-	err = userCollection.FindOne(transportCtx, bson.M{"sub": subAttr}).Decode(&userDoc)
+	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
 		newDoc := user.User{
-			Sub: subAttr,
-			Subscriptions: user.Subscriptions{
-				DailyPipelineExecutions: 0,
-				DefaultDeployments:      0,
-			},
-			ProjectIds: []string{},
+			Id:             userToken.Id,
+			Provider:       "github",
+			Roles:          map[role.ROLE]struct{}{role.USER: struct{}{}},
+			RefreshToken:   "",
+			SubscriptionId: "",
+			ProjectIds:     []string{},
 		}
 		_, err := userCollection.InsertOne(transportCtx, newDoc)
 		if err != nil {
@@ -65,5 +65,5 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	// Operation is idempotent; returns OK whether the document already existed or was freshly inserted.
-	return http.StatusNoContent, nil
+	return http.StatusOK, nil
 }

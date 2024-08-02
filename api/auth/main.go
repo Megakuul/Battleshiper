@@ -12,10 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
-	"github.com/megakuul/battleshiper/lib/model/index"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/oauth2/github"
 
 	"github.com/megakuul/battleshiper/api/auth/authorize"
 	"github.com/megakuul/battleshiper/api/auth/callback"
@@ -66,7 +66,7 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
-	index.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []index.Index{
+	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
 		{
 			FieldNames:   []string{"id"},
 			SortingOrder: 1,
@@ -83,7 +83,7 @@ func run() error {
 		return err
 	}
 
-	authOptions, err := auth.CreateOAuthOptions(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN, REDIRECT_URI)
+	authOptions, err := auth.CreateOAuthOptions(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN, github.Endpoint, REDIRECT_URI, []string{"read:user"})
 	if err != nil {
 		return err
 	}

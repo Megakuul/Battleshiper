@@ -375,7 +375,6 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
@@ -431,7 +430,6 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
@@ -487,7 +485,6 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
@@ -532,7 +529,6 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"

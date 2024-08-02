@@ -1,6 +1,8 @@
 // Contains database types for the user collection.
 package user
 
+import "github.com/megakuul/battleshiper/lib/model/role"
+
 const USER_COLLECTION = "users"
 
 type Subscriptions struct {
@@ -9,10 +11,10 @@ type Subscriptions struct {
 }
 
 type User struct {
-	ID              string   `bson:"id"`
-	Provider        string   `bson:"provider"`
-	Role            string   `bson:"role"`
-	RefreshToken    string   `bson:"refresh_token"`
-	SubscriptionIds []string `bson:"subscription_ids"`
-	ProjectIds      []string `bson:"project_ids"`
+	Id             string                 `bson:"id"`
+	Provider       string                 `bson:"provider"`
+	Roles          map[role.ROLE]struct{} `bson:"roles"`
+	RefreshToken   string                 `bson:"refresh_token"`
+	SubscriptionId string                 `bson:"subscription_id"`
+	ProjectIds     []string               `bson:"project_ids"`
 }

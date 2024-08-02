@@ -9,26 +9,28 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
-	"github.com/megakuul/battleshiper/lib/model/index"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 
 	"github.com/megakuul/battleshiper/api/user/info"
+	"github.com/megakuul/battleshiper/api/user/register"
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 )
 
 var (
-	REGION              = os.Getenv("AWS_REGION")
-	COGNITO_DOMAIN      = os.Getenv("COGNITO_DOMAIN")
-	CLIENT_ID           = os.Getenv("CLIENT_ID")
-	CLIENT_SECRET       = os.Getenv("CLIENT_SECRET")
-	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
+	REGION                       = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
+	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
+	REDIRECT_URI                 = os.Getenv("REDIRECT_URI")
+	FRONTEND_REDIRECT_URI        = os.Getenv("FRONTEND_REDIRECT_URI")
+	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
 )
 
 func main() {
@@ -43,7 +45,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
-	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -62,23 +63,34 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
-	index.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []index.Index{
+	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
 		{
-			FieldNames:   []string{"sub"},
+			FieldNames:   []string{"id"},
 			SortingOrder: 1,
 			Unique:       true,
 		},
 	})
 
+	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
+		{
+			FieldNames:   []string{"id"},
+			SortingOrder: 1,
+			Unique:       true,
+		},
+	})
+
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
-		Database:      databaseHandle,
-		CognitoClient: awsCognitoClient,
-		CognitoDomain: COGNITO_DOMAIN,
-		ClientID:      CLIENT_ID,
-		ClientSecret:  CLIENT_SECRET,
+		JwtOptions: jwtOptions,
+		Database:   databaseHandle,
 	})
 
 	httpRouter.AddRoute("GET", "/api/user/info", info.HandleInfo)
+	httpRouter.AddRoute("POST", "/api/user/register", register.HandleRegister)
 
 	lambda.Start(httpRouter.Route)
 
