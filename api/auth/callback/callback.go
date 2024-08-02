@@ -9,9 +9,9 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/oauth2"
 )
 
@@ -24,11 +24,7 @@ type TokenResponse struct {
 }
 
 // HandleCallback is the route the user is redirected from after authorization.
-// It exchanges authCode, clientId and clientSecret with Access-, ID- and Refreshtoken.
-// Follows the horrible OAuth2.0 standard which Cognito complies with:
-// AccessToken request spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
-// with ClientSecret: https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
-// Authorization redirect spec: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+// It exchanges authCode, clientId and clientSecret with Access- and Refreshtoken.
 func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
 	cookie, code, err := runHandleCallback(request, transportCtx, routeCtx)
@@ -51,7 +47,6 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context
 }
 
 func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
-
 	authCode := request.QueryStringParameters["code"]
 
 	token, err := routeCtx.OAuthConfig.Exchange(transportCtx, authCode)
@@ -73,7 +68,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		"$set": bson.M{
 			"refresh_token": token.RefreshToken,
 		},
-	}, options.Update().SetUpsert(false))
+	})
 	if err != nil {
 		return "", http.StatusInternalServerError, fmt.Errorf("failed to update user refresh_token")
 	}

@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/index"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -24,6 +26,8 @@ import (
 
 var (
 	REGION                       = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
+	USER_TOKEN_TTL               = os.Getenv("USER_TOKEN_TTL")
 	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
 	REDIRECT_URI                 = os.Getenv("REDIRECT_URI")
 	FRONTEND_REDIRECT_URI        = os.Getenv("FRONTEND_REDIRECT_URI")
@@ -44,7 +48,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -71,13 +74,23 @@ func run() error {
 		},
 	})
 
-	authOptions, err := auth.CreateOAuthOptions(awsConfig, GITHUB_CLIENT_CREDENTIAL_ARN, REDIRECT_URI)
+	userTokenTTL, err := strconv.Atoi(USER_TOKEN_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse USER_TOKEN_TTL environment variable")
+	}
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, time.Duration(userTokenTTL)*time.Second)
+	if err != nil {
+		return err
+	}
+
+	authOptions, err := auth.CreateOAuthOptions(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN, REDIRECT_URI)
 	if err != nil {
 		return err
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
 		Database:            databaseHandle,
+		JwtOptions:          jwtOptions,
 		OAuthConfig:         authOptions,
 		FrontendRedirectURI: FRONTEND_REDIRECT_URI,
 	})

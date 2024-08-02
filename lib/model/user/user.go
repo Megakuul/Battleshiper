@@ -11,6 +11,7 @@ type Subscriptions struct {
 type User struct {
 	ID            string        `bson:"id"`
 	Provider      string        `bson:"provider"`
+	RefreshToken  string        `bson:"refresh_token"`
 	Subscriptions Subscriptions `bson:"subscriptions"`
 	ProjectIds    []string      `bson:"project_ids"`
 }

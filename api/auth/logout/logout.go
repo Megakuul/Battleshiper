@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
+	"github.com/megakuul/battleshiper/lib/model/user"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // HandleLogout logs the user out and revokes the used tokens.
@@ -39,20 +39,26 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		(&http.Cookie{Name: "access_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
 	)
 
-	// Parse cookie by creating a http.Request and reading the cookie from there.
-	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
+	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
-		return clearCookieHeader, http.StatusNoContent, nil
+		return "", http.StatusUnauthorized, fmt.Errorf("no user_token provided")
 	}
 
-	input := &cognitoidentityprovider.GlobalSignOutInput{
-		AccessToken: aws.String(accessTokenCookie.Value),
-	}
-
-	_, err = routeCtx.CognitoClient.GlobalSignOut(transportCtx, input)
+	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenCookie.Value)
 	if err != nil {
-		return clearCookieHeader, http.StatusInternalServerError, fmt.Errorf("failed to sign out globally: %v", err)
+		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	return clearCookieHeader, http.StatusNoContent, nil
+	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+
+	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": userToken}, bson.M{
+		"$set": bson.M{
+			"refresh_token": "",
+		},
+	})
+	if err != nil {
+		return "", http.StatusInternalServerError, fmt.Errorf("failed to remove refresh_token")
+	}
+
+	return clearCookieHeader, http.StatusOK, nil
 }
