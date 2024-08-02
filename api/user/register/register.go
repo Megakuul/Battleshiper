@@ -12,7 +12,7 @@ import (
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/role"
+	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
@@ -52,7 +52,7 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		newDoc := user.User{
 			Id:             userToken.Id,
 			Provider:       "github",
-			Roles:          map[role.ROLE]struct{}{role.USER: {}},
+			Roles:          map[rbac.ROLE]struct{}{rbac.USER: {}},
 			RefreshToken:   "",
 			SubscriptionId: "",
 			ProjectIds:     []string{},

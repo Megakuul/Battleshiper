@@ -69,7 +69,7 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*infoOutput, int, error) {
+func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findOutput, int, error) {
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -101,7 +101,7 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
 	}
 
-	return &infoOutput{
+	return &findOutput{
 		Id:        userToken.Id,
 		Name:      userToken.Username,
 		Roles:     userDoc.Roles,

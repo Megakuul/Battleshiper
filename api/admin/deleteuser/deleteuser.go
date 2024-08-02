@@ -1,4 +1,4 @@
-package info
+package deleteuser
 
 import (
 	"context"
@@ -8,39 +8,26 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/role"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
+	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type subscriptionOutput struct {
-	Name                    string `json:"name"`
-	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
-	Deployments             int    `json:"deployments"`
+type deleteUserInput struct {
+	UserId string `json:"user_id"`
 }
 
-type userOutput struct {
-	Id        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Roles     map[role.ROLE]struct{} `json:"roles"`
-	Provider  string                 `json:"provider"`
-	AvatarURL string                 `json:"avatar_url"`
-
-	Subscription *subscriptionOutput `json:"subscriptions"`
+type deleteUserOutput struct {
+	Message string `json:"message"`
 }
 
-type findOutput struct {
-	Users []userOutput `json:"users"`
-}
-
-// HandleInfo fetches user information from the database cluster.
-func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleInfo(request, transportCtx, routeCtx)
+// HandleDeleteUser marks all projects of a user as deleted and removes the user from the database.
+func HandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleDeleteUser(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -69,7 +56,12 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*infoOutput, int, error) {
+func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*deleteUserOutput, int, error) {
+	var deleteUserInput deleteUserInput
+	err := json.Unmarshal([]byte(request.Body), &deleteUserInput)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
+	}
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -85,32 +77,39 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user does not exist")
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("failed to read user subscription: Subscription %s does not exist", userDoc.SubscriptionId)
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
+	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_USER) || !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_PROJECT) {
+		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	return &infoOutput{
-		Id:        userToken.Id,
-		Name:      userToken.Username,
-		Roles:     userDoc.Roles,
-		Provider:  userToken.Provider,
-		AvatarURL: userToken.AvatarURL,
-		Subscription: &subscriptionOutput{
-			Name:                    subscriptionDoc.Name,
-			DailyPipelineExecutions: subscriptionDoc.DailyPipelineExecutions,
-			Deployments:             subscriptionDoc.Deployments,
-		},
+	deletionUserDoc := &user.User{}
+	err = userCollection.FindOne(transportCtx, bson.M{"id": deleteUserInput.UserId}).Decode(&deletionUserDoc)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+	}
+
+	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+
+	for _, id := range deletionUserDoc.ProjectIds {
+		_, err = projectCollection.UpdateOne(transportCtx, bson.M{"id": deleteUserInput.UserId}, bson.M{
+			"$set": bson.M{
+				"deleted": true,
+			},
+		})
+		if err != nil {
+			return nil, http.StatusBadRequest, fmt.Errorf("failed to mark project as deleted on database")
+		}
+	}
+
+	_, err = userCollection.DeleteOne(transportCtx, bson.M{"id": deleteUserInput.UserId})
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to delete user from database")
+	}
+
+	return &deleteUserOutput{
+		Message: "successfully removed user and marked associated projects as deleted",
 	}, http.StatusOK, nil
 }

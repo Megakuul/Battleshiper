@@ -13,7 +13,7 @@ import (
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/role"
+	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -27,7 +27,7 @@ type subscriptionOutput struct {
 type infoOutput struct {
 	Id        string                 `json:"id"`
 	Name      string                 `json:"name"`
-	Roles     map[role.ROLE]struct{} `json:"roles"`
+	Roles     map[rbac.ROLE]struct{} `json:"roles"`
 	Provider  string                 `json:"provider"`
 	AvatarURL string                 `json:"avatar_url"`
 
