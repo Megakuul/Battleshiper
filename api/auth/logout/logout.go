@@ -35,8 +35,8 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.C
 func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
 	clearCookieHeader := fmt.Sprintf(
 		"%s, %s",
+		(&http.Cookie{Name: "user_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
 		(&http.Cookie{Name: "access_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
-		(&http.Cookie{Name: "refresh_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
 	)
 
 	// Parse cookie by creating a http.Request and reading the cookie from there.

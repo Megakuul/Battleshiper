@@ -1,18 +1,18 @@
 package callback
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
+	"github.com/megakuul/battleshiper/lib/model/user"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/oauth2"
 )
 
 type TokenResponse struct {
@@ -54,56 +54,52 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	authCode := request.QueryStringParameters["code"]
 
-	data := url.Values{}
-	data.Set("grant_type", "authorization_code")
-	data.Set("client_id", routeCtx.ClientID)
-	data.Set("client_secret", routeCtx.ClientSecret)
-	data.Set("code", authCode)
-	data.Set("redirect_uri", routeCtx.RedirectURI)
-
-	req, err := http.NewRequestWithContext(transportCtx, "POST", fmt.Sprintf("%s/oauth2/token", routeCtx.CognitoDomain), bytes.NewBufferString(data.Encode()))
+	token, err := routeCtx.OAuthConfig.Exchange(transportCtx, authCode)
 	if err != nil {
-		log.Printf("ERROR CALLBACK: %v\n", err)
-		return "", http.StatusInternalServerError, fmt.Errorf("Failed to create request for authentication provider")
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		log.Printf("ERROR CALLBACK: %v\n", err)
-		return "", http.StatusInternalServerError, fmt.Errorf("Failed to contact authentication provider")
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		log.Printf("ERROR CALLBACK: %v\n", err)
-		return "", http.StatusInternalServerError, fmt.Errorf("Failed to contact authentication provider")
+		return "", http.StatusBadRequest, fmt.Errorf("failed to exchange authorization code")
 	}
 
-	var tokenRes TokenResponse
-	if err := json.Unmarshal(body, &tokenRes); err != nil {
-		log.Printf("ERROR CALLBACK: %v\n", err)
-		return "", http.StatusInternalServerError, fmt.Errorf("Failed to read response from authentication provider")
+	oauthClient := oauth2.NewClient(transportCtx, oauth2.StaticTokenSource(token))
+	githubClient := github.NewClient(oauthClient)
+
+	githubUser, _, err := githubClient.Users.Get(transportCtx, "")
+	if err != nil {
+		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
+	}
+
+	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+
+	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": githubUser.ID}, bson.M{
+		"$set": bson.M{
+			"refresh_token": token.RefreshToken,
+		},
+	}, options.Update().SetUpsert(false))
+	if err != nil {
+		return "", http.StatusInternalServerError, fmt.Errorf("failed to update user refresh_token")
+	}
+
+	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, githubUser.ID, "github", githubUser.Name, githubUser.AvatarURL)
+	if err != nil {
+		return "", http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
+	}
+
+	userTokenCookie := &http.Cookie{
+		Name:     "user_token",
+		Value:    userToken,
+		HttpOnly: false,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		Expires:  time.Now().Add(routeCtx.JwtOptions.TTL),
 	}
 
 	accessTokenCookie := &http.Cookie{
 		Name:     "access_token",
-		Value:    tokenRes.AccessToken,
-		HttpOnly: false,
-		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
-		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
-	}
-
-	refreshTokenCookie := &http.Cookie{
-		Name:     "refresh_token",
-		Value:    tokenRes.RefreshToken,
+		Value:    token.AccessToken,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
+		Expires:  token.Expiry,
 	}
 
-	return fmt.Sprintf("%s, %s", accessTokenCookie, refreshTokenCookie), http.StatusFound, nil
+	return fmt.Sprintf("%s, %s", accessTokenCookie, userTokenCookie), http.StatusFound, nil
 }

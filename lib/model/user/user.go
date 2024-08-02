@@ -5,11 +5,12 @@ const USER_COLLECTION = "users"
 
 type Subscriptions struct {
 	DailyPipelineExecutions int `bson:"daily_pipeline_executions"`
-	DefaultDeployments      int `bson:"default_deployments"`
+	Deployments             int `bson:"deployments"`
 }
 
 type User struct {
-	Sub           string        `bson:"sub"`
+	ID            string        `bson:"id"`
+	Provider      string        `bson:"provider"`
 	Subscriptions Subscriptions `bson:"subscriptions"`
 	ProjectIds    []string      `bson:"project_ids"`
 }

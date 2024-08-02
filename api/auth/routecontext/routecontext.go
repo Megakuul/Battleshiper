@@ -1,13 +1,14 @@
 package routecontext
 
-import "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+import (
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/oauth2"
+)
 
 // Context provides data to route handlers.
 type Context struct {
-	CognitoClient       *cognitoidentityprovider.Client
-	CognitoDomain       string
-	ClientID            string
-	ClientSecret        string
-	RedirectURI         string
+	Database            *mongo.Database
+	JwtOptions          *auth.JwtOptions
+	OAuthConfig         *oauth2.Config
 	FrontendRedirectURI string
 }

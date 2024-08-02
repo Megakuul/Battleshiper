@@ -45,7 +45,7 @@ func run() error {
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
+	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func run() error {
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
 	index.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []index.Index{
-		index.Index{
+		{
 			FieldNames:   []string{"sub"},
 			SortingOrder: 1,
 			Unique:       true,

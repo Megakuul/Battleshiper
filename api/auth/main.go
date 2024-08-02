@@ -4,11 +4,16 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/model/index"
+	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/auth/authorize"
 	"github.com/megakuul/battleshiper/api/auth/callback"
@@ -18,12 +23,13 @@ import (
 )
 
 var (
-	REGION                = os.Getenv("AWS_REGION")
-	COGNITO_DOMAIN        = os.Getenv("COGNITO_DOMAIN")
-	CLIENT_ID             = os.Getenv("CLIENT_ID")
-	CLIENT_SECRET         = os.Getenv("CLIENT_SECRET")
-	REDIRECT_URI          = os.Getenv("REDIRECT_URI")
-	FRONTEND_REDIRECT_URI = os.Getenv("FRONTEND_REDIRECT_URI")
+	REGION                       = os.Getenv("AWS_REGION")
+	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
+	REDIRECT_URI                 = os.Getenv("REDIRECT_URI")
+	FRONTEND_REDIRECT_URI        = os.Getenv("FRONTEND_REDIRECT_URI")
+	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
 )
 
 func main() {
@@ -40,12 +46,39 @@ func run() error {
 	}
 	awsCognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
+	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
+	if err != nil {
+		return err
+	}
+	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		if err = databaseClient.Disconnect(ctx); err != nil {
+			log.Printf("ERROR CLEANUP: %v\n", err)
+		}
+		cancel()
+	}()
+	databaseHandle := databaseClient.Database(DATABASE_NAME)
+
+	index.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []index.Index{
+		{
+			FieldNames:   []string{"id"},
+			SortingOrder: 1,
+			Unique:       true,
+		},
+	})
+
+	authOptions, err := auth.CreateOAuthOptions(awsConfig, GITHUB_CLIENT_CREDENTIAL_ARN, REDIRECT_URI)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
-		CognitoClient:       awsCognitoClient,
-		CognitoDomain:       COGNITO_DOMAIN,
-		ClientID:            CLIENT_ID,
-		ClientSecret:        CLIENT_SECRET,
-		RedirectURI:         REDIRECT_URI,
+		Database:            databaseHandle,
+		OAuthConfig:         authOptions,
 		FrontendRedirectURI: FRONTEND_REDIRECT_URI,
 	})
 

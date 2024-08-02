@@ -18,7 +18,7 @@ type databaseCredentials struct {
 
 // CreateDatabaseOptions fetches the databaseSecret containing "username" and "password" from SecretsManager and constructs the mongo client options.
 // The calling instance needs to have IAM access to the action "secretsmanager:GetSecretValue" on the provided databaseSecretARN.
-func CreateDatabaseOptions(awsConfig aws.Config, databaseSecretARN, databaseEndpoint, databaseName string) (*options.ClientOptions, error) {
+func CreateDatabaseOptions(awsConfig aws.Config, transportCtx context.Context, databaseSecretARN, databaseEndpoint, databaseName string) (*options.ClientOptions, error) {
 
 	secretManagerClient := secretsmanager.NewFromConfig(awsConfig)
 
@@ -26,7 +26,7 @@ func CreateDatabaseOptions(awsConfig aws.Config, databaseSecretARN, databaseEndp
 		SecretId: aws.String(databaseSecretARN),
 	}
 
-	secretResponse, err := secretManagerClient.GetSecretValue(context.TODO(), secretRequest)
+	secretResponse, err := secretManagerClient.GetSecretValue(transportCtx, secretRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire database credentials: %v", err)
 	}

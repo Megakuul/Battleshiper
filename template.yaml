@@ -8,9 +8,9 @@ Parameters:
   ApplicationDomainCertificateArn:
     Type: String
     Description: "ARN of the ACM certificate for the ApplicationDomain."
-  CognitoDomain:
+  GithubOAuthClientCredentialArn:
     Type: String
-    Description: "Domain prefix where the battleshiper cognito provider is hosted on. This must be globally unique."
+    Description: "ARN of the Secret containing Github OAuth2 Application Client ID & Client Secret ('client_id' & 'client_secret')."
 
 
 Globals:
@@ -144,61 +144,6 @@ Resources:
           CidrIp: 0.0.0.0/0
 
 
-
-
-  # ============================================
-  # =========== Cognito ========================
-  # ============================================
-
-  BattleshiperUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: "battleshiper-auth-pool"
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-      Schema:
-        - AttributeDataType: String
-          Name: email
-          Required: true
-
-      EmailConfiguration:
-        EmailSendingAccount: COGNITO_DEFAULT
-      VerificationMessageTemplate:
-        DefaultEmailOption: CONFIRM_WITH_CODE    
-      AutoVerifiedAttributes:
-        - email
-      EnabledMfas:
-        - "SOFTWARE_TOKEN_MFA"
-      MfaConfiguration: "ON"
-
-  BattleshiperUserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties: 
-      Domain: !Ref CognitoDomain
-      UserPoolId: !Ref BattleshiperUserPool
-  
-  BattleshiperUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      UserPoolId: !Ref BattleshiperUserPool
-      ClientName: "battleshiper-auth-client"
-      GenerateSecret: true
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthFlows:
-        - "code"
-      AllowedOAuthScopes:
-        - "openid"
-        - "profile"
-        - "email"
-      CallbackURLs:
-        - !Sub "https://${ApplicationDomain}/auth/callback"
-      DefaultRedirectURI: !Sub "https://${ApplicationDomain}/auth/callback"
-      LogoutURLs:
-        - !Sub "https://${ApplicationDomain}/auth/logout"
-
-
-
   # ============================================
   # =========== Database =======================
   # ============================================
@@ -248,6 +193,7 @@ Resources:
         - !Ref BattleshiperUserFuncRole
         - !Ref BattleshiperAdminFuncRole
         - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
 
   BattleshiperDb:
     Type: AWS::DocDBElastic::Cluster
@@ -268,6 +214,28 @@ Resources:
       VpcSecurityGroupIds:
         - !Ref BattleshiperDbAccessGroup
 
+
+  # ============================================
+  # =========== Github Secret Policy ===========
+  # ============================================
+
+  BattleshiperGhClientCredentialPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-gh-client-credentials-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource: !Ref GithubOAuthClientCredentialArn
+      Roles:
+        - !Ref BattleshiperAuthFuncRole
+        - !Ref BattleshiperUserFuncRole
+        - !Ref BattleshiperAdminFuncRole
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
 
   # ============================================
   # =========== API ============================
@@ -321,11 +289,12 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
 
   BattleshiperUserFuncRole:
     Type: AWS::IAM::Role
@@ -374,9 +343,7 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -428,9 +395,7 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -482,9 +447,7 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -525,12 +488,12 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+
+
 
   # ============================================
   # =========== S3 Storage =====================
