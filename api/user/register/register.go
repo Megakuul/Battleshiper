@@ -56,7 +56,10 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 			Roles:          map[rbac.ROLE]struct{}{rbac.USER: {}},
 			RefreshToken:   "",
 			SubscriptionId: "",
-			ProjectIds:     []string{},
+			LimitCounter: user.ExecutionLimitCounter{
+				ExpirationTime:     0,
+				PipelineExecutions: 0,
+			},
 		}
 		_, err := userCollection.InsertOne(transportCtx, newDoc)
 		if err != nil {

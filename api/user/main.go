@@ -23,14 +23,11 @@ import (
 )
 
 var (
-	REGION                       = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
-	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
-	REDIRECT_URI                 = os.Getenv("REDIRECT_URI")
-	FRONTEND_REDIRECT_URI        = os.Getenv("FRONTEND_REDIRECT_URI")
-	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
+	REGION              = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
 )
 
 func main() {

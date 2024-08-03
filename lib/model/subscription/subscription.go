@@ -7,5 +7,5 @@ type Subscription struct {
 	Id                      string `bson:"id"`
 	Name                    string `bson:"name"`
 	DailyPipelineExecutions int    `bson:"daily_pipeline_executions"`
-	Deployments             int    `bson:"deployments"`
+	Projects                int    `bson:"projects"`
 }

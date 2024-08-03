@@ -1,4 +1,4 @@
-package deleteuser
+package finduser
 
 import (
 	"context"
@@ -27,7 +27,6 @@ type userOutput struct {
 	Provider       string                 `json:"provider"`
 	Roles          map[rbac.ROLE]struct{} `json:"roles"`
 	SubscriptionId string                 `json:"subscription_id"`
-	ProjectIds     []string               `json:"project_ids"`
 }
 
 type findUserOutput struct {
@@ -119,7 +118,6 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 			Provider:       user.Provider,
 			Roles:          user.Roles,
 			SubscriptionId: user.SubscriptionId,
-			ProjectIds:     user.ProjectIds,
 		})
 	}
 

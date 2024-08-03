@@ -11,21 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/megakuul/battleshiper/api/resource/deleteproject"
+	"github.com/megakuul/battleshiper/api/resource/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
-
-	"github.com/megakuul/battleshiper/api/admin/deleteproject"
-	"github.com/megakuul/battleshiper/api/admin/deleteuser"
-	"github.com/megakuul/battleshiper/api/admin/findproject"
-	"github.com/megakuul/battleshiper/api/admin/finduser"
-	"github.com/megakuul/battleshiper/api/admin/routecontext"
-	"github.com/megakuul/battleshiper/api/admin/updaterole"
-	"github.com/megakuul/battleshiper/api/admin/updateuser"
-	"github.com/megakuul/battleshiper/api/admin/upsertsubscription"
 )
 
 var (

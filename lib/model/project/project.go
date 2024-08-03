@@ -8,4 +8,5 @@ type Project struct {
 	Deleted    bool   `bson:"deleted"`
 	Name       string `bson:"name"`
 	Repository string `bson:"repository"`
+	OwnerId    string `bson:"owner_id"`
 }

@@ -1,4 +1,4 @@
-package finduser
+package deleteuser
 
 import (
 	"context"
@@ -97,15 +97,13 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
-	for _, id := range deletionUserDoc.ProjectIds {
-		_, err = projectCollection.UpdateOne(transportCtx, bson.M{"id": id}, bson.M{
-			"$set": bson.M{
-				"deleted": true,
-			},
-		})
-		if err != nil {
-			return nil, http.StatusBadRequest, fmt.Errorf("failed to mark project as deleted on database")
-		}
+	_, err = projectCollection.UpdateMany(transportCtx, bson.M{"owner_id": deletionUserDoc.Id}, bson.M{
+		"$set": bson.M{
+			"deleted": true,
+		}},
+	)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to mark projects as deleted on database")
 	}
 
 	_, err = userCollection.DeleteOne(transportCtx, bson.M{"id": deleteUserInput.UserId})

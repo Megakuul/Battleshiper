@@ -761,7 +761,11 @@ Resources:
           AllowedMethods:
             - GET
             - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
             - POST
+            - DELETE
           ViewerProtocolPolicy: "redirect-to-https"
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
