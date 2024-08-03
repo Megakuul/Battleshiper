@@ -16,14 +16,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"` // Expiration time of the access token
-}
-
 // HandleCallback is the route the user is redirected from after authorization.
 // It exchanges authCode, clientId and clientSecret with Access- and Refreshtoken.
 func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {

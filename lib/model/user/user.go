@@ -11,11 +11,12 @@ type ExecutionLimitCounter struct {
 }
 
 type User struct {
-	Id             string                 `bson:"id"`
-	Privileged     bool                   `bson:"privileged"`
-	Provider       string                 `bson:"provider"`
-	Roles          map[rbac.ROLE]struct{} `bson:"roles"`
-	RefreshToken   string                 `bson:"refresh_token"`
-	LimitCounter   ExecutionLimitCounter  `bson:"limit_counter"`
-	SubscriptionId string                 `bson:"subscription_id"`
+	Id                   string                 `bson:"id"`
+	Privileged           bool                   `bson:"privileged"`
+	Provider             string                 `bson:"provider"`
+	Roles                map[rbac.ROLE]struct{} `bson:"roles"`
+	RefreshToken         string                 `bson:"refresh_token"`
+	LimitCounter         ExecutionLimitCounter  `bson:"limit_counter"`
+	SubscriptionId       string                 `bson:"subscription_id"`
+	GithubInstallationId string                 `bson:"github_installation_id"`
 }

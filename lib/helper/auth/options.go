@@ -16,7 +16,7 @@ type jwtCredentials struct {
 }
 
 type oauthCredentials struct {
-	ClientID     string `json:"client_id"`
+	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 }
 
@@ -67,7 +67,7 @@ func CreateOAuthOptions(awsConfig aws.Config, transportCtx context.Context, oaut
 	}
 
 	return &oauth2.Config{
-		ClientID:     oauthCredentials.ClientID,
+		ClientID:     oauthCredentials.ClientId,
 		ClientSecret: oauthCredentials.ClientSecret,
 		Endpoint:     endpoint,
 		RedirectURL:  redirectUri,

@@ -47,6 +47,8 @@ github.com/megakuul/battleshiper/lib/helper v0.1.1 h1:7bMFrPSiZ9ZGaQk/zymxJ5HWZN
 github.com/megakuul/battleshiper/lib/helper v0.1.1/go.mod h1:8msyj1qSB/MiyyRPGj3YmQep8BNoqnzefJ9r9ejzPjY=
 github.com/megakuul/battleshiper/lib/model v0.1.7 h1:gG0jLlP3054gIc+xQT9Rk7WWP+5ehjW3biXVzRSOXFU=
 github.com/megakuul/battleshiper/lib/model v0.1.7/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
+github.com/megakuul/battleshiper/lib/model v0.1.8 h1:8z0xm/qQ+Yuut1BW8M4zpfzZU8DIWLWFnmgH2D316Ww=
+github.com/megakuul/battleshiper/lib/model v0.1.8/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
 github.com/megakuul/battleshiper/lib/router v0.1.0 h1:gbVsSiiIkzkbZE/SlVBSU9zUaiV5XHaeertVCV6uTDo=
 github.com/megakuul/battleshiper/lib/router v0.1.0/go.mod h1:+YSiwNGSRccnY29LOBU/iq7np+sz8R8S760bUnTHmdA=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=

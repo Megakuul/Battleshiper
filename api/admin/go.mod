@@ -5,9 +5,8 @@ go 1.22.4
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
-	github.com/megakuul/battleshiper/api/user v0.0.0-20240803124849-1098ccb33076
 	github.com/megakuul/battleshiper/lib/helper v0.1.1
-	github.com/megakuul/battleshiper/lib/model v0.1.7
+	github.com/megakuul/battleshiper/lib/model v0.1.8
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
 )
