@@ -64,27 +64,17 @@ func run() error {
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
 	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{
-			FieldNames:   []string{"id"},
-			SortingOrder: 1,
-			Unique:       true,
-		},
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
+		{FieldNames: []string{"subscription_id"}, SortingOrder: 1, Unique: false},
 	})
 
 	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{
-			FieldNames:   []string{"id"},
-			SortingOrder: 1,
-			Unique:       true,
-		},
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
+		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: false},
 	})
 
 	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{
-			FieldNames:   []string{"id"},
-			SortingOrder: 1,
-			Unique:       true,
-		},
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
 	})
 
 	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)

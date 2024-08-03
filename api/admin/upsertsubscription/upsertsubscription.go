@@ -1,4 +1,4 @@
-package updateuser
+package upsertsubscription
 
 import (
 	"context"
@@ -8,30 +8,30 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type updateInput struct {
-	SubscriptionId string `json:"subscription_id"`
+type upsertSubscriptionInput struct {
+	Id                      string `json:"id"`
+	Name                    string `json:"name"`
+	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
+	Deployments             int    `json:"deployments"`
 }
 
-type updateUserInput struct {
-	UserId  string      `json:"user_id"`
-	Updates updateInput `json:"updates"`
-}
-
-type updateUserOutput struct {
+type upsertSubscriptionOutput struct {
 	Message string `json:"message"`
 }
 
-// HandleUpdateUser updates specified fields on a user identified by id.
-func HandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleUpdateUser(request, transportCtx, routeCtx)
+// HandleUpsertSubscription upserts a subscription identified by the subscription id.
+func HandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleUpsertSubscription(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -60,9 +60,9 @@ func HandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx conte
 	}, nil
 }
 
-func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*updateUserOutput, int, error) {
-	var updateUserInput updateUserInput
-	err := json.Unmarshal([]byte(request.Body), &updateUserInput)
+func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*upsertSubscriptionOutput, int, error) {
+	var upsertSubscriptionInput upsertSubscriptionInput
+	err := json.Unmarshal([]byte(request.Body), &upsertSubscriptionInput)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
 	}
@@ -85,24 +85,28 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_USER) {
+	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_SUBSCRIPTION) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	updateSpec := bson.M{}
-	if updateUserInput.Updates.SubscriptionId != "" {
-		updateSpec["subscription_id"] = updateUserInput.Updates.SubscriptionId
-	}
+	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
-	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateUserInput.UserId}, updateSpec)
+	_, err = subscriptionCollection.UpdateOne(transportCtx, bson.M{"id": upsertSubscriptionInput.Id},
+		bson.M{
+			"$set": subscription.Subscription{
+				Id:                      upsertSubscriptionInput.Id,
+				Name:                    upsertSubscriptionInput.Name,
+				DailyPipelineExecutions: upsertSubscriptionInput.DailyPipelineExecutions,
+				Deployments:             upsertSubscriptionInput.Deployments,
+			},
+		},
+		options.Update().SetUpsert(true),
+	)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
-	if result.MatchedCount < 1 {
-		return nil, http.StatusNotFound, fmt.Errorf("user not found")
-	}
 
-	return &updateUserOutput{
-		Message: "users updated",
+	return &upsertSubscriptionOutput{
+		Message: "subscription upserted",
 	}, http.StatusOK, nil
 }
