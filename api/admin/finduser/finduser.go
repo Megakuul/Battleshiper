@@ -1,4 +1,4 @@
-package info
+package deleteuser
 
 import (
 	"context"
@@ -8,39 +8,36 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/megakuul/battleshiper/api/user/routecontext"
+	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/role"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
+	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type subscriptionOutput struct {
-	Name                    string `json:"name"`
-	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
-	Deployments             int    `json:"deployments"`
+type findUserInput struct {
+	UserId         string `json:"user_id"`
+	SubscriptionId string `json:"subscription_id"`
 }
 
 type userOutput struct {
-	Id        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Roles     map[role.ROLE]struct{} `json:"roles"`
-	Provider  string                 `json:"provider"`
-	AvatarURL string                 `json:"avatar_url"`
-
-	Subscription *subscriptionOutput `json:"subscriptions"`
+	Id             string                 `json:"id"`
+	Privileged     bool                   `json:"privileged"`
+	Provider       string                 `json:"provider"`
+	Roles          map[rbac.ROLE]struct{} `json:"roles"`
+	SubscriptionId string                 `json:"subscription_id"`
+	ProjectIds     []string               `json:"project_ids"`
 }
 
-type findOutput struct {
-	Users []userOutput `json:"users"`
+type findUserOutput struct {
+	Message string       `json:"message"`
+	Users   []userOutput `json:"users"`
 }
 
-// HandleInfo fetches user information from the database cluster.
-func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleInfo(request, transportCtx, routeCtx)
+// HandleFindUser performs a lookup for the specified users and returns them as json object.
+func HandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleFindUser(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -69,7 +66,12 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findOutput, int, error) {
+func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findUserOutput, int, error) {
+	var findUserInput findUserInput
+	err := json.Unmarshal([]byte(request.Body), &findUserInput)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
+	}
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -85,32 +87,44 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user does not exist")
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("failed to read user subscription: Subscription %s does not exist", userDoc.SubscriptionId)
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
+	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_USER) {
+		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	return &findOutput{
-		Id:        userToken.Id,
-		Name:      userToken.Username,
-		Roles:     userDoc.Roles,
-		Provider:  userToken.Provider,
-		AvatarURL: userToken.AvatarURL,
-		Subscription: &subscriptionOutput{
-			Name:                    subscriptionDoc.Name,
-			DailyPipelineExecutions: subscriptionDoc.DailyPipelineExecutions,
-			Deployments:             subscriptionDoc.Deployments,
-		},
+	cursor, err := userCollection.Find(transportCtx,
+		bson.M{"$or": bson.A{
+			bson.M{"id": findUserInput.UserId},
+			bson.M{"subscription_id": findUserInput.SubscriptionId},
+		}},
+	)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
+	}
+
+	foundUserDocs := []user.User{}
+	err = cursor.All(transportCtx, &foundUserDocs)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode users")
+	}
+
+	foundUserOutput := []userOutput{}
+	for _, user := range foundUserDocs {
+		foundUserOutput = append(foundUserOutput, userOutput{
+			Id:             user.Id,
+			Privileged:     user.Privileged,
+			Provider:       user.Provider,
+			Roles:          user.Roles,
+			SubscriptionId: user.SubscriptionId,
+			ProjectIds:     user.ProjectIds,
+		})
+	}
+
+	return &findUserOutput{
+		Message: "users fetched",
+		Users:   foundUserOutput,
 	}, http.StatusOK, nil
 }

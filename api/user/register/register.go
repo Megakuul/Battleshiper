@@ -51,6 +51,7 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	if err == mongo.ErrNoDocuments {
 		newDoc := user.User{
 			Id:             userToken.Id,
+			Privileged:     false,
 			Provider:       "github",
 			Roles:          map[rbac.ROLE]struct{}{rbac.USER: {}},
 			RefreshToken:   "",

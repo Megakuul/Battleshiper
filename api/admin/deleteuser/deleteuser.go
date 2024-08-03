@@ -1,4 +1,4 @@
-package deleteuser
+package finduser
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/megakuul/battleshiper/api/user/routecontext"
+	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -91,10 +91,14 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
+	if deletionUserDoc.Privileged {
+		return nil, http.StatusBadRequest, fmt.Errorf("user has elevated permissions and cannot be deleted. remove privileges first")
+	}
+
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
 	for _, id := range deletionUserDoc.ProjectIds {
-		_, err = projectCollection.UpdateOne(transportCtx, bson.M{"id": deleteUserInput.UserId}, bson.M{
+		_, err = projectCollection.UpdateOne(transportCtx, bson.M{"id": id}, bson.M{
 			"$set": bson.M{
 				"deleted": true,
 			},

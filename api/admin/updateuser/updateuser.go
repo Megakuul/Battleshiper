@@ -1,4 +1,4 @@
-package findproject
+package deleteuser
 
 import (
 	"context"
@@ -12,31 +12,32 @@ import (
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type findProjectInput struct {
-	ProjectId   string `json:"project_id"`
-	ProjectName string `json:"project_name"`
+type findUserInput struct {
+	UserId         string `json:"user_id"`
+	SubscriptionId string `json:"subscription_id"`
 }
 
-type projectOutput struct {
-	Id         string `json:"id"`
-	Deleted    bool   `json:"deleted"`
-	Name       string `json:"name"`
-	Repository string `json:"repository"`
+type userOutput struct {
+	Id             string                 `json:"id"`
+	Privileged     bool                   `json:"privileged"`
+	Provider       string                 `json:"provider"`
+	Roles          map[rbac.ROLE]struct{} `json:"roles"`
+	SubscriptionId string                 `json:"subscription_id"`
+	ProjectIds     []string               `json:"project_ids"`
 }
 
-type findProjectOutput struct {
-	Message  string          `json:"message"`
-	Projects []projectOutput `json:"projects"`
+type findUserOutput struct {
+	Message string       `json:"message"`
+	Users   []userOutput `json:"users"`
 }
 
-// HandleFindProject performs a lookup for the specified projects and returns them as json object.
-func HandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleFindProject(request, transportCtx, routeCtx)
+// HandleFindUser performs a lookup for the specified project and returns it as json object.
+func HandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleFindUser(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -65,9 +66,9 @@ func HandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}, nil
 }
 
-func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findProjectOutput, int, error) {
-	var findProjectInput findProjectInput
-	err := json.Unmarshal([]byte(request.Body), &findProjectInput)
+func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findUserOutput, int, error) {
+	var findUserInput findUserInput
+	err := json.Unmarshal([]byte(request.Body), &findUserInput)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
 	}
@@ -90,40 +91,40 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_PROJECT) {
+	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_USER) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	cursor, err := projectCollection.Find(transportCtx,
+	cursor, err := userCollection.Find(transportCtx,
 		bson.M{"$or": bson.A{
-			bson.M{"id": findProjectInput.ProjectId},
-			bson.M{"name": findProjectInput.ProjectName},
+			bson.M{"id": findUserInput.UserId},
+			bson.M{"subscription_id": findUserInput.SubscriptionId},
 		}},
 	)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
 
-	foundProjectDocs := []project.Project{}
-	err = cursor.All(transportCtx, &foundProjectDocs)
+	foundUserDocs := []user.User{}
+	err = cursor.All(transportCtx, &foundUserDocs)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode projects")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode users")
 	}
 
-	foundProjectOutput := []projectOutput{}
-	for _, project := range foundProjectDocs {
-		foundProjectOutput = append(foundProjectOutput, projectOutput{
-			Id:         project.Id,
-			Deleted:    project.Deleted,
-			Name:       project.Name,
-			Repository: project.Repository,
+	foundUserOutput := []userOutput{}
+	for _, user := range foundUserDocs {
+		foundUserOutput = append(foundUserOutput, userOutput{
+			Id:             user.Id,
+			Privileged:     user.Privileged,
+			Provider:       user.Provider,
+			Roles:          user.Roles,
+			SubscriptionId: user.SubscriptionId,
+			ProjectIds:     user.ProjectIds,
 		})
 	}
 
-	return &findProjectOutput{
-		Message:  "projects fetched",
-		Projects: foundProjectOutput,
+	return &findUserOutput{
+		Message: "users fetched",
+		Users:   foundUserOutput,
 	}, http.StatusOK, nil
 }

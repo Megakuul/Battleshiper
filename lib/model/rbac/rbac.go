@@ -51,3 +51,13 @@ func CheckPermission(roles map[ROLE]struct{}, access ACCESS) bool {
 	}
 	return false
 }
+
+// IsPrivileged checks if the user is privileged (has elevated permissions).
+func IsPrivileged(roles map[ROLE]struct{}) bool {
+	for role := range roles {
+		if role > USER {
+			return true
+		}
+	}
+	return false
+}
