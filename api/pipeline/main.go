@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/megakuul/battleshiper/api/resource/routecontext"
+	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"

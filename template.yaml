@@ -10,7 +10,7 @@ Parameters:
     Description: "ARN of the ACM certificate for the ApplicationDomain."
   GithubOAuthClientCredentialArn:
     Type: String
-    Description: "ARN of the Secret containing Github OAuth2 Application Client ID & Client Secret ('client_id' & 'client_secret')."
+    Description: "ARN of the Secret containing Github Application App ID, App Secret Key, Client ID & Client Secret ('app_id', 'app_secret', 'client_id' & 'client_secret')."
 
 
 Globals:

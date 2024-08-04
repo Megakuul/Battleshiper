@@ -10,13 +10,24 @@ type ExecutionLimitCounter struct {
 	PipelineExecutions int `bson:"pipeline_executions"`
 }
 
+type Repository struct {
+	Id       int64  `bson:"id"`
+	Name     string `bson:"name"`
+	FullName string `bson:"full_name"`
+}
+
+type GithubData struct {
+	InstallationId int          `bson:"installation_id"`
+	Repositories   []Repository `bson:"repositories"`
+}
+
 type User struct {
-	Id                   string                 `bson:"id"`
-	Privileged           bool                   `bson:"privileged"`
-	Provider             string                 `bson:"provider"`
-	Roles                map[rbac.ROLE]struct{} `bson:"roles"`
-	RefreshToken         string                 `bson:"refresh_token"`
-	LimitCounter         ExecutionLimitCounter  `bson:"limit_counter"`
-	SubscriptionId       string                 `bson:"subscription_id"`
-	GithubInstallationId string                 `bson:"github_installation_id"`
+	Id             string                 `bson:"id"`
+	Privileged     bool                   `bson:"privileged"`
+	Provider       string                 `bson:"provider"`
+	Roles          map[rbac.ROLE]struct{} `bson:"roles"`
+	RefreshToken   string                 `bson:"refresh_token"`
+	LimitCounter   ExecutionLimitCounter  `bson:"limit_counter"`
+	SubscriptionId string                 `bson:"subscription_id"`
+	GithubData     GithubData             `bson:"github_data"`
 }
