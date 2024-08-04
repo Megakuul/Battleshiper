@@ -18,23 +18,25 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type createProjectInput struct {
-	ProjectName string `json:"project_name"`
+const MIN_PROJECT_NAME_CHARACTERS = 3
+
+type repositoryInput struct {
+	Id     int64  `json:"id"`
+	URL    string `json:"url"`
+	Branch string `json:"branch"`
 }
 
-type projectOutput struct {
-	Id         string `json:"id"`
-	Deleted    bool   `json:"deleted"`
-	Name       string `json:"name"`
-	Repository string `json:"repository"`
+type createProjectInput struct {
+	ProjectName  string          `json:"project_name"`
+	BuildCommand string          `json:"build_command"`
+	Repository   repositoryInput `json:"repository"`
 }
 
 type createProjectOutput struct {
-	Message  string          `json:"message"`
-	Projects []projectOutput `json:"projects"`
+	Message string `json:"message"`
 }
 
-// HandleCreateProject creates a project and inserts a webhook (for auto deployment) in the users github repository via github app.
+// HandleCreateProject creates a project.
 func HandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	response, code, err := runHandleCreateProject(request, transportCtx, routeCtx)
 	if err != nil {
@@ -110,8 +112,33 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch projects from database")
 	}
 
-	if count >= subscriptionDoc.Projects {
+	if int(count) >= subscriptionDoc.Projects {
 		return nil, http.StatusForbidden, fmt.Errorf("subscription limit reached; no additional projects can be created")
 	}
 
+	if len(createProjectInput.ProjectName) <= MIN_PROJECT_NAME_CHARACTERS {
+		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
+	}
+
+	_, err = projectCollection.InsertOne(transportCtx, project.Project{
+		Name:    createProjectInput.ProjectName,
+		Deleted: false,
+		Repository: project.Repository{
+			Id:     createProjectInput.Repository.Id,
+			URL:    createProjectInput.Repository.URL,
+			Branch: createProjectInput.Repository.Branch,
+		},
+		BuildCommand: createProjectInput.BuildCommand,
+		OwnerId:      userDoc.Id,
+	})
+	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return nil, http.StatusConflict, fmt.Errorf("project name is already registered")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to insert project to database")
+	}
+
+	return &createProjectOutput{
+		Message: "project created",
+	}, http.StatusOK, nil
 }

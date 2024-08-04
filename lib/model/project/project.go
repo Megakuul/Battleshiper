@@ -3,10 +3,16 @@ package project
 
 const PROJECT_COLLECTION = "project"
 
+type Repository struct {
+	Id     int64  `bson:"id"`
+	URL    string `bson:"url"`
+	Branch string `bson:"branch"`
+}
+
 type Project struct {
-	Id         string `bson:"id"`
-	Deleted    bool   `bson:"deleted"`
-	Name       string `bson:"name"`
-	Repository string `bson:"repository"`
-	OwnerId    string `bson:"owner_id"`
+	Name         string     `bson:"name"`
+	Deleted      bool       `bson:"deleted"`
+	Repository   Repository `bson:"repository"`
+	BuildCommand string     `bson:"build_command"`
+	OwnerId      string     `bson:"owner_id"`
 }

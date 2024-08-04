@@ -1,7 +1,7 @@
 package routecontext
 
 import (
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"go.mongodb.org/mongo-driver/mongo"
 )

@@ -60,6 +60,10 @@ func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx cont
 				ExpirationTime:     0,
 				PipelineExecutions: 0,
 			},
+			GithubData: user.GithubData{
+				InstallationId: 0,
+				Repositories:   []user.Repository{},
+			},
 		}
 		_, err := userCollection.InsertOne(transportCtx, newDoc)
 		if err != nil {

@@ -77,7 +77,7 @@ func run() error {
 	})
 
 	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
+		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
 	})
 

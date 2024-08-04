@@ -21,7 +21,7 @@ import (
 type subscriptionOutput struct {
 	Name                    string `json:"name"`
 	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
-	Deployments             int    `json:"deployments"`
+	Projects                int    `json:"projects"`
 }
 
 type infoOutput struct {
@@ -106,7 +106,7 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 		Subscription: &subscriptionOutput{
 			Name:                    subscriptionDoc.Name,
 			DailyPipelineExecutions: subscriptionDoc.DailyPipelineExecutions,
-			Deployments:             subscriptionDoc.Deployments,
+			Projects:                subscriptionDoc.Projects,
 		},
 	}, http.StatusOK, nil
 }

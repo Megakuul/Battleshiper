@@ -3,14 +3,20 @@ module github.com/megakuul/battleshiper/lib/helper
 go 1.22.4
 
 require (
-	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2 v1.30.1
-	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.1
+	github.com/go-playground/webhooks/v6 v6.3.0
 	go.mongodb.org/mongo-driver v1.16.0
 )
 
-require github.com/google/go-querystring v1.1.0 // indirect
+require (
+	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/montanaflynn/stats v0.7.1 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
+	golang.org/x/text v0.14.0 // indirect
+)
 
 require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.13 // indirect

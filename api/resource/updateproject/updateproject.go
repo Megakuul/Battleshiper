@@ -1,4 +1,4 @@
-package deleteproject
+package updateproject
 
 import (
 	"context"
@@ -8,26 +8,34 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/megakuul/battleshiper/api/admin/routecontext"
+	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type deleteProjectInput struct {
-	ProjectName string `json:"project_name"`
+type repositoryInput struct {
+	Id     int64  `json:"id"`
+	URL    string `json:"url"`
+	Branch string `json:"branch"`
 }
 
-type deleteProjectOutput struct {
+type updateProjectInput struct {
+	ProjectName  string          `json:"project_name"`
+	BuildCommand string          `json:"build_command"`
+	Repository   repositoryInput `json:"repository"`
+}
+
+type updateProjectOutput struct {
 	Message string `json:"message"`
 }
 
-// HandleDeleteProject marks the specified project as deleted.
-func HandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleDeleteProject(request, transportCtx, routeCtx)
+// HandleUpdateProject updates specified project fields.
+func HandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleUpdateProject(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -56,10 +64,9 @@ func HandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}, nil
 }
 
-func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*deleteProjectOutput, int, error) {
-
-	var deleteProjectInput deleteProjectInput
-	err := json.Unmarshal([]byte(request.Body), &deleteProjectInput)
+func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*updateProjectOutput, int, error) {
+	var updateProjectInput updateProjectInput
+	err := json.Unmarshal([]byte(request.Body), &updateProjectInput)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
 	}
@@ -82,22 +89,30 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_PROJECT) {
-		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
+	updateSpec := bson.M{}
+	if updateProjectInput.BuildCommand != "" {
+		updateSpec["build_command"] = updateProjectInput.BuildCommand
+	}
+	if updateProjectInput.Repository.Id != 0 {
+		updateSpec["repository"] = project.Repository{
+			Id:     updateProjectInput.Repository.Id,
+			URL:    updateProjectInput.Repository.URL,
+			Branch: updateProjectInput.Repository.Branch,
+		}
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
-	_, err = projectCollection.UpdateOne(transportCtx, bson.M{"name": deleteProjectInput.ProjectName}, bson.M{
-		"$set": bson.M{
-			"deleted": true,
-		},
+	_, err = projectCollection.UpdateOne(transportCtx, bson.M{"name": updateProjectInput.ProjectName}, bson.M{
+		"$set": updateSpec,
 	})
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to mark project as deleted on database")
+	if err == mongo.ErrNoDocuments {
+		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")
+	} else if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
 	}
 
-	return &deleteProjectOutput{
-		Message: "successfully marked project as deleted",
+	return &updateProjectOutput{
+		Message: "project updated",
 	}, http.StatusOK, nil
 }

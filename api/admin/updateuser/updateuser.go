@@ -94,7 +94,9 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		updateSpec["subscription_id"] = updateUserInput.Updates.SubscriptionId
 	}
 
-	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateUserInput.UserId}, updateSpec)
+	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateUserInput.UserId}, bson.M{
+		"$set": updateSpec,
+	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}

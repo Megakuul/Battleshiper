@@ -5,8 +5,8 @@ go 1.22.4
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.23
-	github.com/megakuul/battleshiper/lib/helper v0.1.1
-	github.com/megakuul/battleshiper/lib/model v0.1.8
+	github.com/megakuul/battleshiper/lib/helper v0.1.2
+	github.com/megakuul/battleshiper/lib/model v0.1.9
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
 )
@@ -39,5 +39,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/google/go-github/v63 v63.0.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 )

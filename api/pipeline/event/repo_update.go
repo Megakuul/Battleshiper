@@ -11,12 +11,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.Context, event github.InstallationPayload) (int, error) {
+func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Context, event github.InstallationRepositoriesPayload) (int, error) {
 	userId := event.Installation.Account.ID
 
-	installedRepos := []user.Repository{}
-	for _, repo := range event.Repositories {
-		installedRepos = append(installedRepos, user.Repository{
+	addedRepos := []user.Repository{}
+	for _, repo := range event.RepositoriesAdded {
+		addedRepos = append(addedRepos, user.Repository{
+			Id:       repo.ID,
+			Name:     repo.Name,
+			FullName: repo.FullName,
+		})
+	}
+	removedRepos := []user.Repository{}
+	for _, repo := range event.RepositoriesRemoved {
+		addedRepos = append(addedRepos, user.Repository{
 			Id:       repo.ID,
 			Name:     repo.Name,
 			FullName: repo.FullName,
@@ -26,10 +34,14 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
 
 	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": userId}, bson.M{
-		"$set": bson.M{
-			"github_data": user.GithubData{
-				InstallationId: int(event.Installation.ID),
-				Repositories:   installedRepos,
+		"$push": bson.M{
+			"github_data.repositories": bson.M{
+				"$each": addedRepos,
+			},
+			"$pull": bson.M{
+				"github_data.repositories": bson.M{
+					"$in": removedRepos,
+				},
 			},
 		},
 	})

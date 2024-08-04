@@ -7,9 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/google/go-github/github"
 	"go.mongodb.org/mongo-driver/bson"
-	"golang.org/x/oauth2"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
@@ -18,10 +16,9 @@ import (
 )
 
 type repositoryOutput struct {
-	Id            int64  `json:"id"`
-	FullName      string `json:"full_name"`
-	URL           string `json:"url"`
-	DefaultBranch string `json:"default_branch"`
+	Id       int64  `json:"id"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
 }
 
 type listRepositoryOutput struct {
@@ -80,33 +77,12 @@ func runHandleListRepositories(request events.APIGatewayV2HTTPRequest, transport
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user data from database")
 	}
 
-	if userDoc.GithubInstallationId < 1 {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user did not install github app")
-	}
-
-	installToken, _, err := routeCtx.GithubAppClient.Apps.CreateInstallationToken(transportCtx, userDoc.GithubInstallationId)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch github installation token")
-	}
-
-	githubUserClient := github.NewClient(oauth2.NewClient(transportCtx, oauth2.StaticTokenSource(
-		&oauth2.Token{
-			AccessToken: installToken.GetToken(),
-		},
-	)))
-
-	repos, _, err := githubUserClient.Apps.ListRepos(transportCtx, nil)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch repositories")
-	}
-
 	outputRepos := []repositoryOutput{}
-	for _, repo := range repos {
+	for _, repo := range userDoc.GithubData.Repositories {
 		outputRepos = append(outputRepos, repositoryOutput{
-			Id:            *repo.ID,
-			FullName:      *repo.FullName,
-			URL:           *repo.CloneURL,
-			DefaultBranch: *repo.DefaultBranch,
+			Id:       repo.Id,
+			Name:     repo.Name,
+			FullName: repo.FullName,
 		})
 	}
 

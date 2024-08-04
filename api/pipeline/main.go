@@ -11,11 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/megakuul/battleshiper/api/pipeline/event"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
@@ -61,36 +60,20 @@ func run() error {
 
 	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
 		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"subscription_id"}, SortingOrder: 1, Unique: false},
+		{FieldNames: []string{"github_data.installation_id"}, SortingOrder: 1, Unique: true},
 	})
 
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: false},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
-	})
-
-	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
-	if err != nil {
-		return err
-	}
-
-	appClient, err := auth.CreateGithubAppClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)
+	webhookClient, err := auth.CreateGithubWebhookClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)
 	if err != nil {
 		return err
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		JwtOptions:      jwtOptions,
-		GithubAppClient: appClient,
-		Database:        databaseHandle,
+		WebhookClient: webhookClient,
+		Database:      databaseHandle,
 	})
 
-	// httpRouter.AddRoute("GET", "/api/admin/finduser")
+	httpRouter.AddRoute("POST", "/api/pipeline/event", event.HandleEvent)
 
 	lambda.Start(httpRouter.Route)
 

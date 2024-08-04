@@ -18,17 +18,24 @@ import (
 )
 
 type findProjectInput struct {
-	ProjectId   string `json:"project_id"`
 	ProjectName string `json:"project_name"`
 	OwnerId     string `json:"owner_id"`
 }
 
+type repositoryOutput struct {
+	Id       int64  `json:"id"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
+	URL      string `json:"url"`
+	Branch   string `json:"branch"`
+}
+
 type projectOutput struct {
-	Id         string `json:"id"`
-	Deleted    bool   `json:"deleted"`
-	Name       string `json:"name"`
-	Repository string `json:"repository"`
-	OwnerId    string `json:"owner_id"`
+	Deleted      bool             `json:"deleted"`
+	Name         string           `json:"name"`
+	BuildCommand string           `json:"build_command"`
+	Repository   repositoryOutput `json:"repository"`
+	OwnerId      string           `json:"owner_id"`
 }
 
 type findProjectOutput struct {
@@ -100,7 +107,6 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 
 	cursor, err := projectCollection.Find(transportCtx,
 		bson.M{"$or": bson.A{
-			bson.M{"id": findProjectInput.ProjectId},
 			bson.M{"name": findProjectInput.ProjectName},
 			bson.M{"owner_id": findProjectInput.OwnerId},
 		}},
@@ -118,11 +124,17 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	foundProjectOutput := []projectOutput{}
 	for _, project := range foundProjectDocs {
 		foundProjectOutput = append(foundProjectOutput, projectOutput{
-			Id:         project.Id,
-			Deleted:    project.Deleted,
-			Name:       project.Name,
-			Repository: project.Repository,
-			OwnerId:    project.OwnerId,
+			Name:         project.Name,
+			Deleted:      project.Deleted,
+			BuildCommand: project.BuildCommand,
+			Repository: repositoryOutput{
+				Id:       project.Repository.Id,
+				Name:     project.Repository.Name,
+				FullName: project.Repository.FullName,
+				URL:      project.Repository.URL,
+				Branch:   project.Repository.Branch,
+			},
+			OwnerId: project.OwnerId,
 		})
 	}
 
