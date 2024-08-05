@@ -1,4 +1,4 @@
-package register
+package registeruser
 
 import (
 	"context"
@@ -16,9 +16,9 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-// HandleRegister registers a user in the database (if not existent) based on the cognito user attributes.
-func HandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	code, err := runHandleRegister(request, transportCtx, routeCtx)
+// HandleRegisterUser registers a user in the database (if not existent) based on the cognito user attributes.
+func HandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	code, err := runHandleRegisterUser(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -33,7 +33,7 @@ func HandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context
 	}, nil
 }
 
-func runHandleRegister(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
+func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
 		return http.StatusUnauthorized, fmt.Errorf("no user_token provided")

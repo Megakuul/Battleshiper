@@ -128,6 +128,12 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			URL:    createProjectInput.Repository.URL,
 			Branch: createProjectInput.Repository.Branch,
 		},
+		LastBuildResult: project.BuildResult{
+			Successful:       false,
+			DeploymentOutput: "",
+			BuildOutput:      "",
+		},
+		LogGroup:     "",
 		BuildCommand: createProjectInput.BuildCommand,
 		OwnerId:      userDoc.Id,
 	})

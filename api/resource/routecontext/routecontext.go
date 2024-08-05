@@ -1,14 +1,14 @@
 package routecontext
 
 import (
-	"github.com/google/go-github/v63/github"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Context provides data to route handlers.
 type Context struct {
-	JwtOptions      *auth.JwtOptions
-	GithubAppClient *github.Client
-	Database        *mongo.Database
+	CloudWatchClient *cloudwatchlogs.Client
+	JwtOptions       *auth.JwtOptions
+	Database         *mongo.Database
 }

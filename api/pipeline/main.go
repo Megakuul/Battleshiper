@@ -21,7 +21,6 @@ import (
 
 var (
 	REGION                       = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
 	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
 	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME                = os.Getenv("DATABASE_NAME")

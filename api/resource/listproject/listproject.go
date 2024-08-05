@@ -15,6 +15,12 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
+type buildResultOutput struct {
+	Successful       bool   `json:"successful"`
+	DeploymentOutput string `json:"deployment_output"`
+	BuildOutput      string `json:"build_output"`
+}
+
 type repositoryOutput struct {
 	Id       int64  `json:"id"`
 	Name     string `json:"name"`
@@ -24,10 +30,11 @@ type repositoryOutput struct {
 }
 
 type projectOutput struct {
-	Name         string           `json:"name"`
-	Deleted      bool             `json:"deleted"`
-	BuildCommand string           `json:"build_command"`
-	Repository   repositoryOutput `json:"repository"`
+	Name            string            `json:"name"`
+	Deleted         bool              `json:"deleted"`
+	BuildCommand    string            `json:"build_command"`
+	Repository      repositoryOutput  `json:"repository"`
+	LastBuildResult buildResultOutput `json:"last_build_result"`
 }
 
 type listProjectOutput struct {
@@ -99,6 +106,11 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 			Name:         project.Name,
 			Deleted:      project.Deleted,
 			BuildCommand: project.BuildCommand,
+			LastBuildResult: buildResultOutput{
+				Successful:       project.LastBuildResult.Successful,
+				DeploymentOutput: project.LastBuildResult.DeploymentOutput,
+				BuildOutput:      project.LastBuildResult.BuildOutput,
+			},
 			Repository: repositoryOutput{
 				Id:       project.Repository.Id,
 				Name:     project.Repository.Name,

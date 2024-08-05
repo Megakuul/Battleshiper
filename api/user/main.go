@@ -17,8 +17,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 
-	"github.com/megakuul/battleshiper/api/user/info"
-	"github.com/megakuul/battleshiper/api/user/register"
+	"github.com/megakuul/battleshiper/api/user/fetchinfo"
+	"github.com/megakuul/battleshiper/api/user/registeruser"
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 )
 
@@ -86,8 +86,8 @@ func run() error {
 		Database:   databaseHandle,
 	})
 
-	httpRouter.AddRoute("GET", "/api/user/info", info.HandleInfo)
-	httpRouter.AddRoute("POST", "/api/user/register", register.HandleRegister)
+	httpRouter.AddRoute("GET", "/api/user/fetchinfo", fetchinfo.HandleFetchInfo)
+	httpRouter.AddRoute("POST", "/api/user/registeruser", registeruser.HandleRegisterUser)
 
 	lambda.Start(httpRouter.Route)
 

@@ -216,6 +216,40 @@ Resources:
 
 
   # ============================================
+  # =========== CloudWatch Logging =============
+  # ============================================
+
+  BattleshiperApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/battleshiper-api-logs
+      RetentionInDays: 14
+
+  BattleshiperApiLogGroupPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-api-logs-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+            Resources:
+              - !GetAtt BattleshiperApiLogGroup.Arn
+      Roles:
+        - !Ref BattleshiperAdminFuncRole
+
+  
+
+  BattleshiperProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/battleshiper-project-logs
+      RetentionInDays: 14
+
+  # ============================================
   # =========== Auth Secrets ===================
   # ============================================
 
@@ -276,6 +310,7 @@ Resources:
       Name: "battleshiper-api"
       StageName: Prod
 
+
   BattleshiperAuthFuncRole:
     Type: AWS::IAM::Role
     Properties:
@@ -326,6 +361,9 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
 
   BattleshiperUserFuncRole:
     Type: AWS::IAM::Role
@@ -375,12 +413,12 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
-          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
 
   BattleshiperAdminFuncRole:
     Type: AWS::IAM::Role
@@ -430,12 +468,13 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
-          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          LOG_GROUP_NAME: !Ref BattleshiperApiLogGroup
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
 
   BattleshiperResourceFuncRole:
     Type: AWS::IAM::Role
@@ -485,12 +524,12 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
-          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
 
   BattleshiperPipelineFuncRole:
     Type: AWS::IAM::Role
@@ -528,13 +567,12 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
-          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
 
 
 

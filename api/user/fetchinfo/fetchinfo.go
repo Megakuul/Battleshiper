@@ -1,4 +1,4 @@
-package info
+package fetchinfo
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type subscriptionOutput struct {
 	Projects                int    `json:"projects"`
 }
 
-type infoOutput struct {
+type fetchInfoOutput struct {
 	Id        string                 `json:"id"`
 	Name      string                 `json:"name"`
 	Roles     map[rbac.ROLE]struct{} `json:"roles"`
@@ -34,9 +34,9 @@ type infoOutput struct {
 	Subscription *subscriptionOutput `json:"subscriptions"`
 }
 
-// HandleInfo fetches user information from the database cluster.
-func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleInfo(request, transportCtx, routeCtx)
+// HandleFetchInfo fetches user information from the database cluster.
+func HandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleFetchInfo(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -65,7 +65,7 @@ func HandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Con
 	}, nil
 }
 
-func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*infoOutput, int, error) {
+func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*fetchInfoOutput, int, error) {
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -97,7 +97,7 @@ func runHandleInfo(request events.APIGatewayV2HTTPRequest, transportCtx context.
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
 	}
 
-	return &infoOutput{
+	return &fetchInfoOutput{
 		Id:        userToken.Id,
 		Name:      userToken.Username,
 		Roles:     userDoc.Roles,

@@ -34,6 +34,7 @@ var (
 	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
+	LOG_GROUP_NAME      = os.Getenv("LOG_GROUP_NAME")
 )
 
 func main() {

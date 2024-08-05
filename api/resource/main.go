@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
@@ -21,12 +22,11 @@ import (
 )
 
 var (
-	REGION                       = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
-	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
+	REGION              = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
 )
 
 func main() {
@@ -40,6 +40,11 @@ func run() error {
 	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
+	}
+
+	cloudwatchClient, err := cloudwatchlogs.NewFromConfig(&awsConfig)
+	if err != nil {
+		return err
 	}
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
@@ -77,15 +82,10 @@ func run() error {
 		return err
 	}
 
-	appClient, err := auth.CreateGithubAppClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)
-	if err != nil {
-		return err
-	}
-
 	httpRouter := router.NewRouter(routecontext.Context{
-		JwtOptions:      jwtOptions,
-		GithubAppClient: appClient,
-		Database:        databaseHandle,
+		CloudWatchClient: cloudwatchClient,
+		JwtOptions:       jwtOptions,
+		Database:         databaseHandle,
 	})
 
 	// httpRouter.AddRoute("GET", "/api/admin/finduser")

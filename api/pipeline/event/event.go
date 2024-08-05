@@ -17,19 +17,15 @@ import (
 func HandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	code, err := runHandleEvent(request, transportCtx, routeCtx)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{
-			StatusCode: code,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: err.Error(),
-		}, nil
+		// Log with Printf like a real man
+		fmt.Printf("EVENT ERROR: %s", err.Error())
 	}
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: code,
 	}, nil
 }
 
+// createPseudoRequest creates a pseudo http.Request that can be parsed by the webhook client.
 func createPseudoRequest(body []byte, headers map[string]string) (*http.Request, error) {
 	req, err := http.NewRequest("POST", "/", bytes.NewBuffer(body))
 	if err != nil {
@@ -59,16 +55,15 @@ func runHandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context
 
 	status := http.StatusOK
 
-	switch payload.(type) {
+	switch p := payload.(type) {
 	case github.InstallationPayload:
-		status, err = handleAppInstallation(transportCtx, routeCtx, payload.(github.InstallationPayload))
+		status, err = handleAppInstallation(transportCtx, routeCtx, p)
 	case github.InstallationRepositoriesPayload:
-		status, err = handleRepoUpdate(transportCtx, routeCtx, payload.(github.InstallationRepositoriesPayload))
+		status, err = handleRepoUpdate(transportCtx, routeCtx, p)
 	case github.PushPayload:
-		status, err = handleRepoPush(transportCtx, routeCtx, payload.(github.PushPayload))
+		status, err = handleRepoPush(transportCtx, routeCtx, p)
 	}
 	if err != nil {
-		// TODO: Log to CloudWatch
 		return status, err
 	}
 
