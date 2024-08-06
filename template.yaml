@@ -874,6 +874,23 @@ Resources:
     Properties:
       Name: "battleshiper-pipeline-eventbus"
 
+
+  BattleshiperPipelineEventBusPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-eventbus-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "events:PutEvents"
+            Resource: !GetAtt BattleshiperPipelineEventBus.Arn
+      Roles:
+        - !Ref BattleshiperPipelineBuildFuncRole
+        
+
+
   BattleshiperPipelineBuildFuncRole:
     Type: AWS::IAM::Role
     Properties:
@@ -898,37 +915,70 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      Role: !GetAtt BattleshiperBuildFuncRole.Arn
+      Role: !GetAtt BattleshiperPipelineBuildFuncRole.Arn
       Events:
-        GithubEvent:
-          Type: HttpApi
-          Properties:
-            Path: /api/
-            Method: ANY
-            ApiId: !Ref BattleshiperApi
-        Push:
+        BuildEvent:
           Type: EventBridgeRule
           Properties:
-            RuleName: "battleshiper-pipeline-push-rule"
-            EventBusName: !GetAtt BattleshiperPipelineEventBus.Arn
+            RuleName: "battleshiper-pipeline-build-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
             State: ENABLED
             RetryPolicy:
               MaximumEventAgeInSeconds: 120
               MaximumRetryAttempts: 5
             Pattern:
               source:
-                - "aws.partner/github.com"
+                - "ch.megakuul.battleshiper"
               detail-type:
-                - "PushEvent"
+                - "battleshiper.build"
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
-          COGNITO_DOMAIN: !Sub "https://${BattleshiperUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
-          CLIENT_ID: !Ref BattleshiperUserPoolClient
-          CLIENT_SECRET: !GetAtt BattleshiperUserPoolClient.ClientSecret
-          REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
-    
+
+
+  BattleshiperPipelineDeployFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineDeployFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/build
+      Handler: build
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Role: !GetAtt BattleshiperPipelineDeployFuncRole.Arn
+      Events:
+        BuildEvent:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: "battleshiper-pipeline-deploy-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
+            State: ENABLED
+            RetryPolicy:
+              MaximumEventAgeInSeconds: 120
+              MaximumRetryAttempts: 5
+            Pattern:
+              source:
+                - "ch.megakuul.battleshiper"
+              detail-type:
+                - "battleshiper.deploy"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
 
 Outputs:
   BattleshiperAPI:
