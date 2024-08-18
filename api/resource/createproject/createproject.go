@@ -7,12 +7,16 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -121,21 +125,23 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	_, err = projectCollection.InsertOne(transportCtx, project.Project{
-		Name:    createProjectInput.ProjectName,
-		Deleted: false,
+		Name:        createProjectInput.ProjectName,
+		OwnerId:     userDoc.Id,
+		Deleted:     false,
+		Initialized: false,
 		Repository: project.Repository{
 			Id:     createProjectInput.Repository.Id,
 			URL:    createProjectInput.Repository.URL,
 			Branch: createProjectInput.Repository.Branch,
 		},
-		LastBuildResult: project.BuildResult{
-			Successful:       false,
-			DeploymentOutput: "",
-			BuildOutput:      "",
-		},
-		LogGroup:     "",
 		BuildCommand: createProjectInput.BuildCommand,
-		OwnerId:      userDoc.Id,
+
+		InfrastructureStackId: "",
+		ApiRoutePath:          "",
+		StaticBucketPath:      "",
+		FunctionBucketPath:    "",
+		BuildAssetBucketPath:  "",
+		LogGroup:              "",
 	})
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -144,7 +150,28 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to insert project to database")
 	}
 
+	initRequest := &event.InitRequest{
+		ProjectName: createProjectInput.ProjectName,
+	}
+	initRequestRaw, err := json.Marshal(initRequest)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize init request")
+	}
+
+	eventEntry := types.PutEventsRequestEntry{
+		Source:       aws.String("ch.megakuul.battleshiper"),
+		DetailType:   aws.String("battleshiper.init"),
+		Detail:       aws.String(string(initRequestRaw)),
+		EventBusName: aws.String(routeCtx.EventBus),
+	}
+	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
+		Entries: []types.PutEventsRequestEntry{eventEntry},
+	})
+	if err != nil || res.FailedEntryCount > 0 {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")
+	}
+
 	return &createProjectOutput{
-		Message: "project created",
+		Message: "project created; project infrastructure is being initialized...",
 	}, http.StatusOK, nil
 }

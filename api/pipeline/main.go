@@ -64,6 +64,8 @@ func run() error {
 	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
 		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
 		{FieldNames: []string{"github_data.installation_id"}, SortingOrder: 1, Unique: true},
+		{FieldNames: []string{"repository.id"}, SortingOrder: 1, Unique: false},
+		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
 	})
 
 	webhookClient, err := auth.CreateGithubWebhookClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)

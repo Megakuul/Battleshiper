@@ -10,9 +10,16 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/megakuul/battleshiper/api/resource/createproject"
+	"github.com/megakuul/battleshiper/api/resource/deleteproject"
+	"github.com/megakuul/battleshiper/api/resource/fetchlog"
+	"github.com/megakuul/battleshiper/api/resource/listproject"
+	"github.com/megakuul/battleshiper/api/resource/listrepository"
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
+	"github.com/megakuul/battleshiper/api/resource/updateproject"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -27,6 +34,7 @@ var (
 	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
+	EVENTBUS_NAME       = os.Getenv("EVENTBUS_NAME")
 )
 
 func main() {
@@ -43,6 +51,8 @@ func run() error {
 	}
 
 	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
+
+	eventClient := eventbridge.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -83,9 +93,16 @@ func run() error {
 		CloudWatchClient: cloudwatchClient,
 		JwtOptions:       jwtOptions,
 		Database:         databaseHandle,
+		EventClient:      eventClient,
+		EventBus:         EVENTBUS_NAME,
 	})
 
-	// httpRouter.AddRoute("GET", "/api/admin/finduser")
+	httpRouter.AddRoute("GET", "/api/resource/listrepository", listrepository.HandleListRepositories)
+	httpRouter.AddRoute("GET", "/api/resource/listproject", listproject.HandleListProject)
+	httpRouter.AddRoute("GET", "/api/resource/fetchlog", fetchlog.HandleFetchLog)
+	httpRouter.AddRoute("POST", "/api/resource/createproject", createproject.HandleCreateProject)
+	httpRouter.AddRoute("PATCH", "/api/resource/updateproject", updateproject.HandleUpdateProject)
+	httpRouter.AddRoute("DELETE", "/api/resource/deleteproject", deleteproject.HandleDeleteProject)
 
 	lambda.Start(httpRouter.Route)
 

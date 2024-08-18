@@ -88,8 +88,8 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	specifiedProject := &project.Project{}
 	err = projectCollection.FindOne(transportCtx,
 		bson.M{
-			"owner_id":     userToken.Id,
-			"project_name": fetchLogInput.ProjectName,
+			"owner_id": userToken.Id,
+			"name":     fetchLogInput.ProjectName,
 		},
 	).Decode(&specifiedProject)
 	if err == mongo.ErrNoDocuments {
@@ -99,7 +99,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	activeLogStream, err := routeCtx.CloudWatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{
-		LogGroupName: specifiedProject.LogGroup,
+		LogGroupName: aws.String(specifiedProject.LogGroup),
 		OrderBy:      types.OrderByLastEventTime,
 		Descending:   aws.Bool(true),
 		Limit:        aws.Int32(1),

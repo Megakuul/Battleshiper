@@ -34,11 +34,19 @@ type Project struct {
 	Name                 string           `bson:"name"`
 	OwnerId              string           `bson:"owner_id"`
 	Deleted              bool             `bson:"deleted"`
-	LogGroup             string           `bson:"log_group"`
+	Initialized          bool             `bson:"initialized"`
 	Repository           Repository       `bson:"repository"`
 	BuildCommand         string           `bson:"build_command"`
-	BuildAssetBucketPath string           `bson:"build_asset_bucket_path"`
 	LastEventResult      EventResult      `bson:"last_event_result"`
 	LastBuildResult      BuildResult      `bson:"last_build_result"`
 	LastDeploymentResult DeploymentResult `bson:"last_deployment_result"`
+
+	// dedicated project resources are built on top of this stack
+	InfrastructureStackId string `bson:"infrastructure_stack_id"`
+	// resources that are used from the shared infrastructure are listed below
+	ApiRoutePath         string `bson:"api_route_path"`
+	StaticBucketPath     string `bson:"static_bucket_path"`
+	FunctionBucketPath   string `bson:"function_bucket_path"`
+	BuildAssetBucketPath string `bson:"build_asset_bucket_path"`
+	LogGroup             string `bson:"log_group"`
 }

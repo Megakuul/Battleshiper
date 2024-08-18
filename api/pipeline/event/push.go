@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
+	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -46,10 +47,11 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
 	projectCursor, err := projectCollection.Find(transportCtx,
-		bson.M{
-			"owner_id":      userDoc.Id,
-			"deleted":       false,
-			"repository.id": event.Repository.ID,
+		bson.D{
+			{Key: "repository.id", Value: event.Repository.ID},
+			{Key: "owner_id", Value: userDoc.Id},
+			{Key: "deleted", Value: false},
+			{Key: "initialized", Value: true},
 		},
 	)
 	if err != nil {

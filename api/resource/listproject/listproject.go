@@ -15,26 +15,42 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
+type eventResultOutput struct {
+	ExecutionIdentifier string `json:"execution_identifier"`
+	Timestamp           int64  `json:"timestamp"`
+	Successful          bool   `json:"successful"`
+	EventOutput         string `json:"event_output"`
+}
+
 type buildResultOutput struct {
-	Successful       bool   `json:"successful"`
-	DeploymentOutput string `json:"deployment_output"`
-	BuildOutput      string `json:"build_output"`
+	ExecutionIdentifier string `json:"execution_identifier"`
+	Timestamp           int64  `json:"timestamp"`
+	Successful          bool   `json:"successful"`
+	BuildOutput         string `json:"build_output"`
+}
+
+type deploymentResultOutput struct {
+	ExecutionIdentifier string `json:"execution_identifier"`
+	Timestamp           int64  `json:"timestamp"`
+	Successful          bool   `json:"successful"`
+	DeploymentOutput    string `json:"deployment_output"`
 }
 
 type repositoryOutput struct {
-	Id       int64  `json:"id"`
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
-	URL      string `json:"url"`
-	Branch   string `json:"branch"`
+	Id     int64  `json:"id"`
+	URL    string `json:"url"`
+	Branch string `json:"branch"`
 }
 
 type projectOutput struct {
-	Name            string            `json:"name"`
-	Deleted         bool              `json:"deleted"`
-	BuildCommand    string            `json:"build_command"`
-	Repository      repositoryOutput  `json:"repository"`
-	LastBuildResult buildResultOutput `json:"last_build_result"`
+	Name                 string                 `json:"name"`
+	Deleted              bool                   `json:"deleted"`
+	Initialized          bool                   `json:"initialized"`
+	BuildCommand         string                 `json:"build_command"`
+	Repository           repositoryOutput       `json:"repository"`
+	LastEventResult      eventResultOutput      `json:"last_event_result"`
+	LastBuildResult      buildResultOutput      `json:"last_build_result"`
+	LastDeploymentResult deploymentResultOutput `json:"last_deployment_result"`
 }
 
 type listProjectOutput struct {
@@ -105,18 +121,30 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		foundProjectOutput = append(foundProjectOutput, projectOutput{
 			Name:         project.Name,
 			Deleted:      project.Deleted,
+			Initialized:  project.Initialized,
 			BuildCommand: project.BuildCommand,
+			LastEventResult: eventResultOutput{
+				ExecutionIdentifier: project.LastEventResult.ExecutionIdentifier,
+				Timestamp:           project.LastEventResult.Timepoint,
+				Successful:          project.LastEventResult.Successful,
+				EventOutput:         project.LastEventResult.EventOutput,
+			},
 			LastBuildResult: buildResultOutput{
-				Successful:       project.LastBuildResult.Successful,
-				DeploymentOutput: project.LastBuildResult.DeploymentOutput,
-				BuildOutput:      project.LastBuildResult.BuildOutput,
+				ExecutionIdentifier: project.LastBuildResult.ExecutionIdentifier,
+				Timestamp:           project.LastBuildResult.Timepoint,
+				Successful:          project.LastBuildResult.Successful,
+				BuildOutput:         project.LastBuildResult.BuildOutput,
+			},
+			LastDeploymentResult: deploymentResultOutput{
+				ExecutionIdentifier: project.LastDeploymentResult.ExecutionIdentifier,
+				Timestamp:           project.LastDeploymentResult.Timepoint,
+				Successful:          project.LastDeploymentResult.Successful,
+				DeploymentOutput:    project.LastDeploymentResult.DeploymentOutput,
 			},
 			Repository: repositoryOutput{
-				Id:       project.Repository.Id,
-				Name:     project.Repository.Name,
-				FullName: project.Repository.FullName,
-				URL:      project.Repository.URL,
-				Branch:   project.Repository.Branch,
+				Id:     project.Repository.Id,
+				URL:    project.Repository.URL,
+				Branch: project.Repository.Branch,
 			},
 		})
 	}

@@ -39,7 +39,8 @@ Resources:
     Properties:
       InternetGatewayId: !Ref BattleshiperVPCInternetGateway
       VpcId: !Ref BattleshiperVPC
-  
+
+
   BattleshiperApiSubnetRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -85,11 +86,64 @@ Resources:
       CidrBlock: "10.100.30.0/24"
       AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
 
-  BattleshiperApiSubnet1RouteTableAssociation:
+  BattleshiperApiSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref BattleshiperApiSubnet3
       RouteTableId: !Ref BattleshiperApiSubnetRouteTable
+
+
+  BattleshiperPipelineSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+
+  BattleshiperPipelineSubnetInternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref BattleshiperVPCInternetGateway
+
+  BattleshiperPipelineSubnet1:
+    Type: AWS::VPC::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.210.0/24"
+      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperPipelineSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperPipelineSubnet1
+      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
+
+  BattleshiperPipelineSubnet2:
+    Type: AWS::VPC::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.220.0/24"
+      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+      
+  BattleshiperPipelineSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperPipelineSubnet2
+      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
+
+  BattleshiperPipelineSubnet3:
+    Type: AWS::VPC::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperVPC
+      CidrBlock: "10.100.230.0/24"
+      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperPipelineSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperPipelineSubnet3
+      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
+
 
   BattleshiperDbSubnet1:
     Type: AWS::EC2::Subnet
@@ -135,6 +189,18 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: "battleshiper-api-egress"
+      GroupDescription: "Allows HTTPS egress traffic"
+      VpcId: !Ref BattleshiperVPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  BattleshiperPipelineEgressGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "battleshiper-pipeline-egress"
       GroupDescription: "Allows HTTPS egress traffic"
       VpcId: !Ref BattleshiperVPC
       SecurityGroupEgress:
@@ -527,6 +593,7 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -555,6 +622,14 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperApiSubnet1
+          - !Ref BattleshiperApiSubnet2
+          - !Ref BattleshiperApiSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperPipelineFuncRole.Arn
       Events:
       Events:
@@ -602,11 +677,6 @@ Resources:
               - !GetAtt BattleshiperProjectStaticBucket.Arn
             Principal:
               Service: cloudfront.amazonaws.com
-            Condition:
-              StringEquals:
-                "AWS:SourceArn": 
-                  - !TODO Cloudfront
-                  - !TODO Cloudfront prerender
 
   BattleshiperProjectStaticBucketPolicy:
     Type: AWS::IAM::Policy
@@ -619,11 +689,14 @@ Resources:
               - "s3:GetObject"
               - "s3:ListBucket"
               - "s3:PutObject"
+              - "s3:DeleteObject"
             Effect: Allow
             Resource:
               - !GetAtt BattleshiperProjectStaticBucket.Arn
       Roles: 
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
 
   BattleshiperProjectFunctionBucket:
     Type: AWS::S3::Bucket
@@ -643,12 +716,46 @@ Resources:
               - "s3:GetObject"
               - "s3:ListBucket"
               - "s3:PutObject"
+              - "s3:DeleteObject"
             Effect: Allow
             Resource:
               - !GetAtt BattleshiperProjectFunctionBucket.Arn
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
+
+  BattleshiperProjectBuildAssetBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-build-asset-bucket"
+      LifecycleConfiguration:
+        Rules:
+          - Id: "delete-assets"
+            Status: "Enabled"
+            ExpirationInDays: 3
+            Prefix: ""
+  
+  BattleshiperProjectBuildAssetBucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-build-asset-bucket-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Effect: Allow
+            Resource:
+              - !GetAtt BattleshiperProjectBuildAssetBucket.Arn
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
 
   # ============================================
@@ -888,8 +995,10 @@ Resources:
             Resource: !GetAtt BattleshiperPipelineEventBus.Arn
       Roles:
         - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperResourceFuncRole
 
-  BattleshiperPipelineBuildFuncRole:
+
+  BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -903,22 +1012,30 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperPipelineBuildFunc:
+  BattleshiperPipelineInitFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
-      CodeUri: pipeline/build
-      Handler: build
+      CodeUri: pipeline/init
+      Handler: init
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      Role: !GetAtt BattleshiperPipelineBuildFuncRole.Arn
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
+      Role: !GetAtt BattleshiperPipelineInitFuncRole.Arn
       Events:
         BuildEvent:
           Type: EventBridgeRule
           Properties:
-            RuleName: "battleshiper-pipeline-build-rule"
+            RuleName: "battleshiper-pipeline-init-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
             State: ENABLED
             RetryPolicy:
@@ -928,10 +1045,15 @@ Resources:
               source:
                 - "ch.megakuul.battleshiper"
               detail-type:
-                - "battleshiper.build"
+                - "battleshiper.init"
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
 
 
   BattleshiperPipelineDeployFuncRole:
@@ -953,14 +1075,22 @@ Resources:
     Metadata:
       BuildMethod: go1.x
     Properties:
-      CodeUri: pipeline/build
-      Handler: build
+      CodeUri: pipeline/deploy
+      Handler: deploy
       Runtime: provided.al2023
       Architectures:
         - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
       Role: !GetAtt BattleshiperPipelineDeployFuncRole.Arn
       Events:
-        BuildEvent:
+        DeployEvent:
           Type: EventBridgeRule
           Properties:
             RuleName: "battleshiper-pipeline-deploy-rule"
@@ -977,6 +1107,63 @@ Resources:
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
+
+  BattleshiperPipelineDeleteFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineDeleteFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/delete
+      Handler: delete
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
+      Role: !GetAtt BattleshiperPipelineDeleteFuncRole.Arn
+      Events:
+        BuildEvent:
+          Type: Schedule
+          Properties:
+            Name: "battleshiper-pipeline-delete-rule"
+            Enabled: true
+            Description: "schedules resource deletion of all projects marked as 'deleted'"
+            Schedule: "rate(1 hour)"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+          
 
 Outputs:
   BattleshiperAPI:

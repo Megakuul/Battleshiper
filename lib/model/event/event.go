@@ -1,6 +1,10 @@
 // Contains types used for eventbus requests.
 package event
 
+type InitRequest struct {
+	ProjectName string `json:"project_name"`
+}
+
 type BuildRequest struct {
 	ExecutionIdentifier  string `json:"execution_identifier"`
 	RepositoryURL        string `json:"repository_url"`
