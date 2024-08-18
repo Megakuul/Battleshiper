@@ -28,7 +28,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": userId}, bson.M{
 		"$set": bson.M{
 			"github_data": user.GithubData{
-				InstallationId: int(event.Installation.ID),
+				InstallationId: event.Installation.ID,
 				Repositories:   installedRepos,
 			},
 		},

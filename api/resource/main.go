@@ -42,10 +42,7 @@ func run() error {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
-	cloudwatchClient, err := cloudwatchlogs.NewFromConfig(&awsConfig)
-	if err != nil {
-		return err
-	}
+	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {

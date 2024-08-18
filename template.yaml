@@ -571,6 +571,7 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -874,7 +875,6 @@ Resources:
     Properties:
       Name: "battleshiper-pipeline-eventbus"
 
-
   BattleshiperPipelineEventBusPolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -887,9 +887,7 @@ Resources:
               - "events:PutEvents"
             Resource: !GetAtt BattleshiperPipelineEventBus.Arn
       Roles:
-        - !Ref BattleshiperPipelineBuildFuncRole
-        
-
+        - !Ref BattleshiperPipelineFuncRole
 
   BattleshiperPipelineBuildFuncRole:
     Type: AWS::IAM::Role

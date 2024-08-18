@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/pipeline/event"
@@ -25,6 +26,7 @@ var (
 	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
+	EVENTBUS_NAME                = os.Getenv("EVENTBUS_NAME")
 )
 
 func main() {
@@ -39,6 +41,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
+
+	eventbridgeClient := eventbridge.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -70,6 +74,8 @@ func run() error {
 	httpRouter := router.NewRouter(routecontext.Context{
 		WebhookClient: webhookClient,
 		Database:      databaseHandle,
+		EventClient:   eventbridgeClient,
+		EventBus:      EVENTBUS_NAME,
 	})
 
 	httpRouter.AddRoute("POST", "/api/pipeline/event", event.HandleEvent)
