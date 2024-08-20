@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
+	"github.com/megakuul/battleshiper/pipeline/deploy/initproject"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -52,7 +54,9 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
-	lambda.Start(httpRouter.Route)
+	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
+		Database: databaseHandle,
+	}))
 
 	return nil
 }

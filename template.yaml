@@ -594,6 +594,7 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -647,6 +648,7 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -974,7 +976,40 @@ Resources:
 
 
   # ============================================
-  # =========== Codebuild Pipeline =============
+  # ======= Pipeline Ticket Credentials ========
+  # ============================================
+
+  BattleshiperPipelineTicketCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-pipeline-ticket-credentials"
+      Description: "Battleshiper pipeline ticket secret used to sign and verify pipeline tickets."
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: "secret"
+        PasswordLength: 40
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperPipelineTicketCredentialPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-ticket-credentials-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource: !Ref BattleshiperPipelineTicketCredentials
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+
+
+  # ============================================
+  # =========== Pipeline =======================
   # ============================================
 
   BattleshiperPipelineEventBus:
@@ -1052,6 +1087,7 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1110,6 +1146,7 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 

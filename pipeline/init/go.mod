@@ -5,6 +5,7 @@ go 1.23.0
 require github.com/aws/aws-sdk-go-v2/config v1.27.28
 
 require (
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
@@ -31,5 +32,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.4 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
+	github.com/megakuul/battleshiper/lib/helper v0.1.3
 	go.mongodb.org/mongo-driver v1.16.1
 )

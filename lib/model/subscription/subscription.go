@@ -4,8 +4,9 @@ package subscription
 const SUBSCRIPTION_COLLECTION = "subscription"
 
 type Subscription struct {
-	Id                      string `bson:"id"`
-	Name                    string `bson:"name"`
-	DailyPipelineExecutions int    `bson:"daily_pipeline_executions"`
-	Projects                int    `bson:"projects"`
+	Id                       string `bson:"id"`
+	Name                     string `bson:"name"`
+	DailyPipelineBuilds      int    `bson:"daily_pipeline_builds"`
+	DailyPipelineDeployments int    `bson:"daily_pipeline_deployments"`
+	Projects                 int    `bson:"projects"`
 }
