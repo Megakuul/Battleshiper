@@ -74,9 +74,9 @@ func CreateTicket(options *TicketOptions, userId, project string) (string, error
 }
 
 // ParseTicket verifies the ticket based on the provided options. It returns the ticket claims or an error if invalid.
-func ParseTicket(options *TicketOptions, token string) (*TicketClaims, error) {
+func ParseTicket(options *TicketOptions, ticket string) (*TicketClaims, error) {
 	claims := &TicketClaims{}
-	parsedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(ticket, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(options.Secret), nil
 	}, jwt.WithValidMethods([]string{"HS256"}))
 

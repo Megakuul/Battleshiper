@@ -9,8 +9,7 @@ type EventEndpoint struct {
 }
 
 type InitRequest struct {
-	InitTicket  string `json:"init_ticket"`
-	ProjectName string `json:"project_name"`
+	InitTicket string `json:"init_ticket"`
 }
 
 type BuildRequest struct {

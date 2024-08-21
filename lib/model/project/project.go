@@ -35,8 +35,10 @@ type Project struct {
 	OwnerId              string           `bson:"owner_id"`
 	Deleted              bool             `bson:"deleted"`
 	Initialized          bool             `bson:"initialized"`
+	Status               string           `bson:"status"`
 	Repository           Repository       `bson:"repository"`
 	BuildCommand         string           `bson:"build_command"`
+	OutputDirectory      string           `bson:"output_directory"`
 	LastEventResult      EventResult      `bson:"last_event_result"`
 	LastBuildResult      BuildResult      `bson:"last_build_result"`
 	LastDeploymentResult DeploymentResult `bson:"last_deployment_result"`

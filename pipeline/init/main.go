@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
+	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 	"github.com/megakuul/battleshiper/pipeline/deploy/initproject"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,7 +57,12 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
+		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
+		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
+	})
+
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", 0)
 	if err != nil {
 		return err
 	}

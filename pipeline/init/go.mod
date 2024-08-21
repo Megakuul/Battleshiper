@@ -2,7 +2,10 @@ module github.com/megakuul/battleshiper/pipeline/deploy
 
 go 1.23.0
 
-require github.com/aws/aws-sdk-go-v2/config v1.27.28
+require (
+	github.com/aws/aws-sdk-go-v2/config v1.27.28
+	github.com/megakuul/battleshiper/lib/model v0.1.13
+)
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.1 // indirect
@@ -33,6 +36,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.4 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
-	github.com/megakuul/battleshiper/lib/helper v0.1.5
+	github.com/megakuul/battleshiper/lib/helper v0.1.6
 	go.mongodb.org/mongo-driver v1.16.1
 )

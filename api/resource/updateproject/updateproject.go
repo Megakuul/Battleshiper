@@ -24,9 +24,10 @@ type repositoryInput struct {
 }
 
 type updateProjectInput struct {
-	ProjectName  string          `json:"project_name"`
-	BuildCommand string          `json:"build_command"`
-	Repository   repositoryInput `json:"repository"`
+	ProjectName     string          `json:"project_name"`
+	BuildCommand    string          `json:"build_command"`
+	OutputDirectory string          `json:"output_directory"`
+	Repository      repositoryInput `json:"repository"`
 }
 
 type updateProjectOutput struct {
@@ -92,6 +93,9 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	updateSpec := bson.M{}
 	if updateProjectInput.BuildCommand != "" {
 		updateSpec["build_command"] = updateProjectInput.BuildCommand
+	}
+	if updateProjectInput.OutputDirectory != "" {
+		updateSpec["output_directory"] = updateProjectInput.OutputDirectory
 	}
 	if updateProjectInput.Repository.Id != 0 {
 		updateSpec["repository"] = project.Repository{

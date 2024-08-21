@@ -46,7 +46,9 @@ type projectOutput struct {
 	Name                 string                 `json:"name"`
 	Deleted              bool                   `json:"deleted"`
 	Initialized          bool                   `json:"initialized"`
+	Status               string                 `json:"status"`
 	BuildCommand         string                 `json:"build_command"`
+	OutputDirectory      string                 `json:"output_directory"`
 	Repository           repositoryOutput       `json:"repository"`
 	LastEventResult      eventResultOutput      `json:"last_event_result"`
 	LastBuildResult      buildResultOutput      `json:"last_build_result"`
@@ -119,10 +121,12 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	foundProjectOutput := []projectOutput{}
 	for _, project := range foundProjectDocs {
 		foundProjectOutput = append(foundProjectOutput, projectOutput{
-			Name:         project.Name,
-			Deleted:      project.Deleted,
-			Initialized:  project.Initialized,
-			BuildCommand: project.BuildCommand,
+			Name:            project.Name,
+			Deleted:         project.Deleted,
+			Initialized:     project.Initialized,
+			Status:          project.Status,
+			BuildCommand:    project.BuildCommand,
+			OutputDirectory: project.OutputDirectory,
 			LastEventResult: eventResultOutput{
 				ExecutionIdentifier: project.LastEventResult.ExecutionIdentifier,
 				Timestamp:           project.LastEventResult.Timepoint,

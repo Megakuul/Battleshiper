@@ -100,12 +100,7 @@ func run() error {
 		return fmt.Errorf("failed to parse INIT_EVENT_TICKET_TTL environment variable")
 	}
 	initTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig,
-		context.TODO(),
-		TICKET_CREDENTIAL_ARN,
-		INIT_EVENT_ACTION,
-		time.Duration(initTicketTTL)*time.Second,
-	)
+		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}

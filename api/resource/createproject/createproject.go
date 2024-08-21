@@ -32,9 +32,10 @@ type repositoryInput struct {
 }
 
 type createProjectInput struct {
-	ProjectName  string          `json:"project_name"`
-	BuildCommand string          `json:"build_command"`
-	Repository   repositoryInput `json:"repository"`
+	ProjectName     string          `json:"project_name"`
+	BuildCommand    string          `json:"build_command"`
+	OutputDirectory string          `json:"output_directory"`
+	Repository      repositoryInput `json:"repository"`
 }
 
 type createProjectOutput struct {
@@ -125,7 +126,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
 	}
 
-	initTicket, err := pipeline.CreateTicket(routeCtx.InitTicketOptions, userDoc.Id, createProjectInput.ProjectName)
+	initTicket, err := pipeline.CreateTicket(routeCtx.InitEventOptions.TicketOpts, userDoc.Id, createProjectInput.ProjectName)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
@@ -135,12 +136,14 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		OwnerId:     userDoc.Id,
 		Deleted:     false,
 		Initialized: false,
+		Status:      "",
 		Repository: project.Repository{
 			Id:     createProjectInput.Repository.Id,
 			URL:    createProjectInput.Repository.URL,
 			Branch: createProjectInput.Repository.Branch,
 		},
-		BuildCommand: createProjectInput.BuildCommand,
+		BuildCommand:    createProjectInput.BuildCommand,
+		OutputDirectory: createProjectInput.OutputDirectory,
 
 		InfrastructureStackId: "",
 		ApiRoutePath:          "",
