@@ -136,18 +136,22 @@ func initiateProjectBuild(
 		return fmt.Errorf("subscription limit reached; no further pipeline builds can be performed")
 	}
 
-	deployTicket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, projectDoc.Name, "battleshiper.deploy")
+	deployTicket, err := pipeline.CreateTicket(routeCtx.DeployEventOptions.TicketOpts, userDoc.Id, projectDoc.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create pipeline ticket")
 	}
 
 	buildRequest := &event.BuildRequest{
-		DeployTicket:         deployTicket,
 		ExecutionIdentifier:  execIdentifier,
 		RepositoryURL:        projectDoc.Repository.URL,
-		EventBusName:         routeCtx.EventBus,
 		BuildCommand:         projectDoc.BuildCommand,
 		BuildAssetBucketPath: projectDoc.BuildAssetBucketPath,
+		DeployEndpoint: event.EventEndpoint{
+			EventBus: routeCtx.DeployEventOptions.EventBus,
+			Source:   routeCtx.DeployEventOptions.Source,
+			Action:   routeCtx.DeployEventOptions.Action,
+			Ticket:   deployTicket,
+		},
 	}
 	buildRequestRaw, err := json.Marshal(buildRequest)
 	if err != nil {
@@ -155,10 +159,10 @@ func initiateProjectBuild(
 	}
 
 	eventEntry := types.PutEventsRequestEntry{
-		Source:       aws.String("ch.megakuul.battleshiper"),
-		DetailType:   aws.String("battleshiper.build"),
+		Source:       aws.String(routeCtx.BuildEventOptions.Source),
+		DetailType:   aws.String(routeCtx.BuildEventOptions.Action),
 		Detail:       aws.String(string(buildRequestRaw)),
-		EventBusName: aws.String(routeCtx.EventBus),
+		EventBusName: aws.String(routeCtx.BuildEventOptions.EventBus),
 	}
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
 		Entries: []types.PutEventsRequestEntry{eventEntry},

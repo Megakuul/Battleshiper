@@ -55,8 +55,8 @@ github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD
 github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
 github.com/klauspost/compress v1.13.6 h1:P76CopJELS0TiO2mebmnzgWaajssP/EszplttgQxcgc=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
-github.com/megakuul/battleshiper/lib/helper v0.1.4 h1:Tcg6B5hrceYU1oXho84cVON9f/803S2Hbd52HQ8JRvs=
-github.com/megakuul/battleshiper/lib/helper v0.1.4/go.mod h1:fu6914q5IxqyEi1A7eAUuUaKhblYaBlLDoFk/yXwEPU=
+github.com/megakuul/battleshiper/lib/helper v0.1.5 h1:maDpX+I08iQsrMcIF0IAaRAZr0uEV3ZyK5TxvE+V1Rw=
+github.com/megakuul/battleshiper/lib/helper v0.1.5/go.mod h1:fu6914q5IxqyEi1A7eAUuUaKhblYaBlLDoFk/yXwEPU=
 github.com/megakuul/battleshiper/lib/model v0.1.12 h1:NCOhWx6zIIC5QGC51jW9eVShTxff+i7EGRPtsTX1RAw=
 github.com/megakuul/battleshiper/lib/model v0.1.12/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
 github.com/megakuul/battleshiper/lib/router v0.1.0 h1:gbVsSiiIkzkbZE/SlVBSU9zUaiV5XHaeertVCV6uTDo=

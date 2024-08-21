@@ -9,9 +9,9 @@ import (
 
 // Context provides data to route handlers.
 type Context struct {
-	Database      *mongo.Database
-	WebhookClient *github.Webhook
-	TicketOptions *pipeline.TicketOptions
-	EventClient   *eventbridge.Client
-	EventBus      string
+	Database           *mongo.Database
+	WebhookClient      *github.Webhook
+	EventClient        *eventbridge.Client
+	BuildEventOptions  *pipeline.EventOptions
+	DeployEventOptions *pipeline.EventOptions
 }

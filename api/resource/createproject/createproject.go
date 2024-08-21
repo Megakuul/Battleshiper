@@ -166,10 +166,10 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	eventEntry := types.PutEventsRequestEntry{
-		Source:       aws.String("ch.megakuul.battleshiper"),
-		DetailType:   aws.String("battleshiper.init"),
+		Source:       aws.String(routeCtx.InitEventOptions.Source),
+		DetailType:   aws.String(routeCtx.InitEventOptions.Action),
 		Detail:       aws.String(string(initRequestRaw)),
-		EventBusName: aws.String(routeCtx.EventBus),
+		EventBusName: aws.String(routeCtx.InitEventOptions.EventBus),
 	}
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
 		Entries: []types.PutEventsRequestEntry{eventEntry},

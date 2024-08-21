@@ -36,10 +36,11 @@ var (
 	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME         = os.Getenv("EVENTBUS_NAME")
 	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
-	INIT_TICKET_ACTION    = os.Getenv("INIT_TICKET_ACTION")
-	INIT_TICKET_TTL       = os.Getenv("INIT_TICKET_TTL")
+	INIT_EVENTBUS_NAME    = os.Getenv("INIT_EVENTBUS_NAME")
+	INIT_EVENT_SOURCE     = os.Getenv("INIT_EVENT_SOURCE")
+	INIT_EVENT_ACTION     = os.Getenv("INIT_TICKET_ACTION")
+	INIT_EVENT_TICKET_TTL = os.Getenv("INIT_TICKET_TTL")
 )
 
 func main() {
@@ -94,22 +95,28 @@ func run() error {
 		return err
 	}
 
-	initTicketTTL, err := strconv.Atoi(INIT_TICKET_TTL)
+	initTicketTTL, err := strconv.Atoi(INIT_EVENT_TICKET_TTL)
 	if err != nil {
-		return fmt.Errorf("failed to parse INIT_TICKET_TTL environment variable")
+		return fmt.Errorf("failed to parse INIT_EVENT_TICKET_TTL environment variable")
 	}
-	initTicketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_TICKET_ACTION, time.Duration(initTicketTTL*time.Second))
+	initTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig,
+		context.TODO(),
+		TICKET_CREDENTIAL_ARN,
+		INIT_EVENT_ACTION,
+		time.Duration(initTicketTTL)*time.Second,
+	)
 	if err != nil {
 		return err
 	}
+	initEventOptions := pipeline.CreateEventOptions(INIT_EVENTBUS_NAME, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, initTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		CloudWatchClient:  cloudwatchClient,
-		JwtOptions:        jwtOptions,
-		Database:          databaseHandle,
-		EventClient:       eventClient,
-		EventBus:          EVENTBUS_NAME,
-		InitTicketOptions: initTicketOptions,
+		CloudWatchClient: cloudwatchClient,
+		JwtOptions:       jwtOptions,
+		Database:         databaseHandle,
+		EventClient:      eventClient,
+		InitEventOptions: initEventOptions,
 	})
 
 	httpRouter.AddRoute("GET", "/api/resource/listrepository", listrepository.HandleListRepositories)

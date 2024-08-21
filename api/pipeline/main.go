@@ -28,9 +28,14 @@ var (
 	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME                = os.Getenv("EVENTBUS_NAME")
 	TICKET_CREDENTIAL_ARN        = os.Getenv("TICKET_CREDENTIAL_ARN")
-	TICKET_TTL                   = os.Getenv("TICKET_TTL")
+	BUILD_EVENTBUS_NAME          = os.Getenv("BUILD_EVENTBUS_NAME")
+	BUILD_EVENT_SOURCE           = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION           = os.Getenv("BUILD_EVENT_ACTION")
+	DEPLOY_EVENTBUS_NAME         = os.Getenv("DEPLOY_EVENTBUS_NAME")
+	DEPLOY_EVENT_SOURCE          = os.Getenv("DEPLOY_EVENT_SOURCE")
+	DEPLOY_EVENT_ACTION          = os.Getenv("DEPLOY_EVENT_ACTION")
+	DEPLOY_EVENT_TICKET_TTL      = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
 )
 
 func main() {
@@ -77,21 +82,25 @@ func run() error {
 		return err
 	}
 
-	ticketTTL, err := strconv.Atoi(TICKET_TTL)
+	buildEventOptions := pipeline.CreateEventOptions(BUILD_EVENTBUS_NAME, BUILD_EVENT_SOURCE, BUILD_EVENT_ACTION, nil)
+
+	deployTicketTTL, err := strconv.Atoi(DEPLOY_EVENT_TICKET_TTL)
 	if err != nil {
-		return fmt.Errorf("failed to parse TICKET_TTL environment variable")
+		return fmt.Errorf("failed to parse DEPLOY_EVENT_TICKET_TTL environment variable")
 	}
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, time.Duration(ticketTTL*time.Second))
+	deployTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
+	deployEventOptions := pipeline.CreateEventOptions(DEPLOY_EVENTBUS_NAME, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, deployTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		WebhookClient: webhookClient,
-		Database:      databaseHandle,
-		TicketOptions: ticketOptions,
-		EventClient:   eventbridgeClient,
-		EventBus:      EVENTBUS_NAME,
+		WebhookClient:      webhookClient,
+		Database:           databaseHandle,
+		EventClient:        eventbridgeClient,
+		BuildEventOptions:  buildEventOptions,
+		DeployEventOptions: deployEventOptions,
 	})
 
 	httpRouter.AddRoute("POST", "/api/pipeline/event", event.HandleEvent)

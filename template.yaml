@@ -593,8 +593,11 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-          EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          INIT_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          INIT_EVENT_ACTION: "battleshiper.init"
+          INIT_EVENT_TICKET_TTL: 360
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -647,9 +650,14 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-          EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
-          DEPLOY_TICKET_TTL: 360
+          BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          BUILD_EVENT_ACTION: "battleshiper.build"
+          DEPLOY_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          DEPLOY_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          DEPLOY_EVENT_ACTION: "battleshiper.deploy"
+          DEPLOY_EVENT_TICKET_TTL: 600
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1075,7 +1083,7 @@ Resources:
             EventBusName: !Ref BattleshiperPipelineEventBus
             State: ENABLED
             RetryPolicy:
-              MaximumEventAgeInSeconds: 120
+              MaximumEventAgeInSeconds: 360
               MaximumRetryAttempts: 5
             Pattern:
               source:
