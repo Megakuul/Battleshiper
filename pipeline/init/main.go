@@ -10,18 +10,20 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 	"github.com/megakuul/battleshiper/pipeline/deploy/initproject"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
-	REGION              = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME       = os.Getenv("EVENTBUS_NAME")
+	REGION                = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
+	EVENTBUS_NAME         = os.Getenv("EVENTBUS_NAME")
+	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
 )
 
 func main() {
@@ -54,8 +56,14 @@ func run() error {
 	}()
 	databaseHandle := databaseClient.Database(DATABASE_NAME)
 
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	if err != nil {
+		return err
+	}
+
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database: databaseHandle,
+		Database:      databaseHandle,
+		TicketOptions: ticketOptions,
 	}))
 
 	return nil

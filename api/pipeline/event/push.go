@@ -136,13 +136,13 @@ func initiateProjectBuild(
 		return fmt.Errorf("subscription limit reached; no further pipeline builds can be performed")
 	}
 
-	ticket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, projectDoc.Name, "battleshiper.deploy", time.Minute*5)
+	deployTicket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, projectDoc.Name, "battleshiper.deploy")
 	if err != nil {
 		return fmt.Errorf("failed to create pipeline ticket")
 	}
 
 	buildRequest := &event.BuildRequest{
-		DeployTicket:         ticket,
+		DeployTicket:         deployTicket,
 		ExecutionIdentifier:  execIdentifier,
 		RepositoryURL:        projectDoc.Repository.URL,
 		EventBusName:         routeCtx.EventBus,

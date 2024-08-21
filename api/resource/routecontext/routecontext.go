@@ -10,10 +10,11 @@ import (
 
 // Context provides data to route handlers.
 type Context struct {
-	CloudWatchClient *cloudwatchlogs.Client
-	JwtOptions       *auth.JwtOptions
-	Database         *mongo.Database
-	TicketOptions    *pipeline.TicketOptions
-	EventClient      *eventbridge.Client
-	EventBus         string
+	CloudWatchClient  *cloudwatchlogs.Client
+	JwtOptions        *auth.JwtOptions
+	Database          *mongo.Database
+	EventClient       *eventbridge.Client
+	EventBus          string
+	InitEventOptions  *pipeline.EventOptions
+	InitTicketOptions *pipeline.TicketOptions
 }

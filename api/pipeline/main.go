@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -29,6 +30,7 @@ var (
 	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
 	EVENTBUS_NAME                = os.Getenv("EVENTBUS_NAME")
 	TICKET_CREDENTIAL_ARN        = os.Getenv("TICKET_CREDENTIAL_ARN")
+	TICKET_TTL                   = os.Getenv("TICKET_TTL")
 )
 
 func main() {
@@ -75,7 +77,11 @@ func run() error {
 		return err
 	}
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	ticketTTL, err := strconv.Atoi(TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse TICKET_TTL environment variable")
+	}
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, time.Duration(ticketTTL*time.Second))
 	if err != nil {
 		return err
 	}

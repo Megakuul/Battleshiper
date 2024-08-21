@@ -649,6 +649,7 @@ Resources:
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DEPLOY_TICKET_TTL: 360
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 

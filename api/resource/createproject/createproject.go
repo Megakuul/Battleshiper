@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -126,7 +125,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
 	}
 
-	ticket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, createProjectInput.ProjectName, "battleshiper.init", time.Minute*1)
+	initTicket, err := pipeline.CreateTicket(routeCtx.InitTicketOptions, userDoc.Id, createProjectInput.ProjectName)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
@@ -158,7 +157,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	initRequest := &event.InitRequest{
-		InitTicket:  ticket,
+		InitTicket:  initTicket,
 		ProjectName: createProjectInput.ProjectName,
 	}
 	initRequestRaw, err := json.Marshal(initRequest)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -37,6 +38,8 @@ var (
 	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
 	EVENTBUS_NAME         = os.Getenv("EVENTBUS_NAME")
 	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
+	INIT_TICKET_ACTION    = os.Getenv("INIT_TICKET_ACTION")
+	INIT_TICKET_TTL       = os.Getenv("INIT_TICKET_TTL")
 )
 
 func main() {
@@ -91,18 +94,22 @@ func run() error {
 		return err
 	}
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	initTicketTTL, err := strconv.Atoi(INIT_TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse INIT_TICKET_TTL environment variable")
+	}
+	initTicketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_TICKET_ACTION, time.Duration(initTicketTTL*time.Second))
 	if err != nil {
 		return err
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		CloudWatchClient: cloudwatchClient,
-		JwtOptions:       jwtOptions,
-		Database:         databaseHandle,
-		TicketOptions:    ticketOptions,
-		EventClient:      eventClient,
-		EventBus:         EVENTBUS_NAME,
+		CloudWatchClient:  cloudwatchClient,
+		JwtOptions:        jwtOptions,
+		Database:          databaseHandle,
+		EventClient:       eventClient,
+		EventBus:          EVENTBUS_NAME,
+		InitTicketOptions: initTicketOptions,
 	})
 
 	httpRouter.AddRoute("GET", "/api/resource/listrepository", listrepository.HandleListRepositories)

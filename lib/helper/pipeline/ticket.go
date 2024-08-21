@@ -13,6 +13,8 @@ import (
 
 type TicketOptions struct {
 	Secret string
+	Action string
+	TTL    time.Duration
 }
 
 type TicketClaims struct {
@@ -28,7 +30,7 @@ type ticketCredentials struct {
 
 // CreateTicketOptions fetches the ticketSecretArn containing "secret" from SecretsManager and constructs the TicketOptions.
 // The calling instance needs to have IAM access to the action "secretsmanager:GetSecretValue" on the provided ticketSecretArn.
-func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, ticketSecretARN string) (*TicketOptions, error) {
+func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, ticketSecretARN string, action string, ttl time.Duration) (*TicketOptions, error) {
 	secretManagerClient := secretsmanager.NewFromConfig(awsConfig)
 
 	secretRequest := &secretsmanager.GetSecretValueInput{
@@ -47,17 +49,18 @@ func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, tic
 
 	return &TicketOptions{
 		Secret: ticketCredentials.Secret,
+		TTL:    ttl,
 	}, nil
 }
 
 // CreateTicket generates a ticket based on the input options.
-func CreateTicket(options *TicketOptions, userId, project, action string, ttl time.Duration) (string, error) {
+func CreateTicket(options *TicketOptions, userId, project string) (string, error) {
 	claims := &TicketClaims{
 		UserID:  userId,
 		Project: project,
-		Action:  action,
+		Action:  options.Action,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(options.TTL)),
 		},
 	}
 
