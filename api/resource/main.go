@@ -22,6 +22,7 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/updateproject"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -29,12 +30,13 @@ import (
 )
 
 var (
-	REGION              = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME       = os.Getenv("EVENTBUS_NAME")
+	REGION                = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
+	EVENTBUS_NAME         = os.Getenv("EVENTBUS_NAME")
+	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
 )
 
 func main() {
@@ -89,10 +91,16 @@ func run() error {
 		return err
 	}
 
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
 		CloudWatchClient: cloudwatchClient,
 		JwtOptions:       jwtOptions,
 		Database:         databaseHandle,
+		TicketOptions:    ticketOptions,
 		EventClient:      eventClient,
 		EventBus:         EVENTBUS_NAME,
 	})

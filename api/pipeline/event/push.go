@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
@@ -131,11 +132,17 @@ func initiateProjectBuild(
 		return fmt.Errorf("failed to update user limit counter on database")
 	}
 
-	if updatedUserDoc.LimitCounter.PipelineExecutions > subscriptionDoc.DailyPipelineExecutions {
-		return fmt.Errorf("subscription limit reached; no further pipeline executions can be performed")
+	if updatedUserDoc.LimitCounter.PipelineBuilds > subscriptionDoc.DailyPipelineBuilds {
+		return fmt.Errorf("subscription limit reached; no further pipeline builds can be performed")
+	}
+
+	ticket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, projectDoc.Name, "battleshiper.deploy", time.Minute*5)
+	if err != nil {
+		return fmt.Errorf("failed to create pipeline ticket")
 	}
 
 	buildRequest := &event.BuildRequest{
+		DeployTicket:         ticket,
 		ExecutionIdentifier:  execIdentifier,
 		RepositoryURL:        projectDoc.Repository.URL,
 		EventBusName:         routeCtx.EventBus,

@@ -16,6 +16,7 @@ import (
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
@@ -27,6 +28,7 @@ var (
 	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
 	EVENTBUS_NAME                = os.Getenv("EVENTBUS_NAME")
+	TICKET_CREDENTIAL_ARN        = os.Getenv("TICKET_CREDENTIAL_ARN")
 )
 
 func main() {
@@ -73,9 +75,15 @@ func run() error {
 		return err
 	}
 
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
 		WebhookClient: webhookClient,
 		Database:      databaseHandle,
+		TicketOptions: ticketOptions,
 		EventClient:   eventbridgeClient,
 		EventBus:      EVENTBUS_NAME,
 	})

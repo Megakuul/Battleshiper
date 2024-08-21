@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,6 +17,7 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
@@ -124,6 +126,11 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
 	}
 
+	ticket, err := pipeline.CreateTicket(routeCtx.TicketOptions, userDoc.Id, createProjectInput.ProjectName, "battleshiper.init", time.Minute*1)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
+	}
+
 	_, err = projectCollection.InsertOne(transportCtx, project.Project{
 		Name:        createProjectInput.ProjectName,
 		OwnerId:     userDoc.Id,
@@ -151,6 +158,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	initRequest := &event.InitRequest{
+		InitTicket:  ticket,
 		ProjectName: createProjectInput.ProjectName,
 	}
 	initRequestRaw, err := json.Marshal(initRequest)
