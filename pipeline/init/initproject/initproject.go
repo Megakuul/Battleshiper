@@ -51,25 +51,8 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("failed to project from database")
 	}
 
-	if err := initializeDedicatedInfrastructure(projectDoc); err != nil {
-		result, err := projectCollection.UpdateOne(transportCtx, bson.D{
-			{Key: "name", Value: initClaims.Project},
-			{Key: "owner_id", Value: initClaims.UserID},
-		}, bson.M{
-			"$set": bson.M{
-				"status": fmt.Sprintf("initialization of dedicated project infrastructure failed: %v", err),
-			},
-		})
-		if err != nil || result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project on database")
-		}
-	}
-
-	if err := initializeSharedInfrastructure(projectDoc); err != nil {
-		result, err := projectCollection.UpdateOne(transportCtx, bson.D{
-			{Key: "name", Value: initClaims.Project},
-			{Key: "owner_id", Value: initClaims.UserID},
-		}, bson.M{
+	if err := initializeSharedInfrastructure(transportCtx, eventCtx, projectDoc); err != nil {
+		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"status": fmt.Sprintf("initialization of shared project infrastructure failed: %v", err),
 			},
@@ -79,10 +62,18 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		}
 	}
 
-	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
-		{Key: "name", Value: initClaims.Project},
-		{Key: "owner_id", Value: initClaims.UserID},
-	}, bson.M{
+	if err := initializeDedicatedInfrastructure(transportCtx, eventCtx, projectDoc); err != nil {
+		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
+			"$set": bson.M{
+				"status": fmt.Sprintf("initialization of dedicated project infrastructure failed: %v", err),
+			},
+		})
+		if err != nil || result.MatchedCount < 1 {
+			return fmt.Errorf("failed to update project on database")
+		}
+	}
+
+	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
 			"initialized": true,
 			"status":      "",
@@ -92,20 +83,4 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("failed to update project on database")
 	}
 	return nil
-
-	// TODO:
-	// - read project
-	// - add api routes (only determine and insert to database)
-	// - add bucket suffixes (only determine and insert to database)
-	// - create stack
-	// - add event rule sending the request to the batch
-	// - setup aws batch with permissions to insert to the asset-bucket and to send to battleshiper.deploy
-}
-
-func initializeSharedInfrastructure(projectDoc *project.Project) error {
-
-}
-
-func initializeDedicatedInfrastructure(projectDoc *project.Project) error {
-
 }

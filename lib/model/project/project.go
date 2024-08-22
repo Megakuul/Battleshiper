@@ -31,6 +31,7 @@ type Repository struct {
 }
 
 type Project struct {
+	MongoID              interface{}      `bson:"_id"`
 	Name                 string           `bson:"name"`
 	OwnerId              string           `bson:"owner_id"`
 	Deleted              bool             `bson:"deleted"`

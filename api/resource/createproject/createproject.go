@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -122,8 +123,15 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusForbidden, fmt.Errorf("subscription limit reached; no additional projects can be created")
 	}
 
+	// not covered by the regex because it is important that the project name is NOT "" which would be unexpected.
+	// I don't want to rely on a regex that I can't understand when I skim through it.
 	if len(createProjectInput.ProjectName) <= MIN_PROJECT_NAME_CHARACTERS {
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
+	}
+
+	reg := regexp.MustCompile("^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$")
+	if !reg.MatchString(createProjectInput.ProjectName) {
+		return nil, http.StatusBadRequest, fmt.Errorf("project name must match a valid domain fragment format")
 	}
 
 	initTicket, err := pipeline.CreateTicket(routeCtx.InitEventOptions.TicketOpts, userDoc.Id, createProjectInput.ProjectName)

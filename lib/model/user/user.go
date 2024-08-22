@@ -23,6 +23,7 @@ type GithubData struct {
 }
 
 type User struct {
+	MongoID        interface{}            `bson:"_id"`
 	Id             string                 `bson:"id"`
 	Privileged     bool                   `bson:"privileged"`
 	Provider       string                 `bson:"provider"`
