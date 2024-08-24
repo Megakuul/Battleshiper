@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -23,9 +24,16 @@ var (
 	DATABASE_ENDPOINT      = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME          = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN    = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME          = os.Getenv("EVENTBUS_NAME")
 	TICKET_CREDENTIAL_ARN  = os.Getenv("TICKET_CREDENTIAL_ARN")
-	CLOUDFORMATION_TIMEOUT = os.Getenv("CLOUDFORMATION_TIMEOUT")
+	DEPLOYMENT_TIMEOUT     = os.Getenv("DEPLOYMENT_TIMEOUT")
+	BUILD_EVENTBUS_Name    = os.Getenv("BUILD_EVENTBUS_Name")
+	BUILD_EVENT_SOURCE     = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION     = os.Getenv("BUILD_EVENT_ACTION")
+	BUILD_QUEUE_ARN        = os.Getenv("BUILD_QUEUE_ARN")
+	BUILD_QUEUE_POLICY_ARN = os.Getenv("BUILD_QUEUE_POLICY_ARN")
+	BUILD_JOB_TIMEOUT      = os.Getenv("BUILD_JOB_TIMEOUT")
+	BUILD_JOB_VCPUS        = os.Getenv("BUILD_JOB_VCPUS")
+	BUILD_JOB_MEMORY       = os.Getenv("BUILD_JOB_MEMORY")
 )
 
 func main() {
@@ -65,9 +73,24 @@ func run() error {
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
 	})
 
-	cloudformationTimeout, err := time.ParseDuration(CLOUDFORMATION_TIMEOUT)
+	deploymentTimeout, err := time.ParseDuration(DEPLOYMENT_TIMEOUT)
 	if err != nil {
-		return fmt.Errorf("failed to parse CLOUDFORMATION_TIMEOUT environment variable")
+		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
+	}
+
+	buildJobTimeout, err := time.ParseDuration(BUILD_JOB_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BUILD_JOB_TIMEOUT environment variable")
+	}
+
+	buildJobVcpus, err := strconv.Atoi(BUILD_JOB_VCPUS)
+	if err != nil {
+		return fmt.Errorf("failed to parse BUILD_JOB_VCPUS environment variable")
+	}
+
+	buildJobMemory, err := strconv.Atoi(BUILD_JOB_MEMORY)
+	if err != nil {
+		return fmt.Errorf("failed to parse BUILD_JOB_MEMORY environment variable")
 	}
 
 	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", 0)
@@ -76,10 +99,20 @@ func run() error {
 	}
 
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database:              databaseHandle,
-		TicketOptions:         ticketOptions,
-		CloudformationClient:  cloudformationClient,
-		CloudformationTimeout: cloudformationTimeout,
+		Database:             databaseHandle,
+		TicketOptions:        ticketOptions,
+		CloudformationClient: cloudformationClient,
+		DeploymentTimeout:    deploymentTimeout,
+		BuildJobConfiguration: &eventcontext.BuildJobConfiguration{
+			BuildEventbusName:      BUILD_EVENTBUS_Name,
+			BuildEventSource:       BUILD_EVENT_SOURCE,
+			BuildEventAction:       BUILD_EVENT_ACTION,
+			BuildJobQueueArn:       BUILD_QUEUE_ARN,
+			BuildJobQueuePolicyArn: BUILD_QUEUE_POLICY_ARN,
+			BuildJobTimeout:        buildJobTimeout,
+			BuildJobVCPUS:          buildJobVcpus,
+			BuildJobMemory:         buildJobMemory,
+		},
 	}))
 
 	return nil

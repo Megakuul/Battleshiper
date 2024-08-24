@@ -50,6 +50,7 @@ type Project struct {
 	Initialized          bool             `bson:"initialized"`
 	Status               string           `bson:"status"`
 	Repository           Repository       `bson:"repository"`
+	BuildImage           string           `bson:"build_image"`
 	BuildCommand         string           `bson:"build_command"`
 	OutputDirectory      string           `bson:"output_directory"`
 	LastEventResult      EventResult      `bson:"last_event_result"`

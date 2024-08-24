@@ -8,10 +8,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type BuildJobConfiguration struct {
+	BuildEventbusName      string
+	BuildEventSource       string
+	BuildEventAction       string
+	BuildJobQueueArn       string
+	BuildJobQueuePolicyArn string
+	BuildJobTimeout        time.Duration
+	BuildJobVCPUS          int
+	BuildJobMemory         int
+}
+
 // Context provides data to event handlers.
 type Context struct {
 	Database              *mongo.Database
 	TicketOptions         *pipeline.TicketOptions
 	CloudformationClient  *cloudformation.Client
-	CloudformationTimeout time.Duration
+	DeploymentTimeout     time.Duration
+	BuildJobConfiguration *BuildJobConfiguration
 }

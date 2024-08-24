@@ -145,7 +145,7 @@ func initiateProjectBuild(
 		ExecutionIdentifier:  execIdentifier,
 		RepositoryURL:        projectDoc.Repository.URL,
 		BuildCommand:         projectDoc.BuildCommand,
-		BuildAssetBucketPath: projectDoc.BuildAssetBucketPath,
+		BuildAssetBucketPath: projectDoc.SharedInfrastructure.BuildAssetBucketPath,
 		DeployEndpoint: event.EventEndpoint{
 			EventBus: routeCtx.DeployEventOptions.EventBus,
 			Source:   routeCtx.DeployEventOptions.Source,
@@ -160,7 +160,7 @@ func initiateProjectBuild(
 
 	eventEntry := types.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.BuildEventOptions.Source),
-		DetailType:   aws.String(routeCtx.BuildEventOptions.Action),
+		DetailType:   aws.String(fmt.Sprintf("%s.%s", routeCtx.BuildEventOptions.Action, projectDoc.Name)),
 		Detail:       aws.String(string(buildRequestRaw)),
 		EventBusName: aws.String(routeCtx.BuildEventOptions.EventBus),
 	}

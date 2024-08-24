@@ -47,6 +47,7 @@ type projectOutput struct {
 	Deleted              bool                   `json:"deleted"`
 	Initialized          bool                   `json:"initialized"`
 	Status               string                 `json:"status"`
+	BuildImage           string                 `json:"build_image"`
 	BuildCommand         string                 `json:"build_command"`
 	OutputDirectory      string                 `json:"output_directory"`
 	Repository           repositoryOutput       `json:"repository"`
@@ -125,6 +126,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 			Deleted:         project.Deleted,
 			Initialized:     project.Initialized,
 			Status:          project.Status,
+			BuildImage:      project.BuildImage,
 			BuildCommand:    project.BuildCommand,
 			OutputDirectory: project.OutputDirectory,
 			LastEventResult: eventResultOutput{

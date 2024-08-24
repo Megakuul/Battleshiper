@@ -34,6 +34,7 @@ type repositoryInput struct {
 
 type createProjectInput struct {
 	ProjectName     string          `json:"project_name"`
+	BuildImage      string          `json:"build_image"`
 	BuildCommand    string          `json:"build_command"`
 	OutputDirectory string          `json:"output_directory"`
 	Repository      repositoryInput `json:"repository"`
@@ -150,15 +151,9 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			URL:    createProjectInput.Repository.URL,
 			Branch: createProjectInput.Repository.Branch,
 		},
+		BuildImage:      createProjectInput.BuildImage,
 		BuildCommand:    createProjectInput.BuildCommand,
 		OutputDirectory: createProjectInput.OutputDirectory,
-
-		InfrastructureStackId: "",
-		ApiRoutePath:          "",
-		StaticBucketPath:      "",
-		FunctionBucketPath:    "",
-		BuildAssetBucketPath:  "",
-		LogGroup:              "",
 	})
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -168,8 +163,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	initRequest := &event.InitRequest{
-		InitTicket:  initTicket,
-		ProjectName: createProjectInput.ProjectName,
+		InitTicket: initTicket,
 	}
 	initRequestRaw, err := json.Marshal(initRequest)
 	if err != nil {

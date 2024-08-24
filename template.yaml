@@ -211,6 +211,75 @@ Resources:
           CidrIp: 0.0.0.0/0
 
 
+  BattleshiperBuildVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.120.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  BattleshiperBuildVPCInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  BattleshiperBuildVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref BattleshiperBuildVPCInternetGateway
+      VpcId: !Ref BattleshiperBuildVPC
+
+
+  BattleshiperBuildSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+
+  BattleshiperBuildSubnetInternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref BattleshiperBuildVPCInternetGateway
+
+  BattleshiperBuildSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.110.0/24"
+      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet1
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+  BattleshiperBuildSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.120.0/24"
+      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet2
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+  BattleshiperBuildSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.130.0/24"
+      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet3
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+
   # ============================================
   # =========== Database =======================
   # ============================================
@@ -1099,7 +1168,15 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
-          CLOUDFORMATION_TIMEOUT: "400s"
+          DEPLOYMENT_TIMEOUT: "400s"
+          BUILD_EVENTBUS_Name: !Ref BattleshiperPipelineEventBus
+          BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          BUILD_EVENT_ACTION: "battleshiper.build"
+          BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
+          BUILD_QUEUE_POLICY_ARN: !Ref BattleshiperPipelineBuildQueuePolicy
+          BUILD_JOB_TIMEOUT: "600s"
+          BUILD_JOB_VCPUS: 1
+          BUILD_JOB_MEMORY: 1024
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1161,6 +1238,50 @@ Resources:
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
+
+
+  BattleshiperPipelineBuildComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: "battleshiper-pipeline-build-computer-environment"
+      State: ENABLED
+      Type: MANAGED
+      ComputeResources:
+        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
+        MaxvCpus: 20
+        Subnets:
+          - !Ref BattleshiperBuildSubnet1
+          - !Ref BattleshiperBuildSubnet2
+          - !Ref BattleshiperBuildSubnet3
+      UpdatePolicy:
+        JobExecutionTimeoutMinutes: 3
+
+  BattleshiperPipelineBuildQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: "battleshiper-pipeline-build-queue"
+      State: ENABLED
+      Priority: 1
+      JobStateTimeLimitActions:
+        - Action: CANCEL
+          State: RUNNABLE
+          MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
+          Reason: "build job exceeded queue timeout"
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
+
+  BattleshiperPipelineBuildQueuePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-build-queue-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "batch:SubmitJob"
+            Resource: !Ref BattleshiperPipelineBuildQueue
 
 
   BattleshiperPipelineDeleteFuncRole:
