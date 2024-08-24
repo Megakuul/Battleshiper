@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -18,13 +19,13 @@ import (
 )
 
 var (
-	REGION                = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
-	EVENTBUS_NAME         = os.Getenv("EVENTBUS_NAME")
-	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
+	REGION                 = os.Getenv("AWS_REGION")
+	DATABASE_ENDPOINT      = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME          = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN    = os.Getenv("DATABASE_SECRET_ARN")
+	EVENTBUS_NAME          = os.Getenv("EVENTBUS_NAME")
+	TICKET_CREDENTIAL_ARN  = os.Getenv("TICKET_CREDENTIAL_ARN")
+	CLOUDFORMATION_TIMEOUT = os.Getenv("CLOUDFORMATION_TIMEOUT")
 )
 
 func main() {
@@ -39,6 +40,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
+
+	cloudformationClient := cloudformation.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -62,14 +65,21 @@ func run() error {
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
 	})
 
+	cloudformationTimeout, err := time.ParseDuration(CLOUDFORMATION_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse CLOUDFORMATION_TIMEOUT environment variable")
+	}
+
 	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", 0)
 	if err != nil {
 		return err
 	}
 
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database:      databaseHandle,
-		TicketOptions: ticketOptions,
+		Database:              databaseHandle,
+		TicketOptions:         ticketOptions,
+		CloudformationClient:  cloudformationClient,
+		CloudformationTimeout: cloudformationTimeout,
 	}))
 
 	return nil

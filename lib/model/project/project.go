@@ -30,6 +30,18 @@ type Repository struct {
 	Branch string `bson:"branch"`
 }
 
+type DedicatedInfrastructure struct {
+	StackName    string `bson:"stack_name"`
+	LogGroupName string `bson:"log_group_name"`
+}
+
+type SharedInfrastructure struct {
+	ApiRoutePath         string `bson:"api_route_path"`
+	StaticBucketPath     string `bson:"static_bucket_path"`
+	FunctionBucketPath   string `bson:"function_bucket_path"`
+	BuildAssetBucketPath string `bson:"build_asset_bucket_path"`
+}
+
 type Project struct {
 	MongoID              interface{}      `bson:"_id"`
 	Name                 string           `bson:"name"`
@@ -44,12 +56,6 @@ type Project struct {
 	LastBuildResult      BuildResult      `bson:"last_build_result"`
 	LastDeploymentResult DeploymentResult `bson:"last_deployment_result"`
 
-	// dedicated project resources are built on top of this stack
-	InfrastructureStackId string `bson:"infrastructure_stack_id"`
-	// resources that are used from the shared infrastructure are listed below
-	ApiRoutePath         string `bson:"api_route_path"`
-	StaticBucketPath     string `bson:"static_bucket_path"`
-	FunctionBucketPath   string `bson:"function_bucket_path"`
-	BuildAssetBucketPath string `bson:"build_asset_bucket_path"`
-	LogGroup             string `bson:"log_group"`
+	DedicatedInfrastructure DedicatedInfrastructure `bson:"dedicated_infrastructure"`
+	SharedInfrastructure    SharedInfrastructure    `bson:"dedicated_infrastructure"`
 }

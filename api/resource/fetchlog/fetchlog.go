@@ -99,7 +99,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	activeLogStream, err := routeCtx.CloudWatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{
-		LogGroupName: aws.String(specifiedProject.LogGroup),
+		LogGroupName: aws.String(specifiedProject.DedicatedInfrastructure.LogGroupName),
 		OrderBy:      types.OrderByLastEventTime,
 		Descending:   aws.Bool(true),
 		Limit:        aws.Int32(1),

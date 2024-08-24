@@ -16,6 +16,7 @@ Parameters:
 Globals:
   Function:
     Timeout: 5
+    MemorySize: 128
 
 Resources:
 
@@ -1064,6 +1065,7 @@ Resources:
       CodeUri: pipeline/init
       Handler: init
       Runtime: provided.al2023
+      Timeout: 600
       Architectures:
         - x86_64
       VpcConfig:
@@ -1097,6 +1099,7 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          CLOUDFORMATION_TIMEOUT: "400s"
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
