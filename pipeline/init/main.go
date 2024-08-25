@@ -26,7 +26,7 @@ var (
 	DATABASE_SECRET_ARN    = os.Getenv("DATABASE_SECRET_ARN")
 	TICKET_CREDENTIAL_ARN  = os.Getenv("TICKET_CREDENTIAL_ARN")
 	DEPLOYMENT_TIMEOUT     = os.Getenv("DEPLOYMENT_TIMEOUT")
-	BUILD_EVENTBUS_Name    = os.Getenv("BUILD_EVENTBUS_Name")
+	BUILD_EVENTBUS_NAME    = os.Getenv("BUILD_EVENTBUS_NAME")
 	BUILD_EVENT_SOURCE     = os.Getenv("BUILD_EVENT_SOURCE")
 	BUILD_EVENT_ACTION     = os.Getenv("BUILD_EVENT_ACTION")
 	BUILD_QUEUE_ARN        = os.Getenv("BUILD_QUEUE_ARN")
@@ -34,6 +34,9 @@ var (
 	BUILD_JOB_TIMEOUT      = os.Getenv("BUILD_JOB_TIMEOUT")
 	BUILD_JOB_VCPUS        = os.Getenv("BUILD_JOB_VCPUS")
 	BUILD_JOB_MEMORY       = os.Getenv("BUILD_JOB_MEMORY")
+	DEPLOY_EVENTBUS_NAME   = os.Getenv("DEPLOY_EVENTBUS_NAME")
+	DEPLOY_EVENT_SOURCE    = os.Getenv("DEPLOY_EVENT_SOURCE")
+	DEPLOY_EVENT_ACTION    = os.Getenv("DEPLOY_EVENT_ACTION")
 )
 
 func main() {
@@ -103,8 +106,13 @@ func run() error {
 		TicketOptions:        ticketOptions,
 		CloudformationClient: cloudformationClient,
 		DeploymentTimeout:    deploymentTimeout,
-		BuildJobConfiguration: &eventcontext.BuildJobConfiguration{
-			BuildEventbusName:      BUILD_EVENTBUS_Name,
+		DeployConfiguration: &eventcontext.DeployConfiguration{
+			DeployEventbusName: DEPLOY_EVENTBUS_NAME,
+			DeployEventSource:  DEPLOY_EVENT_SOURCE,
+			DeployEventAction:  DEPLOY_EVENT_ACTION,
+		},
+		BuildConfiguration: &eventcontext.BuildConfiguration{
+			BuildEventbusName:      BUILD_EVENTBUS_NAME,
 			BuildEventSource:       BUILD_EVENT_SOURCE,
 			BuildEventAction:       BUILD_EVENT_ACTION,
 			BuildJobQueueArn:       BUILD_QUEUE_ARN,

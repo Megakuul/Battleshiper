@@ -148,7 +148,7 @@ func initiateProjectBuild(
 		BuildAssetBucketPath: projectDoc.SharedInfrastructure.BuildAssetBucketPath,
 		DeployEndpoint: event.EventEndpoint{
 			EventBus: routeCtx.DeployEventOptions.EventBus,
-			Source:   routeCtx.DeployEventOptions.Source,
+			Source:   fmt.Sprintf("%s.%s", routeCtx.DeployEventOptions.Source, projectDoc.Name),
 			Action:   routeCtx.DeployEventOptions.Action,
 			Ticket:   deployTicket,
 		},

@@ -51,7 +51,8 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("failed to project from database")
 	}
 
-	if err := initializeSharedInfrastructure(transportCtx, eventCtx, projectDoc); err != nil {
+	updatedDoc, err := initializeSharedInfrastructure(transportCtx, eventCtx, projectDoc)
+	if err != nil {
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"status": fmt.Sprintf("initialization of shared project infrastructure failed: %v", err),
@@ -61,8 +62,10 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 			return fmt.Errorf("failed to update project on database")
 		}
 	}
+	projectDoc = updatedDoc
 
-	if err := initializeDedicatedInfrastructure(transportCtx, eventCtx, projectDoc); err != nil {
+	updatedDoc, err = initializeDedicatedInfrastructure(transportCtx, eventCtx, projectDoc)
+	if err != nil {
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"status": fmt.Sprintf("initialization of dedicated project infrastructure failed: %v", err),
@@ -72,6 +75,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 			return fmt.Errorf("failed to update project on database")
 		}
 	}
+	projectDoc = updatedDoc
 
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{

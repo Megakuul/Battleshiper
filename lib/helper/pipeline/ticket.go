@@ -13,6 +13,7 @@ import (
 
 type TicketOptions struct {
 	Secret string
+	Source string
 	Action string
 	TTL    time.Duration
 }
@@ -20,6 +21,7 @@ type TicketOptions struct {
 type TicketClaims struct {
 	UserID  string `json:"user_id"`
 	Project string `json:"project"`
+	Source  string `json:"source"`
 	Action  string `json:"action"`
 	jwt.RegisteredClaims
 }
@@ -58,6 +60,7 @@ func CreateTicket(options *TicketOptions, userId, project string) (string, error
 	claims := &TicketClaims{
 		UserID:  userId,
 		Project: project,
+		Source:  options.Source,
 		Action:  options.Action,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(options.TTL)),
