@@ -79,7 +79,16 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 						"DEPLOY_ACTION":           "$.detail.deploy_endpoint.action",
 						"DEPLOY_TICKET":           "$.detail.deploy_endpoint.ticket",
 					},
-					InputTemplate: "", // TODO
+					InputTemplate: "{\"containerOverrides\": {\"environment\": [{" +
+						"\"EXECUTION_IDENTIFIER\": \"EXECUTION_IDENTIFIER\"," +
+						"\"REPOSITORY_URL\": \"REPOSITORY_URL\"," +
+						"\"BUILD_COMMAND\": \"BUILD_COMMAND\"," +
+						"\"BUILD_ASSET_BUCKET_PATH\": \"BUILD_ASSET_BUCKET_PATH\"," +
+						"\"DEPLOY_EVENTBUS\": \"DEPLOY_EVENTBUS\"," +
+						"\"DEPLOY_SOURCE\": \"DEPLOY_SOURCE\"," +
+						"\"DEPLOY_ACTION\": \"DEPLOY_ACTION\"," +
+						"\"DEPLOY_TICKET\": \"DEPLOY_TICKET\"," +
+						"}]}}",
 				},
 			},
 		},
