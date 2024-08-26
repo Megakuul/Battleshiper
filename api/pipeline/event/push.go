@@ -142,16 +142,11 @@ func initiateProjectBuild(
 	}
 
 	buildRequest := &event.BuildRequest{
-		ExecutionIdentifier:  execIdentifier,
-		RepositoryURL:        projectDoc.Repository.URL,
-		BuildCommand:         projectDoc.BuildCommand,
-		BuildAssetBucketPath: projectDoc.SharedInfrastructure.BuildAssetBucketPath,
-		DeployEndpoint: event.EventEndpoint{
-			EventBus: routeCtx.DeployEventOptions.EventBus,
-			Source:   fmt.Sprintf("%s.%s", routeCtx.DeployEventOptions.Source, projectDoc.Name),
-			Action:   routeCtx.DeployEventOptions.Action,
-			Ticket:   deployTicket,
-		},
+		ExecutionIdentifier: execIdentifier,
+		DeployTicket:        deployTicket,
+		RepositoryURL:       projectDoc.Repository.URL,
+		BuildCommand:        projectDoc.BuildCommand,
+		OutputDirectory:     projectDoc.OutputDirectory,
 	}
 	buildRequestRaw, err := json.Marshal(buildRequest)
 	if err != nil {

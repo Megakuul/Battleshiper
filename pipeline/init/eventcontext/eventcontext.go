@@ -14,12 +14,6 @@ type BucketConfiguration struct {
 	BuildAssetBucketName string
 }
 
-type DeployConfiguration struct {
-	DeployEventbusName string
-	DeployEventSource  string
-	DeployEventAction  string
-}
-
 type BuildConfiguration struct {
 	BuildEventbusName      string
 	BuildEventSource       string
@@ -38,6 +32,5 @@ type Context struct {
 	CloudformationClient *cloudformation.Client
 	DeploymentTimeout    time.Duration
 	BucketConfiguration  *BucketConfiguration
-	DeployConfiguration  *DeployConfiguration
 	BuildConfiguration   *BuildConfiguration
 }

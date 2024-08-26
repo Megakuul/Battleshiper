@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
 	github.com/go-playground/webhooks/v6 v6.3.0
 	github.com/megakuul/battleshiper/lib/helper v0.1.6
-	github.com/megakuul/battleshiper/lib/model v0.1.14
+	github.com/megakuul/battleshiper/lib/model v0.1.15
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
 )

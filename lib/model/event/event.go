@@ -10,6 +10,7 @@ type BuildRequest struct {
 	ExecutionIdentifier string `json:"execution_identifier"`
 	RepositoryURL       string `json:"repository_url"`
 	BuildCommand        string `json:"build_command"`
+	OutputDirectory     string `json:"output_directory"`
 }
 
 type DeployRequest struct {

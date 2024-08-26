@@ -57,10 +57,8 @@ github.com/klauspost/compress v1.13.6 h1:P76CopJELS0TiO2mebmnzgWaajssP/EszplttgQ
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/megakuul/battleshiper/lib/helper v0.1.6 h1:IRb7mlrUdt0YakJS2E7K3gZHg8kdZwUeRraFCqariUM=
 github.com/megakuul/battleshiper/lib/helper v0.1.6/go.mod h1:fu6914q5IxqyEi1A7eAUuUaKhblYaBlLDoFk/yXwEPU=
-github.com/megakuul/battleshiper/lib/model v0.1.13 h1:V0UTjgqfaZHGWZAyiAQNUVYBzX1WaaOTwxbm+n6cUxY=
-github.com/megakuul/battleshiper/lib/model v0.1.13/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
-github.com/megakuul/battleshiper/lib/model v0.1.14 h1:TwPKL6fl2a99Mk3b6MaKQjUNCSmwOl8I77zv+NHYrCw=
-github.com/megakuul/battleshiper/lib/model v0.1.14/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
+github.com/megakuul/battleshiper/lib/model v0.1.15 h1:jB8Z1jabR/yaPa9KO9c3QXjWTwkF7VBltOUYUo5/ZDs=
+github.com/megakuul/battleshiper/lib/model v0.1.15/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
 github.com/megakuul/battleshiper/lib/router v0.1.0 h1:gbVsSiiIkzkbZE/SlVBSU9zUaiV5XHaeertVCV6uTDo=
 github.com/megakuul/battleshiper/lib/router v0.1.0/go.mod h1:+YSiwNGSRccnY29LOBU/iq7np+sz8R8S760bUnTHmdA=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=
