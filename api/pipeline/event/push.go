@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
+	eventbridgetypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
@@ -71,22 +73,50 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			ExecutionIdentifier: execIdentifier.String(),
 			Timepoint:           time.Now().Unix(),
 		}
-		err := initiateProjectBuild(transportCtx, routeCtx, execIdentifier.String(), userDoc, &proj, subscriptionDoc)
+
+		logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), execIdentifier)
+		_, err := routeCtx.CloudWatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
+			LogGroupName:  aws.String(proj.DedicatedInfrastructure.EventLogGroup),
+			LogStreamName: aws.String(logStreamIdentifier),
+		})
 		if err != nil {
-			eventResult.Successful = false
-			eventResult.EventOutput = err.Error()
-		} else {
-			eventResult.Successful = true
-			eventResult.EventOutput = "project build was successfully initiated"
+			return http.StatusInternalServerError, fmt.Errorf("failed to create logstream on %s", proj.DedicatedInfrastructure.EventLogGroup)
 		}
 
-		result, err := projectCollection.UpdateOne(transportCtx, bson.M{"name": proj.Name}, bson.M{
+		logEvents := []cloudwatchtypes.InputLogEvent{}
+
+		err = initiateProjectBuild(transportCtx, routeCtx, execIdentifier.String(), userDoc, &proj, subscriptionDoc)
+		if err != nil {
+			eventResult.Successful = false
+			logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
+				Message:   aws.String(err.Error()),
+				Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+			})
+		} else {
+			eventResult.Successful = true
+			logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
+				Message:   aws.String("project build was successfully initiated"),
+				Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+			})
+		}
+
+		_, err = routeCtx.CloudWatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
+			LogGroupName:  aws.String(proj.DedicatedInfrastructure.EventLogGroup),
+			LogStreamName: aws.String(logStreamIdentifier),
+			LogEvents:     logEvents,
+		})
+		if err != nil {
+			// If putlogevent fails this is currently ignored as I don't want to block the pipelines flow
+			// just because the event logging failed.
+		}
+
+		result, err := projectCollection.UpdateByID(transportCtx, proj.MongoID, bson.M{
 			"$set": bson.M{
 				"last_event_result": eventResult,
 			},
 		})
 		if err != nil {
-			return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result on database")
+			return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result")
 		} else if result.MatchedCount < 1 {
 			return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result: project not found")
 		}
@@ -153,14 +183,14 @@ func initiateProjectBuild(
 		return fmt.Errorf("failed to serialize build request")
 	}
 
-	eventEntry := types.PutEventsRequestEntry{
+	eventEntry := eventbridgetypes.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.BuildEventOptions.Source),
 		DetailType:   aws.String(fmt.Sprintf("%s.%s", routeCtx.BuildEventOptions.Action, projectDoc.Name)),
 		Detail:       aws.String(string(buildRequestRaw)),
 		EventBusName: aws.String(routeCtx.BuildEventOptions.EventBus),
 	}
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
-		Entries: []types.PutEventsRequestEntry{eventEntry},
+		Entries: []eventbridgetypes.PutEventsRequestEntry{eventEntry},
 	})
 	if err != nil || res.FailedEntryCount > 0 {
 		return fmt.Errorf("failed to emit build event to the pipeline")

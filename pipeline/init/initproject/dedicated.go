@@ -13,6 +13,7 @@ import (
 	"github.com/awslabs/goformation/v7/cloudformation/batch"
 	"github.com/awslabs/goformation/v7/cloudformation/events"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
+	"github.com/awslabs/goformation/v7/cloudformation/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -31,9 +32,17 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 		return nil, fmt.Errorf("invalid build asset bucket path: empty path is not allowed")
 	}
 
-	stackTemplate := goformation.NewTemplate()
+	projectDoc.DedicatedInfrastructure.EventLogGroup = fmt.Sprintf(
+		"%s/%s", eventCtx.BuildConfiguration.EventLogPrefix, projectDoc.Name)
+	projectDoc.DedicatedInfrastructure.BuildLogGroup = fmt.Sprintf(
+		"%s/%s", eventCtx.BuildConfiguration.BuildLogPrefix, projectDoc.Name)
+	projectDoc.DedicatedInfrastructure.DeployLogGroup = fmt.Sprintf(
+		"%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectDoc.Name)
+	projectDoc.DedicatedInfrastructure.FunctionLogGroup = fmt.Sprintf(
+		"%s/%s", eventCtx.BuildConfiguration.FunctionLogPrefix, projectDoc.Name)
 
-	if err := addBuildSystem(stackTemplate, &eventCtx, projectDoc); err != nil {
+	stackTemplate := goformation.NewTemplate()
+	if err := addProject(stackTemplate, &eventCtx, projectDoc); err != nil {
 		return nil, fmt.Errorf("failed to serialize build system blueprint")
 	}
 
@@ -55,7 +64,11 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 	updatedDoc := &project.Project{}
 	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
 		"$set": bson.M{
-			"dedicated_infrastructure.stack_name": stackName,
+			"dedicated_infrastructure.stack_name":         stackName,
+			"dedicated_infrastructure.event_log_group":    projectDoc.DedicatedInfrastructure.EventLogGroup,
+			"dedicated_infrastructure.build_log_group":    projectDoc.DedicatedInfrastructure.BuildLogGroup,
+			"dedicated_infrastructure.deploy_log_group":   projectDoc.DedicatedInfrastructure.DeployLogGroup,
+			"dedicated_infrastructure.function_log_group": projectDoc.DedicatedInfrastructure.FunctionLogGroup,
 		},
 	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
 	if err != nil {
@@ -94,7 +107,31 @@ type inputTransformTemplate struct {
 	ContainerOverrides inputContainerOverrides `json:"containerOverrides"`
 }
 
-func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) error {
+func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) error {
+	const EVENT_LOG_GROUP string = "EventLogGroup"
+	stackTemplate.Resources[EVENT_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
+	const BUILD_LOG_GROUP string = "BuildLogGroup"
+	stackTemplate.Resources[BUILD_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.BuildLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
+	const DEPLOY_LOG_GROUP string = "DeployLogGroup"
+	stackTemplate.Resources[DEPLOY_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
+	const FUNCTION_LOG_GROUP string = "FunctionLogGroup"
+	stackTemplate.Resources[FUNCTION_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.FunctionLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
 	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
 	stackTemplate.Resources[BUILD_JOB_EXEC_ROLE] = &iam.Role{
 		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)),
@@ -123,7 +160,7 @@ func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.
 								"logs:CreateLogStream",
 								"logs:PutLogEvents",
 							},
-							"Resource": fmt.Sprintf("arn:aws:s3:::%s/*", projectDoc.SharedInfrastructure.BuildAssetBucketPath),
+							"Resource": goformation.GetAtt(BUILD_LOG_GROUP, "Arn"),
 						},
 					},
 				},
@@ -174,7 +211,12 @@ func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.
 			Memory:           aws.Int(eventCtx.BuildConfiguration.BuildJobMemory),
 			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
 			ExecutionRoleArn: aws.String(goformation.Ref(BUILD_JOB_EXEC_ROLE)),
-			LogConfiguration: &batch.JobDefinition_LogConfiguration{},
+			LogConfiguration: &batch.JobDefinition_LogConfiguration{
+				LogDriver: "awslogs",
+				Options: map[string]string{
+					"awslogs-group": projectDoc.DedicatedInfrastructure.BuildLogGroup,
+				},
+			},
 			Environment: []batch.JobDefinition_Environment{
 				{
 					Name:  aws.String("BUILD_ASSET_BUCKET_PATH"),

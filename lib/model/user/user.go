@@ -9,6 +9,7 @@ type ExecutionLimitCounter struct {
 	ExpirationTime      int64 `bson:"expiration_time"`
 	PipelineBuilds      int   `bson:"pipeline_builds"`
 	PipelineDeployments int   `bson:"pipeline_deployments"`
+	StaticCacheRoutes   int   `bson:"static_cache_routes"`
 }
 
 type Repository struct {

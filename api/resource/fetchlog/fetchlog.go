@@ -21,6 +21,7 @@ import (
 
 type fetchLogInput struct {
 	ProjectName string `json:"project_name"`
+	LogType     string `json:"log_type"`
 	StartTime   int64  `json:"start_time"`
 	EndTime     int64  `json:"end_time"`
 }
@@ -98,8 +99,23 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
 
+	var logType string
+	switch fetchLogInput.LogType {
+	case "function":
+		logType = specifiedProject.DedicatedInfrastructure.FunctionLogGroup
+	case "event":
+		logType = specifiedProject.DedicatedInfrastructure.EventLogGroup
+	case "build":
+		logType = specifiedProject.DedicatedInfrastructure.BuildLogGroup
+	case "deploy":
+		logType = specifiedProject.DedicatedInfrastructure.DeployLogGroup
+	}
+	if logType == "" {
+		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'function', 'event', 'build' or 'deploy'")
+	}
+
 	activeLogStream, err := routeCtx.CloudWatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{
-		LogGroupName: aws.String(specifiedProject.DedicatedInfrastructure.LogGroupName),
+		LogGroupName: aws.String(logType),
 		OrderBy:      types.OrderByLastEventTime,
 		Descending:   aws.Bool(true),
 		Limit:        aws.Int32(1),

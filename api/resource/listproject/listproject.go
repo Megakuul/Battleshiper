@@ -19,21 +19,18 @@ type eventResultOutput struct {
 	ExecutionIdentifier string `json:"execution_identifier"`
 	Timestamp           int64  `json:"timestamp"`
 	Successful          bool   `json:"successful"`
-	EventOutput         string `json:"event_output"`
 }
 
 type buildResultOutput struct {
 	ExecutionIdentifier string `json:"execution_identifier"`
 	Timestamp           int64  `json:"timestamp"`
 	Successful          bool   `json:"successful"`
-	BuildOutput         string `json:"build_output"`
 }
 
 type deploymentResultOutput struct {
 	ExecutionIdentifier string `json:"execution_identifier"`
 	Timestamp           int64  `json:"timestamp"`
 	Successful          bool   `json:"successful"`
-	DeploymentOutput    string `json:"deployment_output"`
 }
 
 type repositoryOutput struct {
@@ -133,19 +130,16 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				ExecutionIdentifier: project.LastEventResult.ExecutionIdentifier,
 				Timestamp:           project.LastEventResult.Timepoint,
 				Successful:          project.LastEventResult.Successful,
-				EventOutput:         project.LastEventResult.EventOutput,
 			},
 			LastBuildResult: buildResultOutput{
 				ExecutionIdentifier: project.LastBuildResult.ExecutionIdentifier,
 				Timestamp:           project.LastBuildResult.Timepoint,
 				Successful:          project.LastBuildResult.Successful,
-				BuildOutput:         project.LastBuildResult.BuildOutput,
 			},
 			LastDeploymentResult: deploymentResultOutput{
 				ExecutionIdentifier: project.LastDeploymentResult.ExecutionIdentifier,
 				Timestamp:           project.LastDeploymentResult.Timepoint,
 				Successful:          project.LastDeploymentResult.Successful,
-				DeploymentOutput:    project.LastDeploymentResult.DeploymentOutput,
 			},
 			Repository: repositoryOutput{
 				Id:     project.Repository.Id,

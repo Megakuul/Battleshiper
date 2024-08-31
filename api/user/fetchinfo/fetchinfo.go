@@ -19,9 +19,11 @@ import (
 )
 
 type subscriptionOutput struct {
-	Name                    string `json:"name"`
-	DailyPipelineExecutions int    `json:"daily_pipeline_executions"`
-	Projects                int    `json:"projects"`
+	Name                     string `json:"name"`
+	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
+	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
+	StaticCacheRoutes        int    `json:"static_cache_routes"`
+	Projects                 int    `json:"projects"`
 }
 
 type fetchInfoOutput struct {
@@ -104,9 +106,11 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		Provider:  userToken.Provider,
 		AvatarURL: userToken.AvatarURL,
 		Subscription: &subscriptionOutput{
-			Name:                    subscriptionDoc.Name,
-			DailyPipelineExecutions: subscriptionDoc.DailyPipelineExecutions,
-			Projects:                subscriptionDoc.Projects,
+			Name:                     subscriptionDoc.Name,
+			DailyPipelineBuilds:      subscriptionDoc.DailyPipelineBuilds,
+			DailyPipelineDeployments: subscriptionDoc.DailyPipelineDeployments,
+			StaticCacheRoutes:        subscriptionDoc.StaticCacheRoutes,
+			Projects:                 subscriptionDoc.Projects,
 		},
 	}, http.StatusOK, nil
 }

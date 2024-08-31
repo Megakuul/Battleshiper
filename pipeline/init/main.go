@@ -20,20 +20,25 @@ import (
 )
 
 var (
-	REGION                 = os.Getenv("AWS_REGION")
-	DATABASE_ENDPOINT      = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME          = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN    = os.Getenv("DATABASE_SECRET_ARN")
-	TICKET_CREDENTIAL_ARN  = os.Getenv("TICKET_CREDENTIAL_ARN")
-	DEPLOYMENT_TIMEOUT     = os.Getenv("DEPLOYMENT_TIMEOUT")
-	BUILD_EVENTBUS_NAME    = os.Getenv("BUILD_EVENTBUS_NAME")
-	BUILD_EVENT_SOURCE     = os.Getenv("BUILD_EVENT_SOURCE")
-	BUILD_EVENT_ACTION     = os.Getenv("BUILD_EVENT_ACTION")
-	BUILD_QUEUE_ARN        = os.Getenv("BUILD_QUEUE_ARN")
-	BUILD_QUEUE_POLICY_ARN = os.Getenv("BUILD_QUEUE_POLICY_ARN")
-	BUILD_JOB_TIMEOUT      = os.Getenv("BUILD_JOB_TIMEOUT")
-	BUILD_JOB_VCPUS        = os.Getenv("BUILD_JOB_VCPUS")
-	BUILD_JOB_MEMORY       = os.Getenv("BUILD_JOB_MEMORY")
+	REGION                    = os.Getenv("AWS_REGION")
+	DATABASE_ENDPOINT         = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME             = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN       = os.Getenv("DATABASE_SECRET_ARN")
+	TICKET_CREDENTIAL_ARN     = os.Getenv("TICKET_CREDENTIAL_ARN")
+	DEPLOYMENT_TIMEOUT        = os.Getenv("DEPLOYMENT_TIMEOUT")
+	EVENT_LOG_GROUP_PREFIX    = os.Getenv("EVENT_LOG_GROUP_PREFIX")
+	BUILD_LOG_GROUP_PREFIX    = os.Getenv("BUILD_LOG_GROUP_PREFIX")
+	DEPLOY_LOG_GROUP_PREFIX   = os.Getenv("DEPLOY_LOG_GROUP_PREFIX")
+	FUNCTION_LOG_GROUP_PREFIX = os.Getenv("FUNCTION_LOG_GROUP_PREFIX")
+	LOG_GROUP_RETENTION_DAYS  = os.Getenv("LOG_GROUP_RETENTION_DAYS")
+	BUILD_EVENTBUS_NAME       = os.Getenv("BUILD_EVENTBUS_NAME")
+	BUILD_EVENT_SOURCE        = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION        = os.Getenv("BUILD_EVENT_ACTION")
+	BUILD_QUEUE_ARN           = os.Getenv("BUILD_QUEUE_ARN")
+	BUILD_QUEUE_POLICY_ARN    = os.Getenv("BUILD_QUEUE_POLICY_ARN")
+	BUILD_JOB_TIMEOUT         = os.Getenv("BUILD_JOB_TIMEOUT")
+	BUILD_JOB_VCPUS           = os.Getenv("BUILD_JOB_VCPUS")
+	BUILD_JOB_MEMORY          = os.Getenv("BUILD_JOB_MEMORY")
 )
 
 func main() {
@@ -78,6 +83,11 @@ func run() error {
 		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
 	}
 
+	logGroupRetentionDays, err := strconv.Atoi(LOG_GROUP_RETENTION_DAYS)
+	if err != nil {
+		return fmt.Errorf("failed to parse LOG_GROUP_RETENTION_DAYS environment variable")
+	}
+
 	buildJobTimeout, err := time.ParseDuration(BUILD_JOB_TIMEOUT)
 	if err != nil {
 		return fmt.Errorf("failed to parse BUILD_JOB_TIMEOUT environment variable")
@@ -104,6 +114,11 @@ func run() error {
 		CloudformationClient: cloudformationClient,
 		DeploymentTimeout:    deploymentTimeout,
 		BuildConfiguration: &eventcontext.BuildConfiguration{
+			EventLogPrefix:         EVENT_LOG_GROUP_PREFIX,
+			BuildLogPrefix:         BUILD_LOG_GROUP_PREFIX,
+			DeployLogPrefix:        DEPLOY_LOG_GROUP_PREFIX,
+			FunctionLogPrefix:      FUNCTION_LOG_GROUP_PREFIX,
+			LogRetentionDays:       logGroupRetentionDays,
 			BuildEventbusName:      BUILD_EVENTBUS_NAME,
 			BuildEventSource:       BUILD_EVENT_SOURCE,
 			BuildEventAction:       BUILD_EVENT_ACTION,

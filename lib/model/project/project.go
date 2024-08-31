@@ -29,10 +29,10 @@ type Repository struct {
 
 type DedicatedInfrastructure struct {
 	StackName        string `bson:"stack_name"`
-	FunctionLogGroup string `bson:"function_log_group"`
-	InitLogGroup     string `bson:"init_log_group"`
+	EventLogGroup    string `bson:"event_log_group"`
 	BuildLogGroup    string `bson:"build_log_group"`
 	DeployLogGroup   string `bson:"deploy_log_group"`
+	FunctionLogGroup string `bson:"function_log_group"`
 }
 
 type SharedInfrastructure struct {

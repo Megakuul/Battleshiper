@@ -9,5 +9,6 @@ type Subscription struct {
 	Name                     string      `bson:"name"`
 	DailyPipelineBuilds      int         `bson:"daily_pipeline_builds"`
 	DailyPipelineDeployments int         `bson:"daily_pipeline_deployments"`
+	StaticCacheRoutes        int         `bson:"static_cache_routes"`
 	Projects                 int         `bson:"projects"`
 }

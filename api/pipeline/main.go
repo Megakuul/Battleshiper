@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"go.mongodb.org/mongo-driver/mongo"
 
@@ -50,6 +51,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
+
+	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
 	eventbridgeClient := eventbridge.NewFromConfig(awsConfig)
 
@@ -97,6 +100,7 @@ func run() error {
 
 	httpRouter := router.NewRouter(routecontext.Context{
 		WebhookClient:      webhookClient,
+		CloudWatchClient:   cloudwatchClient,
 		Database:           databaseHandle,
 		EventClient:        eventbridgeClient,
 		BuildEventOptions:  buildEventOptions,

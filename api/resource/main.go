@@ -41,6 +41,10 @@ var (
 	INIT_EVENT_SOURCE     = os.Getenv("INIT_EVENT_SOURCE")
 	INIT_EVENT_ACTION     = os.Getenv("INIT_TICKET_ACTION")
 	INIT_EVENT_TICKET_TTL = os.Getenv("INIT_TICKET_TTL")
+	EventLogPrefix        string
+	BuildLogPrefix        string
+	DeployLogPrefix       string
+	FunctionLogPrefix     string
 )
 
 func main() {

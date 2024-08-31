@@ -15,6 +15,11 @@ type BucketConfiguration struct {
 }
 
 type BuildConfiguration struct {
+	EventLogPrefix         string
+	BuildLogPrefix         string
+	DeployLogPrefix        string
+	FunctionLogPrefix      string
+	LogRetentionDays       int
 	BuildEventbusName      string
 	BuildEventSource       string
 	BuildEventAction       string

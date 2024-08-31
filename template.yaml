@@ -359,6 +359,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/lambda/battleshiper-api-logs
+      LogGroupClass: INFREQUENT_ACCESS
       RetentionInDays: 14
 
   BattleshiperApiLogGroupPolicy:
@@ -377,13 +378,71 @@ Resources:
       Roles:
         - !Ref BattleshiperAdminFuncRole
 
-  
-
-  BattleshiperProjectLogGroup:
-    Type: AWS::Logs::LogGroup
+  BattleshiperPipelineProjectEventLogPolicy:
+    Type: AWS::IAM::Policy
     Properties:
-      LogGroupName: /aws/lambda/battleshiper-project-logs
-      RetentionInDays: 14
+      PolicyName: "battleshiper-pipeline-project-event-log-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
+      Roles:
+        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperResourceFuncRole
+
+  BattleshiperPipelineProjectBuildLogPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-build-log-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/build/*"
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+
+  BattleshiperPipelineProjectDeployLogPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-deploy-log-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperResourceFuncRole
+
+  BattleshiperPipelineProjectFunctionLogPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-function-log-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/function/*"
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
 
   # ============================================
   # =========== Auth Secrets ===================
@@ -1053,7 +1112,6 @@ Resources:
         - Key: "Name"
           Value: "battleshiper-cdn"
 
-
   # ============================================
   # ======= Pipeline Ticket Credentials ========
   # ============================================
@@ -1213,6 +1271,11 @@ Resources:
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
+          EVENT_LOG_GROUP_PREFIX: "/battleshiper/project/event"
+          BUILD_LOG_GROUP_PREFIX: "/battleshiper/project/build"
+          DEPLOY_LOG_GROUP_PREFIX: "/battleshiper/project/deploy"
+          FUNCTION_LOG_GROUP_PREFIX: "/battleshiper/project/function"
+          LOG_GROUP_RETENTION_DAYS: 14
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
