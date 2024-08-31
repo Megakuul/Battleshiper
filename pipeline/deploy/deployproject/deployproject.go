@@ -31,12 +31,12 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return fmt.Errorf("failed to deserialize deploy request")
 	}
 
-	initClaims, err := pipeline.ParseTicket(eventCtx.TicketOptions, initRequest.InitTicket)
+	deployClaims, err := pipeline.ParseTicket(eventCtx.TicketOptions, deployRequest.Parameters.DeployTicket)
 	if err != nil {
 		return fmt.Errorf("failed to parse ticket: %v", err)
 	}
 
-	if initClaims.Action != request.DetailType {
+	if deployClaims.Action != request.DetailType {
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}
 

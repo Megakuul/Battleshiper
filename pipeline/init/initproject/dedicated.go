@@ -274,15 +274,15 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 		},
 		ContainerOverrides: inputContainerOverrides{
 			Environment: []inputEnvironmentVariable{
-				inputEnvironmentVariable{
+				{
 					Name:  "REPOSITORY_URL",
 					Value: "<TMPL_REPOSITORY_URL>",
 				},
-				inputEnvironmentVariable{
+				{
 					Name:  "BUILD_COMMAND",
 					Value: "<TMPL_BUILD_COMMAND>",
 				},
-				inputEnvironmentVariable{
+				{
 					Name:  "OUTPUT_DIRECTORY",
 					Value: "<TMPL_OUTPUT_DIRECTORY>",
 				},

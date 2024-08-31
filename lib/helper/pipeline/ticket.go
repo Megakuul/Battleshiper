@@ -32,7 +32,7 @@ type ticketCredentials struct {
 
 // CreateTicketOptions fetches the ticketSecretArn containing "secret" from SecretsManager and constructs the TicketOptions.
 // The calling instance needs to have IAM access to the action "secretsmanager:GetSecretValue" on the provided ticketSecretArn.
-func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, ticketSecretARN string, action string, ttl time.Duration) (*TicketOptions, error) {
+func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, ticketSecretARN string, source string, action string, ttl time.Duration) (*TicketOptions, error) {
 	secretManagerClient := secretsmanager.NewFromConfig(awsConfig)
 
 	secretRequest := &secretsmanager.GetSecretValueInput{
@@ -51,6 +51,8 @@ func CreateTicketOptions(awsConfig aws.Config, transportCtx context.Context, tic
 
 	return &TicketOptions{
 		Secret: ticketCredentials.Secret,
+		Source: source,
+		Action: action,
 		TTL:    ttl,
 	}, nil
 }
