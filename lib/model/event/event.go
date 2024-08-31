@@ -13,9 +13,16 @@ type BuildRequest struct {
 	OutputDirectory     string `json:"output_directory"`
 }
 
-type DeployRequest struct {
+// the deploy request is not created manually, but emitted by aws.batch
+// https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
+
+type DeployParameters struct {
 	DeployTicket        string `json:"deploy_ticket"`
 	ExecutionIdentifier string `json:"execution_identifier"`
-	Successful          bool   `json:"successful"`
-	BuildOutput         string `json:"build_output"`
+}
+
+type DeployRequest struct {
+	Parameters   DeployParameters `json:"parameters"`
+	Status       string           `json:"status"`
+	StatusReason string           `json:"statusReason"`
 }

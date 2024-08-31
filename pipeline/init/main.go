@@ -34,9 +34,6 @@ var (
 	BUILD_JOB_TIMEOUT      = os.Getenv("BUILD_JOB_TIMEOUT")
 	BUILD_JOB_VCPUS        = os.Getenv("BUILD_JOB_VCPUS")
 	BUILD_JOB_MEMORY       = os.Getenv("BUILD_JOB_MEMORY")
-	DEPLOY_EVENTBUS_NAME   = os.Getenv("DEPLOY_EVENTBUS_NAME")
-	DEPLOY_EVENT_SOURCE    = os.Getenv("DEPLOY_EVENT_SOURCE")
-	DEPLOY_EVENT_ACTION    = os.Getenv("DEPLOY_EVENT_ACTION")
 )
 
 func main() {
@@ -106,11 +103,6 @@ func run() error {
 		TicketOptions:        ticketOptions,
 		CloudformationClient: cloudformationClient,
 		DeploymentTimeout:    deploymentTimeout,
-		DeployConfiguration: &eventcontext.DeployConfiguration{
-			DeployEventbusName: DEPLOY_EVENTBUS_NAME,
-			DeployEventSource:  DEPLOY_EVENT_SOURCE,
-			DeployEventAction:  DEPLOY_EVENT_ACTION,
-		},
 		BuildConfiguration: &eventcontext.BuildConfiguration{
 			BuildEventbusName:      BUILD_EVENTBUS_NAME,
 			BuildEventSource:       BUILD_EVENT_SOURCE,

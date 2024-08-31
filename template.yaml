@@ -1112,6 +1112,50 @@ Resources:
         - !Ref BattleshiperResourceFuncRole
 
 
+  BattleshiperPipelineBuildComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: "battleshiper-pipeline-build-computer-environment"
+      State: ENABLED
+      Type: MANAGED
+      ComputeResources:
+        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
+        MaxvCpus: 20
+        Subnets:
+          - !Ref BattleshiperBuildSubnet1
+          - !Ref BattleshiperBuildSubnet2
+          - !Ref BattleshiperBuildSubnet3
+      UpdatePolicy:
+        JobExecutionTimeoutMinutes: 3
+
+  BattleshiperPipelineBuildQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: "battleshiper-pipeline-build-queue"
+      State: ENABLED
+      Priority: 1
+      JobStateTimeLimitActions:
+        - Action: CANCEL
+          State: RUNNABLE
+          MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
+          Reason: "build job exceeded queue timeout"
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
+
+  BattleshiperPipelineBuildQueuePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-build-queue-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "batch:SubmitJob"
+            Resource: !Ref BattleshiperPipelineBuildQueue
+
+
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1169,7 +1213,7 @@ Resources:
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
-          BUILD_EVENTBUS_Name: !Ref BattleshiperPipelineEventBus
+          BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
           BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
@@ -1225,10 +1269,15 @@ Resources:
               MaximumEventAgeInSeconds: 120
               MaximumRetryAttempts: 5
             Pattern:
+              # Pattern accepts incomming batch events from the build queue
+              # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
               source:
-                - "ch.megakuul.battleshiper"
-              detail-type:
-                - "battleshiper.deploy"
+                - "aws.batch"
+              detail:
+                jobQueue: !Ref BattleshiperPipelineBuildQueue
+                status:
+                  - "SUCCEEDED"
+                  - "FAILED"
       Environment:
         Variables:
           AWS_REGION: !Ref AWS::Region
@@ -1238,50 +1287,6 @@ Resources:
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
-
-
-  BattleshiperPipelineBuildComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    Properties:
-      ComputeEnvironmentName: "battleshiper-pipeline-build-computer-environment"
-      State: ENABLED
-      Type: MANAGED
-      ComputeResources:
-        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
-        MaxvCpus: 20
-        Subnets:
-          - !Ref BattleshiperBuildSubnet1
-          - !Ref BattleshiperBuildSubnet2
-          - !Ref BattleshiperBuildSubnet3
-      UpdatePolicy:
-        JobExecutionTimeoutMinutes: 3
-
-  BattleshiperPipelineBuildQueue:
-    Type: AWS::Batch::JobQueue
-    Properties:
-      JobQueueName: "battleshiper-pipeline-build-queue"
-      State: ENABLED
-      Priority: 1
-      JobStateTimeLimitActions:
-        - Action: CANCEL
-          State: RUNNABLE
-          MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
-          Reason: "build job exceeded queue timeout"
-      ComputeEnvironmentOrder:
-        - Order: 1
-          ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
-
-  BattleshiperPipelineBuildQueuePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-build-queue-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "batch:SubmitJob"
-            Resource: !Ref BattleshiperPipelineBuildQueue
 
 
   BattleshiperPipelineDeleteFuncRole:

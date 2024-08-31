@@ -7,21 +7,18 @@ type EventResult struct {
 	ExecutionIdentifier string `bson:"execution_identifier"`
 	Timepoint           int64  `bson:"timepoint"`
 	Successful          bool   `bson:"successful"`
-	EventOutput         string `bson:"event_output"`
 }
 
 type BuildResult struct {
 	ExecutionIdentifier string `bson:"execution_identifier"`
 	Timepoint           int64  `bson:"timepoint"`
 	Successful          bool   `bson:"successful"`
-	BuildOutput         string `bson:"build_output"`
 }
 
 type DeploymentResult struct {
 	ExecutionIdentifier string `bson:"execution_identifier"`
 	Timepoint           int64  `bson:"timepoint"`
 	Successful          bool   `bson:"successful"`
-	DeploymentOutput    string `bson:"deployment_output"`
 }
 
 type Repository struct {
@@ -31,8 +28,11 @@ type Repository struct {
 }
 
 type DedicatedInfrastructure struct {
-	StackName    string `bson:"stack_name"`
-	LogGroupName string `bson:"log_group_name"`
+	StackName        string `bson:"stack_name"`
+	FunctionLogGroup string `bson:"function_log_group"`
+	InitLogGroup     string `bson:"init_log_group"`
+	BuildLogGroup    string `bson:"build_log_group"`
+	DeployLogGroup   string `bson:"deploy_log_group"`
 }
 
 type SharedInfrastructure struct {

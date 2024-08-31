@@ -1,8 +1,7 @@
-package initproject
+package deployproject
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -16,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
@@ -33,9 +31,7 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 
 	stackTemplate := goformation.NewTemplate()
 
-	if err := addBuildSystem(stackTemplate, &eventCtx, projectDoc); err != nil {
-		return nil, fmt.Errorf("failed to serialize build system blueprint")
-	}
+	addBuildSystem(stackTemplate, &eventCtx, projectDoc)
 
 	stackName := fmt.Sprintf("battleshiper-project-stack-%s", projectDoc.Name)
 	stackBody, err := stackTemplate.JSON()
@@ -80,57 +76,7 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 	return updatedDoc, nil
 }
 
-type inputEnvironmentVariable struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-type inputContainerOverrides struct {
-	Environment []inputEnvironmentVariable `json:"environment"`
-}
-
-type inputTransformTemplate struct {
-	Parameters         event.DeployParameters  `json:"parameters"`
-	ContainerOverrides inputContainerOverrides `json:"containerOverrides"`
-}
-
-func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) error {
-	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
-	stackTemplate.Resources[BUILD_JOB_EXEC_ROLE] = &iam.Role{
-		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)),
-		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
-		AssumeRolePolicyDocument: map[string]interface{}{
-			"Version": "2012-10-17",
-			"Statement": []map[string]interface{}{
-				{
-					"Effect": "Allow",
-					"Principal": map[string]interface{}{
-						"Service": "ecs-tasks.amazonaws.com",
-					},
-					"Action": "sts:AssumeRole",
-				},
-			},
-		},
-		Policies: []iam.Role_Policy{
-			{
-				PolicyName: fmt.Sprintf("battleshiper-project-log-access-%s", projectDoc.Name),
-				PolicyDocument: map[string]interface{}{
-					"Version": "2012-10-17",
-					"Statement": []map[string]interface{}{
-						{
-							"Effect": "Allow",
-							"Action": []string{
-								"logs:CreateLogStream",
-								"logs:PutLogEvents",
-							},
-							"Resource": fmt.Sprintf("arn:aws:s3:::%s/*", projectDoc.SharedInfrastructure.BuildAssetBucketPath),
-						},
-					},
-				},
-			},
-		},
-	}
-
+func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) {
 	const BUILD_JOB_ROLE string = "BuildJobRole"
 	stackTemplate.Resources[BUILD_JOB_ROLE] = &iam.Role{
 		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.Name)),
@@ -169,12 +115,10 @@ func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.
 		JobDefinitionName: aws.String(fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.Name)),
 		Type:              "container",
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
-			Image:            projectDoc.BuildImage,
-			Vcpus:            aws.Int(eventCtx.BuildConfiguration.BuildJobVCPUS),
-			Memory:           aws.Int(eventCtx.BuildConfiguration.BuildJobMemory),
-			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
-			ExecutionRoleArn: aws.String(goformation.Ref(BUILD_JOB_EXEC_ROLE)),
-			LogConfiguration: &batch.JobDefinition_LogConfiguration{},
+			Image:      projectDoc.BuildImage,
+			Vcpus:      aws.Int(eventCtx.BuildConfiguration.BuildJobVCPUS),
+			Memory:     aws.Int(eventCtx.BuildConfiguration.BuildJobMemory),
+			JobRoleArn: aws.String(goformation.Ref(BUILD_JOB_ROLE)),
 			Environment: []batch.JobDefinition_Environment{
 				{
 					Name:  aws.String("BUILD_ASSET_BUCKET_PATH"),
@@ -217,41 +161,6 @@ func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.
 		},
 	}
 
-	inputPathsMap := map[string]string{
-		"TMPL_EXECUTION_IDENTIFIER": "$.detail.execution_identifier",
-		"TMPL_DEPLOY_TICKET":        "$.detail.deploy_ticket",
-		"TMPL_REPOSITORY_URL":       "$.detail.repository_url",
-		"TMPL_BUILD_COMMAND":        "$.detail.build_command",
-		"TMPL_OUTPUT_DIRECTORY":     "$.detail.output_directory",
-	}
-
-	inputTemplate := &inputTransformTemplate{
-		Parameters: event.DeployParameters{
-			DeployTicket:        "<TMPL_DEPLOY_TICKET>",
-			ExecutionIdentifier: "<TMPL_EXECUTION_IDENTIFIER>",
-		},
-		ContainerOverrides: inputContainerOverrides{
-			Environment: []inputEnvironmentVariable{
-				inputEnvironmentVariable{
-					Name:  "REPOSITORY_URL",
-					Value: "<TMPL_REPOSITORY_URL>",
-				},
-				inputEnvironmentVariable{
-					Name:  "BUILD_COMMAND",
-					Value: "<TMPL_BUILD_COMMAND>",
-				},
-				inputEnvironmentVariable{
-					Name:  "OUTPUT_DIRECTORY",
-					Value: "<TMPL_OUTPUT_DIRECTORY>",
-				},
-			},
-		},
-	}
-	inputTemplateRaw, err := json.Marshal(inputTemplate)
-	if err != nil {
-		return err
-	}
-
 	const BUILD_RULE string = "BuildRule"
 	stackTemplate.Resources[BUILD_RULE] = &events.Rule{
 		EventBusName: aws.String(eventCtx.BuildConfiguration.BuildEventbusName),
@@ -276,11 +185,35 @@ func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.
 					JobName:       fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.Name),
 				},
 				InputTransformer: &events.Rule_InputTransformer{
-					InputPathsMap: inputPathsMap,
-					InputTemplate: string(inputTemplateRaw),
+					InputPathsMap: map[string]string{
+						"TMPL_EXECUTION_IDENTIFIER": "$.detail.execution_identifier",
+						"TMPL_DEPLOY_TICKET":        "$.detail.deploy_ticket",
+						"TMPL_REPOSITORY_URL":       "$.detail.repository_url",
+						"TMPL_BUILD_COMMAND":        "$.detail.build_command",
+						"TMPL_OUTPUT_DIRECTORY":     "$.detail.output_directory",
+					},
+					InputTemplate: `{
+						"parameters": {
+							"executionIdentifier": "<TMPL_INTERNAL_EXECUTION_IDENTIFIER>",
+							"deployTicket": 			 "<TMPL_INTERNAL_DEPLOY_TICKET>",
+						},
+						"containerOverrides": "environment: [
+							{
+								"name": "REPOSITORY_URL",
+								"value": "<TMPL_REPOSITORY_URL>"
+							},
+							{
+								"name": "BUILD_COMMAND",
+								"value": "<TMPL_BUILD_COMMAND>"
+							},
+							{
+								"name": "OUTPUT_DIRECTORY",
+								"value: "<TMPL_OUTPUT_DIRECTORY>"
+							}
+						}] 
+					}`,
 				},
 			},
 		},
 	}
-	return nil
 }
