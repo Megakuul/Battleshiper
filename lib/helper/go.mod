@@ -26,6 +26,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-github/v63 v63.0.0
 	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/megakuul/battleshiper/lib/model v0.1.17
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/oauth2 v0.21.0

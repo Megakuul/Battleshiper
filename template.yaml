@@ -783,10 +783,11 @@ Resources:
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
-          DEPLOY_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
-          DEPLOY_EVENT_SOURCE: "ch.megakuul.battleshiper"
-          DEPLOY_EVENT_ACTION: "battleshiper.deploy"
-          DEPLOY_EVENT_TICKET_TTL: 600
+          # deployment ticket is used as parameter of the aws.batch event
+          # https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
+          DEPLOY_EVENT_SOURCE: "aws.batch"
+          DEPLOY_EVENT_ACTION: "Batch Job State Change"
+          DEPLOY_EVENT_TICKET_TTL: 1000
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -814,7 +815,7 @@ Resources:
               - "s3:GetObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperProjectStaticBucket.Arn
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
             Principal:
               Service: cloudfront.amazonaws.com
 
@@ -826,13 +827,14 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Action:
+              - "s3:HeadObject"
               - "s3:GetObject"
               - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:DeleteObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperProjectStaticBucket.Arn
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
       Roles: 
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
@@ -853,13 +855,14 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Action:
+              - "s3:HeadObject"
               - "s3:GetObject"
               - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:DeleteObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperProjectFunctionBucket.Arn
+              - !Sub "${BattleshiperProjectFunctionBucket.Arn}/*"
       Roles:
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
@@ -875,7 +878,7 @@ Resources:
         Rules:
           - Id: "delete-assets"
             Status: "Enabled"
-            ExpirationInDays: 3
+            ExpirationInDays: 1
             Prefix: ""
   
   BattleshiperProjectBuildAssetBucketPolicy:
@@ -886,13 +889,14 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Action:
+              - "s3:HeadObject"
               - "s3:GetObject"
               - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:DeleteObject"
             Effect: Allow
             Resource:
-              - !GetAtt BattleshiperProjectBuildAssetBucket.Arn
+              - !Sub "${BattleshiperProjectBuildAssetBucket.Arn}/*"
       Roles:
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
@@ -1002,7 +1006,13 @@ Resources:
             const project = await kvsHandle.get(host, { format: "string" });
             pathSegments.splice(1, 0, project);
             
-            request.uri = pathSegments.join('/')
+            request.uri = pathSegments.join('/');
+
+            const prerenderedPage = await kvsHandle.get(request.uri, { format: "string" }).catch(() => null);
+            if (prerenderedPage) {
+              request.uri = prerenderedPage;
+            }
+
             return request;
           } catch (err) {
             request.uri = "/404.html";
@@ -1212,7 +1222,7 @@ Resources:
             Action:
               - "batch:SubmitJob"
             Resource: !Ref BattleshiperPipelineBuildQueue
-
+      
 
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
@@ -1226,7 +1236,24 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      # Policies are defined as separate policy objects and attached to the IAM role.
+      # further policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineInitFuncCloudformationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-init-cloudformation-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudformation:DescribeStacks",
+              - "cloudformation:DescribeStackEvents",
+              - "cloudformation:ListStacks"
+              - "cloudformation:CreateStack"
+            Resource: "*"
+      Roles:
+        - !Ref BattleshiperPipelineInitFuncRole
 
   BattleshiperPipelineInitFunc:
     Type: AWS::Serverless::Function
@@ -1302,6 +1329,29 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
+  BattleshiperPipelineDeployFuncCloudformationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-deploy-cloudformation-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudformation:DescribeStacks",
+              - "cloudformation:DescribeStackEvents",
+              - "cloudformation:ListStacks"
+              - "cloudformation:ValidateTemplate",
+              - "cloudformation:GetTemplate"
+              - "cloudformation:CreateStack"
+              - "cloudformation:CreateChangeSet",
+              - "cloudformation:DescribeChangeSet",
+              - "cloudformation:ExecuteChangeSet",
+              - "cloudformation:DeleteStack"
+            Resource: "*"
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+
   BattleshiperPipelineDeployFunc:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1365,6 +1415,20 @@ Resources:
             Action:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineDeleteFuncCloudformationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-delete-cloudformation-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudformation:DeleteStack"
+            Resource: "*"
+      Roles:
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
   BattleshiperPipelineDeleteFunc:
     Type: AWS::Serverless::Function

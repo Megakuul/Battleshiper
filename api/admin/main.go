@@ -22,6 +22,7 @@ import (
 	"github.com/megakuul/battleshiper/api/admin/deleteuser"
 	"github.com/megakuul/battleshiper/api/admin/findproject"
 	"github.com/megakuul/battleshiper/api/admin/finduser"
+	"github.com/megakuul/battleshiper/api/admin/listsubscription"
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 	"github.com/megakuul/battleshiper/api/admin/updaterole"
 	"github.com/megakuul/battleshiper/api/admin/updateuser"
@@ -96,6 +97,7 @@ func run() error {
 	httpRouter.AddRoute("GET", "/api/admin/findproject", findproject.HandleFindProject)
 	httpRouter.AddRoute("PATCH", "/api/admin/updateuser", updateuser.HandleUpdateUser)
 	httpRouter.AddRoute("PATCH", "/api/admin/updaterole", updaterole.HandleUpdateRole)
+	httpRouter.AddRoute("GET", "/api/admin/listsubscription", listsubscription.HandleListSubscription)
 	httpRouter.AddRoute("PUT", "/api/admin/upsertsubscription", upsertsubscription.HandleUpsertSubscription)
 	httpRouter.AddRoute("DELETE", "/api/admin/deleteuser", deleteuser.HandleDeleteUser)
 	httpRouter.AddRoute("DELETE", "/api/admin/deleteproject", deleteproject.HandleDeleteProject)

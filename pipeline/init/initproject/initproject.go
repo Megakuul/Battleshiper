@@ -36,6 +36,9 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("failed to parse ticket: %v", err)
 	}
 
+	if initClaims.Source != request.Source {
+		return fmt.Errorf("source mismatch: provided ticket was not issued for this event source")
+	}
 	if initClaims.Action != request.DetailType {
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}

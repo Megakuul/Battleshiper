@@ -41,10 +41,6 @@ var (
 	INIT_EVENT_SOURCE     = os.Getenv("INIT_EVENT_SOURCE")
 	INIT_EVENT_ACTION     = os.Getenv("INIT_TICKET_ACTION")
 	INIT_EVENT_TICKET_TTL = os.Getenv("INIT_TICKET_TTL")
-	EventLogPrefix        string
-	BuildLogPrefix        string
-	DeployLogPrefix       string
-	FunctionLogPrefix     string
 )
 
 func main() {
@@ -104,7 +100,7 @@ func run() error {
 		return fmt.Errorf("failed to parse INIT_EVENT_TICKET_TTL environment variable")
 	}
 	initTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
+		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}

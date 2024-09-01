@@ -67,106 +67,80 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		return http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode projects")
 	}
 
-	for _, proj := range foundProjectDocs {
-		execIdentifier := uuid.New()
-		eventResult := project.EventResult{
-			ExecutionIdentifier: execIdentifier.String(),
-			Timepoint:           time.Now().Unix(),
-		}
-
-		logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), execIdentifier)
-		_, err := routeCtx.CloudWatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
-			LogGroupName:  aws.String(proj.DedicatedInfrastructure.EventLogGroup),
-			LogStreamName: aws.String(logStreamIdentifier),
-		})
-		if err != nil {
-			return http.StatusInternalServerError, fmt.Errorf("failed to create logstream on %s", proj.DedicatedInfrastructure.EventLogGroup)
-		}
-
-		logEvents := []cloudwatchtypes.InputLogEvent{}
-
-		err = initiateProjectBuild(transportCtx, routeCtx, execIdentifier.String(), userDoc, &proj, subscriptionDoc)
-		if err != nil {
-			eventResult.Successful = false
-			logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-				Message:   aws.String(err.Error()),
-				Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-			})
-		} else {
-			eventResult.Successful = true
-			logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-				Message:   aws.String("project build was successfully initiated"),
-				Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-			})
-		}
-
-		_, err = routeCtx.CloudWatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
-			LogGroupName:  aws.String(proj.DedicatedInfrastructure.EventLogGroup),
-			LogStreamName: aws.String(logStreamIdentifier),
-			LogEvents:     logEvents,
-		})
-		if err != nil {
-			// If putlogevent fails this is currently ignored as I don't want to block the pipelines flow
-			// just because the event logging failed.
-		}
-
-		result, err := projectCollection.UpdateByID(transportCtx, proj.MongoID, bson.M{
-			"$set": bson.M{
-				"last_event_result": eventResult,
-			},
-		})
-		if err != nil {
-			return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result")
-		} else if result.MatchedCount < 1 {
-			return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result: project not found")
+	for _, projectDoc := range foundProjectDocs {
+		if err = initiateProjectBuild(transportCtx, routeCtx, userDoc, &projectDoc); err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("failed to initiate project build: %v", err)
 		}
 	}
 
 	return http.StatusOK, nil
 }
 
-func initiateProjectBuild(
-	transportCtx context.Context,
-	routeCtx routecontext.Context,
-	execIdentifier string,
-	userDoc *user.User,
-	projectDoc *project.Project,
-	subscriptionDoc *subscription.Subscription) error {
+func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Context, userDoc *user.User, projectDoc *project.Project) error {
+	execIdentifier := uuid.New().String()
+	eventResult := project.EventResult{
+		ExecutionIdentifier: execIdentifier,
+	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), execIdentifier)
+	_, err := routeCtx.CloudwatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
+		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
+		LogStreamName: aws.String(logStreamIdentifier),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create logstream on %s", projectDoc.DedicatedInfrastructure.EventLogGroup)
+	}
 
-	updatedUserDoc := &user.User{}
-	err := userCollection.FindOneAndUpdate(transportCtx, bson.M{"id": userDoc.Id}, bson.M{
+	logEvents := []cloudwatchtypes.InputLogEvent{{
+		Message:   aws.String(fmt.Sprintf("START INIT %s", execIdentifier)),
+		Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+	}}
+
+	err = emitBuildEvent(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
+	if err != nil {
+		eventResult.Successful = false
+		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
+			Message:   aws.String(err.Error()),
+			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+		})
+	} else {
+		eventResult.Successful = true
+		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
+			Message:   aws.String("project build was successfully initiated"),
+			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
+		})
+	}
+	eventResult.Timepoint = time.Now().Unix()
+
+	_, err = routeCtx.CloudwatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
+		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
+		LogStreamName: aws.String(logStreamIdentifier),
+		LogEvents:     logEvents,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send logevents to %s", projectDoc.DedicatedInfrastructure.EventLogGroup)
+	}
+
+	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
-			"limit_counter": bson.M{
-				"pipeline_executions": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.expiration_time", time.Now().Unix()}},
-						"then": 0,
-						"else": bson.M{"$add": bson.A{"$limit_counter.pipeline_executions", 1}},
-					},
-				},
-				"expiration_time": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.expiration_time", time.Now().Unix()}},
-						"then": time.Now().Add(24 * time.Hour).Unix(),
-						"else": "$limit_counter.expiration_time",
-					},
-				},
-			},
+			"last_event_result": eventResult,
 		},
-	}).Decode(updatedUserDoc)
-	if err == mongo.ErrNoDocuments {
-		return fmt.Errorf("failed to update user limit counter: user not found")
-	} else if err != nil {
-		return fmt.Errorf("failed to update user limit counter on database")
+	})
+	if err != nil && result.MatchedCount < 1 {
+		return fmt.Errorf("failed to update last_event_result")
 	}
 
-	if updatedUserDoc.LimitCounter.PipelineBuilds > subscriptionDoc.DailyPipelineBuilds {
-		return fmt.Errorf("subscription limit reached; no further pipeline builds can be performed")
+	return nil
+}
+
+func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execIdentifier string, userDoc *user.User, projectDoc *project.Project) error {
+	err := pipeline.CheckBuildSubscriptionLimit(transportCtx, routeCtx, userDoc)
+	if err != nil {
+		return err
 	}
 
-	deployTicket, err := pipeline.CreateTicket(routeCtx.DeployEventOptions.TicketOpts, userDoc.Id, projectDoc.Name)
+	deployTicket, err := pipeline.CreateTicket(routeCtx.DeployTicketOptions, userDoc.Id, projectDoc.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create pipeline ticket")
 	}
@@ -185,7 +159,7 @@ func initiateProjectBuild(
 
 	eventEntry := eventbridgetypes.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.BuildEventOptions.Source),
-		DetailType:   aws.String(fmt.Sprintf("%s.%s", routeCtx.BuildEventOptions.Action, projectDoc.Name)),
+		DetailType:   aws.String(routeCtx.BuildEventOptions.Action),
 		Detail:       aws.String(string(buildRequestRaw)),
 		EventBusName: aws.String(routeCtx.BuildEventOptions.EventBus),
 	}

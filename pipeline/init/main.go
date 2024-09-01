@@ -103,7 +103,7 @@ func run() error {
 		return fmt.Errorf("failed to parse BUILD_JOB_MEMORY environment variable")
 	}
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", 0)
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", "", 0)
 	if err != nil {
 		return err
 	}

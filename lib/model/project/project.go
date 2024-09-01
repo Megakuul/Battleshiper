@@ -36,10 +36,10 @@ type DedicatedInfrastructure struct {
 }
 
 type SharedInfrastructure struct {
-	ApiRoutePath         string `bson:"api_route_path"`
-	StaticBucketPath     string `bson:"static_bucket_path"`
-	FunctionBucketPath   string `bson:"function_bucket_path"`
-	BuildAssetBucketPath string `bson:"build_asset_bucket_path"`
+	ApiRoutePath         string            `bson:"api_route_path"`
+	StaticBucketPath     string            `bson:"static_bucket_path"`
+	BuildAssetBucketPath string            `bson:"build_asset_bucket_path"`
+	StaticPageKeys       map[string]string `bson:"static_page_keys"`
 }
 
 type Project struct {

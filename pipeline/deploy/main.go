@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/pipeline/deploy/deployproject"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
-	"github.com/megakuul/battleshiper/pipeline/deploy/initproject"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -41,6 +41,8 @@ func run() error {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
+	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
+
 	cloudformationClient := cloudformation.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
@@ -65,46 +67,16 @@ func run() error {
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
 	})
 
-	deploymentTimeout, err := time.ParseDuration(DEPLOYMENT_TIMEOUT)
-	if err != nil {
-		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
-	}
-
-	buildJobTimeout, err := time.ParseDuration(BUILD_JOB_TIMEOUT)
-	if err != nil {
-		return fmt.Errorf("failed to parse BUILD_JOB_TIMEOUT environment variable")
-	}
-
-	buildJobVcpus, err := strconv.Atoi(BUILD_JOB_VCPUS)
-	if err != nil {
-		return fmt.Errorf("failed to parse BUILD_JOB_VCPUS environment variable")
-	}
-
-	buildJobMemory, err := strconv.Atoi(BUILD_JOB_MEMORY)
-	if err != nil {
-		return fmt.Errorf("failed to parse BUILD_JOB_MEMORY environment variable")
-	}
-
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", 0)
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", "", 0)
 	if err != nil {
 		return err
 	}
 
-	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
+	lambda.Start(deployproject.HandleDeployProject(eventcontext.Context{
 		Database:             databaseHandle,
 		TicketOptions:        ticketOptions,
 		CloudformationClient: cloudformationClient,
-		DeploymentTimeout:    deploymentTimeout,
-		BuildConfiguration: &eventcontext.BuildConfiguration{
-			BuildEventbusName:      BUILD_EVENTBUS_NAME,
-			BuildEventSource:       BUILD_EVENT_SOURCE,
-			BuildEventAction:       BUILD_EVENT_ACTION,
-			BuildJobQueueArn:       BUILD_QUEUE_ARN,
-			BuildJobQueuePolicyArn: BUILD_QUEUE_POLICY_ARN,
-			BuildJobTimeout:        buildJobTimeout,
-			BuildJobVCPUS:          buildJobVcpus,
-			BuildJobMemory:         buildJobMemory,
-		},
+		CloudwatchClient:     cloudwatchClient,
 	}))
 
 	return nil

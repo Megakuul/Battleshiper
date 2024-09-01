@@ -33,7 +33,6 @@ var (
 	BUILD_EVENTBUS_NAME          = os.Getenv("BUILD_EVENTBUS_NAME")
 	BUILD_EVENT_SOURCE           = os.Getenv("BUILD_EVENT_SOURCE")
 	BUILD_EVENT_ACTION           = os.Getenv("BUILD_EVENT_ACTION")
-	DEPLOY_EVENTBUS_NAME         = os.Getenv("DEPLOY_EVENTBUS_NAME")
 	DEPLOY_EVENT_SOURCE          = os.Getenv("DEPLOY_EVENT_SOURCE")
 	DEPLOY_EVENT_ACTION          = os.Getenv("DEPLOY_EVENT_ACTION")
 	DEPLOY_EVENT_TICKET_TTL      = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
@@ -92,19 +91,18 @@ func run() error {
 		return fmt.Errorf("failed to parse DEPLOY_EVENT_TICKET_TTL environment variable")
 	}
 	deployTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
+		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
-	deployEventOptions := pipeline.CreateEventOptions(DEPLOY_EVENTBUS_NAME, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, deployTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		WebhookClient:      webhookClient,
-		CloudWatchClient:   cloudwatchClient,
-		Database:           databaseHandle,
-		EventClient:        eventbridgeClient,
-		BuildEventOptions:  buildEventOptions,
-		DeployEventOptions: deployEventOptions,
+		WebhookClient:       webhookClient,
+		CloudwatchClient:    cloudwatchClient,
+		Database:            databaseHandle,
+		EventClient:         eventbridgeClient,
+		BuildEventOptions:   buildEventOptions,
+		DeployTicketOptions: deployTicketOptions,
 	})
 
 	httpRouter.AddRoute("POST", "/api/pipeline/event", event.HandleEvent)

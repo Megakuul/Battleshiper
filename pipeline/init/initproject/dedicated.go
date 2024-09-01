@@ -225,9 +225,10 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 			},
 			Command: []string{
 				"/bin/sh", "-c",
+				"echo \"START BUILD $EXECUTION_IDENTIFIER\" &&",
 				"git clone $REPOSITORY_URL . &&",
 				"$BUILD_COMMAND &&",
-				"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH --recursive",
+				"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH/$EXECUTION_IDENTIFIER --recursive",
 			},
 			NetworkConfiguration: &batch.JobDefinition_NetworkConfiguration{
 				AssignPublicIp: aws.String("ENABLED"),
@@ -274,6 +275,10 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 		},
 		ContainerOverrides: inputContainerOverrides{
 			Environment: []inputEnvironmentVariable{
+				{
+					Name:  "EXECUTION_IDENTIFIER",
+					Value: "<TMPL_EXECUTION_IDENTIFIER>",
+				},
 				{
 					Name:  "REPOSITORY_URL",
 					Value: "<TMPL_REPOSITORY_URL>",

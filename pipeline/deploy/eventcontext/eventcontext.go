@@ -2,13 +2,18 @@ package eventcontext
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Context provides data to event handlers.
 type Context struct {
-	Database             *mongo.Database
-	TicketOptions        *pipeline.TicketOptions
-	CloudformationClient *cloudformation.Client
+	Database              *mongo.Database
+	TicketOptions         *pipeline.TicketOptions
+	CloudformationClient  *cloudformation.Client
+	CloudwatchClient      *cloudwatchlogs.Client
+	CloudfrontCacheClient *cloudfrontkeyvaluestore.Client
+	CloudfrontCacheArn    string
 }

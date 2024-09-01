@@ -10,5 +10,6 @@ type Subscription struct {
 	DailyPipelineBuilds      int         `bson:"daily_pipeline_builds"`
 	DailyPipelineDeployments int         `bson:"daily_pipeline_deployments"`
 	StaticCacheRoutes        int         `bson:"static_cache_routes"`
+	DedicatedCDNInstances    int         `bson:"dedicated_cdn_instances"`
 	Projects                 int         `bson:"projects"`
 }

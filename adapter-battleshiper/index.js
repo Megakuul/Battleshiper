@@ -11,8 +11,8 @@ export default function (options = {}) {
 		async adapt(builder) {
 
       const src = fileURLToPath(new URL('./src', import.meta.url).href);
-      const dest = builder.getBuildDirectory("battleshiper")
-      const tmp = builder.getBuildDirectory("battleshiper-tmp")
+      const dest = "build"
+      const tmp = builder.getBuildDirectory("battleshiper")
 
       builder.rimraf(dest)
       builder.rimraf(tmp)

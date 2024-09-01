@@ -19,27 +19,33 @@ import (
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
-// initializeDedicatedInfrastructure initializes the dedicated infrastructure components required by the project.
-func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) (*project.Project, error) {
-	if projectDoc.DedicatedInfrastructure.StackName != "" {
-		return nil, fmt.Errorf("failed to create dedicated stack; project already holds a stack")
+// updateDedicatedInfrastructure updates the dedicated infrastructure components required by the project.
+func updateDedicatedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) (*project.Project, error) {
+	if projectDoc.DedicatedInfrastructure.StackName == "" {
+		return nil, fmt.Errorf("failed to create dedicated stack; project holds no stack")
 	}
 
 	if projectDoc.SharedInfrastructure.BuildAssetBucketPath == "" {
 		return nil, fmt.Errorf("invalid build asset bucket path: empty path is not allowed")
 	}
 
+	_, err := eventCtx.CloudformationClient.GetTemplate(transportCtx, &cloudformation.GetTemplateInput{
+		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cloudformation stack: %v", err)
+	}
+
 	stackTemplate := goformation.NewTemplate()
 
-	addBuildSystem(stackTemplate, &eventCtx, projectDoc)
+	addApplicationSystem(stackTemplate, &eventCtx, projectDoc)
 
-	stackName := fmt.Sprintf("battleshiper-project-stack-%s", projectDoc.Name)
 	stackBody, err := stackTemplate.JSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cloudformation stack body")
 	}
-	_, err = eventCtx.CloudformationClient.CreateStack(transportCtx, &cloudformation.CreateStackInput{
-		StackName:    aws.String(stackName),
+	_, err = eventCtx.CloudformationClient.UpdateStack(transportCtx, &cloudformation.CreateStackInput{
+		StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
 		TemplateBody: aws.String(string(stackBody)),
 	})
 	if err != nil {

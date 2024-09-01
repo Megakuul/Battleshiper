@@ -4,30 +4,49 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore/types"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// initializeSharedInfrastructure initializes the shared infrastructure components required by the project.
-func initializeSharedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) (*project.Project, error) {
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+func moveStaticContent(transportCtx context.Context, eventCtx eventcontext.Context) {
 
-	updatedDoc := &project.Project{}
-	err := projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
-		"$set": bson.M{
-			"api_route_path":          fmt.Sprintf("project/%s", projectDoc.Name),
-			"static_bucket_path":      fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.StaticBucketName, projectDoc.Name),
-			"function_bucket_path":    fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.FunctionBucketName, projectDoc.Name),
-			"build_asset_bucket_path": fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.BuildAssetBucketName, projectDoc.Name),
-		},
-	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, fmt.Errorf("failed to update project on database: project not found")
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to update project on database")
+}
+
+func updateStaticPageKeys(transportCtx context.Context, eventCtx eventcontext.Context, newStaticPages map[string]string, oldStaticPages map[string]string) error {
+	addStaticPageKeys := []types.PutKeyRequestListItem{}
+	for key, path := range newStaticPages {
+		addStaticPageKeys = append(addStaticPageKeys, types.PutKeyRequestListItem{
+			Key:   aws.String(key),
+			Value: aws.String(path),
+		})
 	}
-	return updatedDoc, nil
+
+	deleteStaticPageKeys := []types.DeleteKeyRequestListItem{}
+	for key, _ := range oldStaticPages {
+		if _, exists := newStaticPages[key]; !exists {
+			deleteStaticPageKeys = append(deleteStaticPageKeys, types.DeleteKeyRequestListItem{
+				Key: aws.String(key),
+			})
+		}
+	}
+
+	storeMetadata, err := eventCtx.CloudfrontCacheClient.DescribeKeyValueStore(transportCtx, &cloudfrontkeyvaluestore.DescribeKeyValueStoreInput{
+		KvsARN: aws.String(eventCtx.CloudfrontCacheArn),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to describe cdn store: %v", err)
+	}
+	_, err = eventCtx.CloudfrontCacheClient.UpdateKeys(transportCtx, &cloudfrontkeyvaluestore.UpdateKeysInput{
+		KvsARN:  aws.String(eventCtx.CloudfrontCacheArn),
+		Puts:    addStaticPageKeys,
+		Deletes: deleteStaticPageKeys,
+		IfMatch: storeMetadata.ETag,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update cdn store keys: %v", err)
+	}
+
+	return nil
 }

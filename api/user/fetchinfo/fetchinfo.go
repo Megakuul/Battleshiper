@@ -19,10 +19,12 @@ import (
 )
 
 type subscriptionOutput struct {
+	Id                       string `json:"id"`
 	Name                     string `json:"name"`
 	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
 	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
 	StaticCacheRoutes        int    `json:"static_cache_routes"`
+	DedicatedCDNInstances    int    `json:"dedicated_cdn_instances"`
 	Projects                 int    `json:"projects"`
 }
 
@@ -106,10 +108,12 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		Provider:  userToken.Provider,
 		AvatarURL: userToken.AvatarURL,
 		Subscription: &subscriptionOutput{
+			Id:                       subscriptionDoc.Id,
 			Name:                     subscriptionDoc.Name,
 			DailyPipelineBuilds:      subscriptionDoc.DailyPipelineBuilds,
 			DailyPipelineDeployments: subscriptionDoc.DailyPipelineDeployments,
 			StaticCacheRoutes:        subscriptionDoc.StaticCacheRoutes,
+			DedicatedCDNInstances:    subscriptionDoc.DedicatedCDNInstances,
 			Projects:                 subscriptionDoc.Projects,
 		},
 	}, http.StatusOK, nil

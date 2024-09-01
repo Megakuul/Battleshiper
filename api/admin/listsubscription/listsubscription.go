@@ -1,4 +1,4 @@
-package upsertsubscription
+package listsubscription
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
@@ -18,23 +17,24 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type upsertSubscriptionInput struct {
+type subscriptionOutput struct {
 	Id                       string `json:"id"`
 	Name                     string `json:"name"`
 	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
 	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
-	StaticCachedRoutes       int    `json:"static_cached_routes"`
+	StaticCacheRoutes        int    `json:"static_cache_routes"`
 	DedicatedCDNInstances    int    `json:"dedicated_cdn_instances"`
 	Projects                 int    `json:"projects"`
 }
 
-type upsertSubscriptionOutput struct {
-	Message string `json:"message"`
+type listSubscriptionOutput struct {
+	Message       string               `json:"message"`
+	Subscriptions []subscriptionOutput `json:"subscriptions"`
 }
 
-// HandleUpsertSubscription upserts a subscription identified by the subscription id.
-func HandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	response, code, err := runHandleUpsertSubscription(request, transportCtx, routeCtx)
+// HandleListSubscription performs a lookup for the specified subscriptions and returns them as json object.
+func HandleListSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
+	response, code, err := runHandleListSubscription(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -63,13 +63,7 @@ func HandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transportC
 	}, nil
 }
 
-func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*upsertSubscriptionOutput, int, error) {
-	var upsertSubscriptionInput upsertSubscriptionInput
-	err := json.Unmarshal([]byte(request.Body), &upsertSubscriptionInput)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
-	}
-
+func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*listSubscriptionOutput, int, error) {
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
 		return nil, http.StatusUnauthorized, fmt.Errorf("no user_token provided")
@@ -88,31 +82,38 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_SUBSCRIPTION) {
+	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_SUBSCRIPTION) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
 	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
-	_, err = subscriptionCollection.UpdateOne(transportCtx, bson.M{"id": upsertSubscriptionInput.Id},
-		bson.M{
-			"$set": subscription.Subscription{
-				Id:                       upsertSubscriptionInput.Id,
-				Name:                     upsertSubscriptionInput.Name,
-				DailyPipelineBuilds:      upsertSubscriptionInput.DailyPipelineBuilds,
-				DailyPipelineDeployments: upsertSubscriptionInput.DailyPipelineDeployments,
-				StaticCacheRoutes:        upsertSubscriptionInput.StaticCacheRoutes,
-				DedicatedCDNInstances:    upsertSubscriptionInput.DedicatedCDNInstances,
-				Projects:                 upsertSubscriptionInput.Projects,
-			},
-		},
-		options.Update().SetUpsert(true),
-	)
+	cursor, err := subscriptionCollection.Find(transportCtx, bson.D{})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
 
-	return &upsertSubscriptionOutput{
-		Message: "subscription upserted",
+	foundSubscriptionDocs := []subscription.Subscription{}
+	err = cursor.All(transportCtx, &foundSubscriptionDocs)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode subscriptions")
+	}
+
+	foundSubscriptionOutput := []subscriptionOutput{}
+	for _, sub := range foundSubscriptionOutput {
+		foundSubscriptionOutput = append(foundSubscriptionOutput, subscriptionOutput{
+			Id:                       sub.Id,
+			Name:                     sub.Name,
+			DailyPipelineBuilds:      sub.DailyPipelineBuilds,
+			DailyPipelineDeployments: sub.DailyPipelineDeployments,
+			StaticCacheRoutes:        sub.StaticCacheRoutes,
+			DedicatedCDNInstances:    sub.DedicatedCDNInstances,
+			Projects:                 sub.Projects,
+		})
+	}
+
+	return &listSubscriptionOutput{
+		Message:       "subscriptions fetched",
+		Subscriptions: foundSubscriptionOutput,
 	}, http.StatusOK, nil
 }
