@@ -4,7 +4,8 @@ go 1.23.0
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.28
-	github.com/megakuul/battleshiper/lib/model v0.1.17
+	github.com/megakuul/battleshiper/lib/helper v0.1.8
+	github.com/megakuul/battleshiper/lib/model v0.1.18
 )
 
 require (
@@ -40,10 +41,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.53.5
-	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.38.5
 	github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore v1.6.4
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.38.0
-	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.33.5
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.0
@@ -52,6 +51,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.4 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/awslabs/goformation/v7 v7.14.9
-	github.com/megakuul/battleshiper/lib/helper v0.1.7
 	go.mongodb.org/mongo-driver v1.16.1
 )
