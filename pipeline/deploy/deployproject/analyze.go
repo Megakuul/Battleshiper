@@ -32,9 +32,9 @@ type ObjectDescription struct {
 
 // BuildInformation provides information about the content of the build output.
 type BuildInformation struct {
-	ServerObject       ObjectDescription
 	ClientObjects      []ObjectDescription
 	PrerenderedObjects []ObjectDescription
+	ServerObject       ObjectDescription
 }
 
 // analyzeBuildAssets analyzes the content of the build assets, expecting to find sveltekit build output from adapter-battleshiper.
@@ -60,7 +60,12 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze server asset: %v", err)
 	}
-	// TODO add serverObject analysis + extract objectName
+
+	return &BuildInformation{
+		ClientObjects:      clientObjects,
+		PrerenderedObjects: prerenderObjects,
+		ServerObject:       *serverObject,
+	}, nil
 }
 
 func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, bucketName, bucketPrefix, execIdentifier string, maxBytes int64) ([]ObjectDescription, error) {
@@ -145,8 +150,12 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 		if ok := errors.As(err, nfe); ok {
 			return nil, fmt.Errorf("expected server object at '%s'", serverKey)
 		} else {
-			return nil, fmt.Errorf("failed to fetch server object: %v", err)
+			return nil, fmt.Errorf("failed to fetch object: %v", err)
 		}
+	}
+
+	if *serverObject.ContentLength > maxBytes {
+		return nil, fmt.Errorf("exceeded maximum asset size of %s bytes", maxBytes)
 	}
 
 	return &ObjectDescription{

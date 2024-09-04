@@ -56,25 +56,11 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return fmt.Errorf("failed to project from database")
 	}
 
-	if err := finishBuild(transportCtx, eventCtx, projectDoc, deployRequest); err != nil {
-		return fmt.Errorf("failed to finish build job: %v", err)
-	}
-
-	if err := deployProject(transportCtx, eventCtx, projectDoc, deployRequest); err != nil {
-		return fmt.Errorf("failed to deploy project: %v", err)
-	}
-
-	return nil
-}
-
-func finishBuild(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, deployRequest *event.DeployRequest) error {
+	// Finish build step
 	buildResult := project.BuildResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
 		Timepoint:           time.Now().Unix(),
 	}
-
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	if strings.ToUpper(deployRequest.Status) != "SUCCEEDED" {
 		buildResult.Successful = false
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
@@ -87,7 +73,6 @@ func finishBuild(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		}
 		return nil
 	}
-
 	buildResult.Successful = true
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
@@ -98,14 +83,39 @@ func finishBuild(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		return fmt.Errorf("failed to update last_build_result")
 	}
 
+	// Start actual deployment step
+	deploymentResult := project.DeploymentResult{
+		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
+	}
+	if err := deployProject(transportCtx, eventCtx, projectDoc, deployRequest); err != nil {
+		deploymentResult.Timepoint = time.Now().Unix()
+		deploymentResult.Successful = false
+		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
+			"$set": bson.M{
+				"last_deployment_result": deploymentResult,
+			},
+		})
+		if err != nil && result.MatchedCount < 1 {
+			return fmt.Errorf("failed to update last_deployment_result")
+		}
+		return nil
+	} else {
+		deploymentResult.Timepoint = time.Now().Unix()
+		deploymentResult.Successful = true
+		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
+			"$set": bson.M{
+				"last_deployment_result": deploymentResult,
+			},
+		})
+		if err != nil && result.MatchedCount < 1 {
+			return fmt.Errorf("failed to update last_deployment_result")
+		}
+	}
+
 	return nil
 }
 
 func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, deployRequest *event.DeployRequest) error {
-	deploymentResult := project.DeploymentResult{
-		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
-	}
-
 	logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), deployRequest.Parameters.ExecutionIdentifier)
 	_, err := eventCtx.CloudwatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
 		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
@@ -129,11 +139,8 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return fmt.Errorf("failed to send logevents to %s. %v", projectDoc.DedicatedInfrastructure.DeployLogGroup, err)
 	}
 
-	cancelDeployment := false
-
-	err = analyzeBuildAssets(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
+	buildInformation, err := analyzeBuildAssets(transportCtx, eventCtx, projectDoc, deployRequest.Parameters.ExecutionIdentifier)
 	if err != nil {
-		cancelDeployment = true
 		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
 			Message:   aws.String(err.Error()),
 			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
@@ -142,23 +149,10 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 
 	err = updateDedicatedInfrastructure(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
 	if err != nil {
-		deploymentResult.Successful = false
 		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
 			Message:   aws.String(err.Error()),
 			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
 		})
-	}
-
-	deploymentResult.Timepoint = time.Now().Unix()
-
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-		"$set": bson.M{
-			"last_deployment_result": deploymentResult,
-		},
-	})
-	if err != nil && result.MatchedCount < 1 {
-		return fmt.Errorf("failed to update last_deployment_result")
 	}
 
 	return nil

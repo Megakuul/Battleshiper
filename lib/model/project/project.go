@@ -28,18 +28,23 @@ type Repository struct {
 }
 
 type DedicatedInfrastructure struct {
-	StackName        string `bson:"stack_name"`
-	EventLogGroup    string `bson:"event_log_group"`
-	BuildLogGroup    string `bson:"build_log_group"`
-	DeployLogGroup   string `bson:"deploy_log_group"`
-	FunctionLogGroup string `bson:"function_log_group"`
+	StackName      string `bson:"stack_name"`
+	EventLogGroup  string `bson:"event_log_group"`
+	BuildLogGroup  string `bson:"build_log_group"`
+	DeployLogGroup string `bson:"deploy_log_group"`
+	ServerLogGroup string `bson:"server_log_group"`
 }
 
 type SharedInfrastructure struct {
 	ApiRoutePath         string            `bson:"api_route_path"`
 	StaticBucketPath     string            `bson:"static_bucket_path"`
 	BuildAssetBucketPath string            `bson:"build_asset_bucket_path"`
-	StaticPageKeys       map[string]string `bson:"static_page_keys"`
+	PrerenderPageKeys    map[string]string `bson:"prerender_page_keys"`
+}
+
+type CDNInfrastructure struct {
+	Enabled   bool   `bson:"enabled"`
+	StackName string `bson:"stack_name"`
 }
 
 type Project struct {
@@ -59,4 +64,5 @@ type Project struct {
 
 	DedicatedInfrastructure DedicatedInfrastructure `bson:"dedicated_infrastructure"`
 	SharedInfrastructure    SharedInfrastructure    `bson:"dedicated_infrastructure"`
+	CDNInfrastructure       CDNInfrastructure       `bson:"cdn_infrastructure"`
 }
