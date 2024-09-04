@@ -18,14 +18,29 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
+type pipelineSpecsInput struct {
+	DailyBuilds      int64 `json:"daily_builds"`
+	DailyDeployments int64 `json:"daily_deployments"`
+}
+
+type projectSpecsInput struct {
+	ProjectCount     int64 `json:"project_count"`
+	PrerenderRoutes  int64 `json:"prerender_routes"`
+	ServerStorage    int64 `json:"server_storage"`
+	ClientStorage    int64 `json:"client_storage"`
+	PrerenderStorage int64 `json:"prerender_storage"`
+}
+
+type cdnSpecsInput struct {
+	InstanceCount int64 `json:"instance_count"`
+}
+
 type upsertSubscriptionInput struct {
-	Id                       string `json:"id"`
-	Name                     string `json:"name"`
-	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
-	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
-	StaticCachedRoutes       int    `json:"static_cached_routes"`
-	DedicatedCDNInstances    int    `json:"dedicated_cdn_instances"`
-	Projects                 int    `json:"projects"`
+	Id            string             `json:"id"`
+	Name          string             `json:"name"`
+	PipelineSpecs pipelineSpecsInput `json:"pipeline_specs"`
+	ProjectSpecs  projectSpecsInput  `json:"project_specs"`
+	CDNSpecs      cdnSpecsInput      `json:"cdn_specs"`
 }
 
 type upsertSubscriptionOutput struct {
@@ -97,13 +112,22 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 	_, err = subscriptionCollection.UpdateOne(transportCtx, bson.M{"id": upsertSubscriptionInput.Id},
 		bson.M{
 			"$set": subscription.Subscription{
-				Id:                       upsertSubscriptionInput.Id,
-				Name:                     upsertSubscriptionInput.Name,
-				DailyPipelineBuilds:      upsertSubscriptionInput.DailyPipelineBuilds,
-				DailyPipelineDeployments: upsertSubscriptionInput.DailyPipelineDeployments,
-				StaticCacheRoutes:        upsertSubscriptionInput.StaticCacheRoutes,
-				DedicatedCDNInstances:    upsertSubscriptionInput.DedicatedCDNInstances,
-				Projects:                 upsertSubscriptionInput.Projects,
+				Id:   upsertSubscriptionInput.Id,
+				Name: upsertSubscriptionInput.Name,
+				PipelineSpecs: subscription.PipelineSpecs{
+					DailyBuilds:      upsertSubscriptionInput.PipelineSpecs.DailyBuilds,
+					DailyDeployments: upsertSubscriptionInput.PipelineSpecs.DailyDeployments,
+				},
+				ProjectSpecs: subscription.ProjectSpecs{
+					ProjectCount:     upsertSubscriptionInput.ProjectSpecs.ProjectCount,
+					ServerStorage:    upsertSubscriptionInput.ProjectSpecs.ServerStorage,
+					ClientStorage:    upsertSubscriptionInput.ProjectSpecs.ClientStorage,
+					PrerenderStorage: upsertSubscriptionInput.ProjectSpecs.PrerenderStorage,
+					PrerenderRoutes:  upsertSubscriptionInput.ProjectSpecs.PrerenderRoutes,
+				},
+				CDNSpecs: subscription.CDNSpecs{
+					InstanceCount: upsertSubscriptionInput.CDNSpecs.InstanceCount,
+				},
 			},
 		},
 		options.Update().SetUpsert(true),

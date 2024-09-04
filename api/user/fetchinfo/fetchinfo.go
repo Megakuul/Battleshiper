@@ -18,14 +18,29 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
+type pipelineSpecsOutput struct {
+	DailyBuilds      int64 `json:"daily_builds"`
+	DailyDeployments int64 `json:"daily_deployments"`
+}
+
+type projectSpecsOutput struct {
+	ProjectCount     int64 `json:"project_count"`
+	PrerenderRoutes  int64 `json:"prerender_routes"`
+	ServerStorage    int64 `json:"server_storage"`
+	ClientStorage    int64 `json:"client_storage"`
+	PrerenderStorage int64 `json:"prerender_storage"`
+}
+
+type cdnSpecsOutput struct {
+	InstanceCount int64 `json:"instance_count"`
+}
+
 type subscriptionOutput struct {
-	Id                       string `json:"id"`
-	Name                     string `json:"name"`
-	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
-	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
-	StaticCacheRoutes        int    `json:"static_cache_routes"`
-	DedicatedCDNInstances    int    `json:"dedicated_cdn_instances"`
-	Projects                 int    `json:"projects"`
+	Id            string              `json:"id"`
+	Name          string              `json:"name"`
+	PipelineSpecs pipelineSpecsOutput `json:"pipeline_specs"`
+	ProjectSpecs  projectSpecsOutput  `json:"project_specs"`
+	CDNSpecs      cdnSpecsOutput      `json:"cdn_specs"`
 }
 
 type fetchInfoOutput struct {
@@ -108,13 +123,22 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		Provider:  userToken.Provider,
 		AvatarURL: userToken.AvatarURL,
 		Subscription: &subscriptionOutput{
-			Id:                       subscriptionDoc.Id,
-			Name:                     subscriptionDoc.Name,
-			DailyPipelineBuilds:      subscriptionDoc.DailyPipelineBuilds,
-			DailyPipelineDeployments: subscriptionDoc.DailyPipelineDeployments,
-			StaticCacheRoutes:        subscriptionDoc.StaticCacheRoutes,
-			DedicatedCDNInstances:    subscriptionDoc.DedicatedCDNInstances,
-			Projects:                 subscriptionDoc.Projects,
+			Id:   subscriptionDoc.Id,
+			Name: subscriptionDoc.Name,
+			PipelineSpecs: pipelineSpecsOutput{
+				DailyBuilds:      subscriptionDoc.PipelineSpecs.DailyBuilds,
+				DailyDeployments: subscriptionDoc.PipelineSpecs.DailyDeployments,
+			},
+			ProjectSpecs: projectSpecsOutput{
+				ProjectCount:     subscriptionDoc.ProjectSpecs.ProjectCount,
+				ServerStorage:    subscriptionDoc.ProjectSpecs.ServerStorage,
+				ClientStorage:    subscriptionDoc.ProjectSpecs.ClientStorage,
+				PrerenderStorage: subscriptionDoc.ProjectSpecs.PrerenderStorage,
+				PrerenderRoutes:  subscriptionDoc.ProjectSpecs.PrerenderRoutes,
+			},
+			CDNSpecs: cdnSpecsOutput{
+				InstanceCount: subscriptionDoc.CDNSpecs.InstanceCount,
+			},
 		},
 	}, http.StatusOK, nil
 }

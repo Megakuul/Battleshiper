@@ -57,8 +57,10 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 			RefreshToken:   "",
 			SubscriptionId: "",
 			LimitCounter: user.ExecutionLimitCounter{
-				ExpirationTime:     0,
-				PipelineExecutions: 0,
+				PipelineBuildsExpiration:      0,
+				PipelineBuilds:                0,
+				PipelineDeploymentsExpiration: 0,
+				PipelineDeployments:           0,
 			},
 			GithubData: user.GithubData{
 				InstallationId: 0,

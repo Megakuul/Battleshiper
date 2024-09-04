@@ -38,7 +38,7 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 		"%s/%s", eventCtx.BuildConfiguration.BuildLogPrefix, projectDoc.Name)
 	projectDoc.DedicatedInfrastructure.DeployLogGroup = fmt.Sprintf(
 		"%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectDoc.Name)
-	projectDoc.DedicatedInfrastructure.FunctionLogGroup = fmt.Sprintf(
+	projectDoc.DedicatedInfrastructure.ServerLogGroup = fmt.Sprintf(
 		"%s/%s", eventCtx.BuildConfiguration.FunctionLogPrefix, projectDoc.Name)
 
 	stackTemplate := goformation.NewTemplate()
@@ -64,11 +64,11 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 	updatedDoc := &project.Project{}
 	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
 		"$set": bson.M{
-			"dedicated_infrastructure.stack_name":         stackName,
-			"dedicated_infrastructure.event_log_group":    projectDoc.DedicatedInfrastructure.EventLogGroup,
-			"dedicated_infrastructure.build_log_group":    projectDoc.DedicatedInfrastructure.BuildLogGroup,
-			"dedicated_infrastructure.deploy_log_group":   projectDoc.DedicatedInfrastructure.DeployLogGroup,
-			"dedicated_infrastructure.function_log_group": projectDoc.DedicatedInfrastructure.FunctionLogGroup,
+			"dedicated_infrastructure.stack_name":       stackName,
+			"dedicated_infrastructure.event_log_group":  projectDoc.DedicatedInfrastructure.EventLogGroup,
+			"dedicated_infrastructure.build_log_group":  projectDoc.DedicatedInfrastructure.BuildLogGroup,
+			"dedicated_infrastructure.deploy_log_group": projectDoc.DedicatedInfrastructure.DeployLogGroup,
+			"dedicated_infrastructure.server_log_group": projectDoc.DedicatedInfrastructure.ServerLogGroup,
 		},
 	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
 	if err != nil {
@@ -126,9 +126,9 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
 	}
 
-	const FUNCTION_LOG_GROUP string = "FunctionLogGroup"
-	stackTemplate.Resources[FUNCTION_LOG_GROUP] = &logs.LogGroup{
-		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.FunctionLogGroup),
+	const SERVER_LOG_GROUP string = "ServerLogGroup"
+	stackTemplate.Resources[SERVER_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.ServerLogGroup),
 		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
 	}
 

@@ -120,7 +120,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch projects from database")
 	}
 
-	if int(count) >= subscriptionDoc.Projects {
+	if count >= subscriptionDoc.ProjectSpecs.ProjectCount {
 		return nil, http.StatusForbidden, fmt.Errorf("subscription limit reached; no additional projects can be created")
 	}
 

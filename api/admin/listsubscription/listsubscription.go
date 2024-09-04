@@ -17,14 +17,29 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
+type pipelineSpecsOutput struct {
+	DailyBuilds      int64 `json:"daily_builds"`
+	DailyDeployments int64 `json:"daily_deployments"`
+}
+
+type projectSpecsOutput struct {
+	ProjectCount     int64 `json:"project_count"`
+	PrerenderRoutes  int64 `json:"prerender_routes"`
+	ServerStorage    int64 `json:"server_storage"`
+	ClientStorage    int64 `json:"client_storage"`
+	PrerenderStorage int64 `json:"prerender_storage"`
+}
+
+type cdnSpecsOutput struct {
+	InstanceCount int64 `json:"instance_count"`
+}
+
 type subscriptionOutput struct {
-	Id                       string `json:"id"`
-	Name                     string `json:"name"`
-	DailyPipelineBuilds      int    `json:"daily_pipeline_builds"`
-	DailyPipelineDeployments int    `json:"daily_pipeline_deployments"`
-	StaticCacheRoutes        int    `json:"static_cache_routes"`
-	DedicatedCDNInstances    int    `json:"dedicated_cdn_instances"`
-	Projects                 int    `json:"projects"`
+	Id            string              `json:"id"`
+	Name          string              `json:"name"`
+	PipelineSpecs pipelineSpecsOutput `json:"pipeline_specs"`
+	ProjectSpecs  projectSpecsOutput  `json:"project_specs"`
+	CDNSpecs      cdnSpecsOutput      `json:"cdn_specs"`
 }
 
 type listSubscriptionOutput struct {
@@ -102,13 +117,22 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 	foundSubscriptionOutput := []subscriptionOutput{}
 	for _, sub := range foundSubscriptionOutput {
 		foundSubscriptionOutput = append(foundSubscriptionOutput, subscriptionOutput{
-			Id:                       sub.Id,
-			Name:                     sub.Name,
-			DailyPipelineBuilds:      sub.DailyPipelineBuilds,
-			DailyPipelineDeployments: sub.DailyPipelineDeployments,
-			StaticCacheRoutes:        sub.StaticCacheRoutes,
-			DedicatedCDNInstances:    sub.DedicatedCDNInstances,
-			Projects:                 sub.Projects,
+			Id:   sub.Id,
+			Name: sub.Name,
+			PipelineSpecs: pipelineSpecsOutput{
+				DailyBuilds:      sub.PipelineSpecs.DailyBuilds,
+				DailyDeployments: sub.PipelineSpecs.DailyDeployments,
+			},
+			ProjectSpecs: projectSpecsOutput{
+				ProjectCount:     sub.ProjectSpecs.ProjectCount,
+				ServerStorage:    sub.ProjectSpecs.ServerStorage,
+				ClientStorage:    sub.ProjectSpecs.ClientStorage,
+				PrerenderStorage: sub.ProjectSpecs.PrerenderStorage,
+				PrerenderRoutes:  sub.ProjectSpecs.PrerenderRoutes,
+			},
+			CDNSpecs: cdnSpecsOutput{
+				InstanceCount: sub.CDNSpecs.InstanceCount,
+			},
 		})
 	}
 

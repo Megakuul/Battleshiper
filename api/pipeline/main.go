@@ -19,6 +19,7 @@ import (
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
@@ -77,6 +78,10 @@ func run() error {
 		{FieldNames: []string{"github_data.installation_id"}, SortingOrder: 1, Unique: true},
 		{FieldNames: []string{"repository.id"}, SortingOrder: 1, Unique: false},
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
+	})
+
+	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
 	})
 
 	webhookClient, err := auth.CreateGithubWebhookClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)

@@ -101,8 +101,8 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	var logType string
 	switch fetchLogInput.LogType {
-	case "function":
-		logType = specifiedProject.DedicatedInfrastructure.FunctionLogGroup
+	case "server":
+		logType = specifiedProject.DedicatedInfrastructure.ServerLogGroup
 	case "event":
 		logType = specifiedProject.DedicatedInfrastructure.EventLogGroup
 	case "build":
@@ -111,7 +111,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		logType = specifiedProject.DedicatedInfrastructure.DeployLogGroup
 	}
 	if logType == "" {
-		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'function', 'event', 'build' or 'deploy'")
+		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'server', 'event', 'build' or 'deploy'")
 	}
 
 	activeLogStream, err := routeCtx.CloudWatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{

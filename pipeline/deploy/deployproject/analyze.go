@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
@@ -38,7 +39,7 @@ type BuildInformation struct {
 }
 
 // analyzeBuildAssets analyzes the content of the build assets, expecting to find sveltekit build output from adapter-battleshiper.
-func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execIdentifier string, maxClientBytes, maxPrerenderBytes, maxServerBytes int64) (*BuildInformation, error) {
+func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, subscriptionDoc *subscription.Subscription, execIdentifier string) (*BuildInformation, error) {
 	bucketPathSegments := strings.SplitN(projectDoc.SharedInfrastructure.BuildAssetBucketPath, "/", 2)
 	if len(bucketPathSegments) != 2 {
 		return nil, fmt.Errorf("failed to decode build asset bucket path")
@@ -46,17 +47,20 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 	bucketName := bucketPathSegments[0]
 	bucketPrefix := fmt.Sprintf("%s/", bucketPathSegments[1])
 
-	clientObjects, err := analyzeClientObjects(transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, maxClientBytes)
+	clientObjects, err := analyzeClientObjects(
+		transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, subscriptionDoc.ProjectSpecs.ClientStorage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze client assets: %v", err)
 	}
 
-	prerenderObjects, err := analyzePrerenderObjects(transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, maxClientBytes)
+	prerenderObjects, err := analyzePrerenderObjects(
+		transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, subscriptionDoc.ProjectSpecs.PrerenderStorage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze prerendered assets: %v", err)
 	}
 
-	serverObject, err := analyzeServerObject(transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, maxClientBytes)
+	serverObject, err := analyzeServerObject(
+		transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, subscriptionDoc.ProjectSpecs.ServerStorage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze server asset: %v", err)
 	}
