@@ -2,17 +2,20 @@ package deployproject
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
 const (
-	SERVER_PATH    = "server"
+	SERVER_PATH    = "server/index.js"
 	CLIENT_PATH    = "client"
 	PRERENDER_PATH = "prerendered"
 )
@@ -32,7 +35,6 @@ type BuildInformation struct {
 	ServerObject       ObjectDescription
 	ClientObjects      []ObjectDescription
 	PrerenderedObjects []ObjectDescription
-	PrerenderedPages   []string
 }
 
 // analyzeBuildAssets analyzes the content of the build assets, expecting to find sveltekit build output from adapter-battleshiper.
@@ -54,6 +56,10 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 		return nil, fmt.Errorf("failed to analyze prerendered assets: %v", err)
 	}
 
+	serverObject, err := analyzeServerObject(transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, maxClientBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze server asset: %v", err)
+	}
 	// TODO add serverObject analysis + extract objectName
 }
 
@@ -80,6 +86,7 @@ func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, buc
 			}
 
 			clientObjects = append(clientObjects, ObjectDescription{
+				ObjectName:  path.Base(*obj.Key),
 				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
 				RelativeKey: strings.TrimPrefix(*obj.Key, clientPrefix),
 			})
@@ -116,6 +123,7 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 			}
 
 			prerenderObjects = append(prerenderObjects, ObjectDescription{
+				ObjectName:  path.Base(*obj.Key),
 				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
 				RelativeKey: strings.TrimPrefix(*obj.Key, prerenderPrefix),
 			})
@@ -123,4 +131,27 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 	}
 
 	return prerenderObjects, nil
+}
+
+func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, bucketName, bucketPrefix, execIdentifier string, maxBytes int64) (*ObjectDescription, error) {
+	serverKey := fmt.Sprintf("%s%s/%s", bucketPrefix, execIdentifier, SERVER_PATH)
+
+	serverObject, err := s3Client.HeadObject(transportCtx, &s3.HeadObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(serverKey),
+	})
+	if err != nil {
+		var nfe s3types.NotFound
+		if ok := errors.As(err, nfe); ok {
+			return nil, fmt.Errorf("expected server object at '%s'", serverKey)
+		} else {
+			return nil, fmt.Errorf("failed to fetch server object: %v", err)
+		}
+	}
+
+	return &ObjectDescription{
+		ObjectName:  path.Base(serverKey),
+		SourcePath:  fmt.Sprintf("%s/%s", bucketName, serverKey),
+		RelativeKey: SERVER_PATH,
+	}, nil
 }
