@@ -36,6 +36,7 @@ func NewCloudLogger(transportCtx context.Context, client *cloudwatchlogs.Client,
 	}, nil
 }
 
+// WriteLog writes a log event to a local buffer.
 func (c *CloudLogger) WriteLog(format string, args ...interface{}) {
 	c.logBuffer = append(c.logBuffer, cloudwatchtypes.InputLogEvent{
 		Message:   aws.String(fmt.Sprintf(format, args...)),
@@ -43,7 +44,12 @@ func (c *CloudLogger) WriteLog(format string, args ...interface{}) {
 	})
 }
 
-func (c *CloudLogger) PushLog() error {
+// PushLogs pushes the current log event buffer to cloudwatch.
+func (c *CloudLogger) PushLogs() error {
+	if len(c.logBuffer) < 1 {
+		return nil
+	}
+
 	_, err := c.client.PutLogEvents(c.transportCtx, &cloudwatchlogs.PutLogEventsInput{
 		LogGroupName:  aws.String(c.logGroup),
 		LogStreamName: aws.String(c.logStream),

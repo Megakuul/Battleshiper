@@ -102,24 +102,14 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 }
 
 func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Context, execIdentifier string, userDoc *user.User, projectDoc *project.Project) error {
-	logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), execIdentifier)
-	_, err := routeCtx.CloudwatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
-		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
-		LogStreamName: aws.String(logStreamIdentifier),
-	})
+	cloudLogger, err := pipeline.NewCloudLogger(transportCtx, routeCtx.CloudwatchClient, projectDoc.DedicatedInfrastructure.EventLogGroup, execIdentifier)
 	if err != nil {
-		return fmt.Errorf("failed to create logstream on %s", projectDoc.DedicatedInfrastructure.EventLogGroup)
+		return fmt.Errorf("failed to create logger: %v", err)
 	}
 
-	logEvents := []cloudwatchtypes.InputLogEvent{{
-		Message:   aws.String(fmt.Sprintf("START INIT %s", execIdentifier)),
-		Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-	}}
-
-	logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-		Message:   aws.String("Emitting event to pipeline..."),
-		Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-	})
+	cloudLogger.WriteLog("START INIT %s", execIdentifier)
+	cloudLogger.WriteLog("Emitting event to pipeline...")
+	cloudLogger.PushLog()
 
 	err = emitBuildEvent(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
 	if err != nil {
