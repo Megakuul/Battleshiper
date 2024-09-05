@@ -14,6 +14,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
+	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/pipeline/deploy/deployproject"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -65,6 +67,14 @@ func run() error {
 	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
 		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
+	})
+
+	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
+	})
+
+	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
+		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
 	})
 
 	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", "", 0)

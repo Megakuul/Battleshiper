@@ -40,7 +40,6 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 		"%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectDoc.Name)
 	projectDoc.DedicatedInfrastructure.ServerLogGroup = fmt.Sprintf(
 		"%s/%s", eventCtx.BuildConfiguration.FunctionLogPrefix, projectDoc.Name)
-
 	stackTemplate := goformation.NewTemplate()
 	if err := addProject(stackTemplate, &eventCtx, projectDoc); err != nil {
 		return nil, fmt.Errorf("failed to serialize build system blueprint")
@@ -51,6 +50,8 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cloudformation stack body")
 	}
+	projectDoc.DedicatedInfrastructure.StackName = stackName
+
 	_, err = eventCtx.CloudformationClient.CreateStack(transportCtx, &cloudformation.CreateStackInput{
 		StackName:    aws.String(stackName),
 		TemplateBody: aws.String(string(stackBody)),
@@ -64,11 +65,7 @@ func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx ev
 	updatedDoc := &project.Project{}
 	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
 		"$set": bson.M{
-			"dedicated_infrastructure.stack_name":       stackName,
-			"dedicated_infrastructure.event_log_group":  projectDoc.DedicatedInfrastructure.EventLogGroup,
-			"dedicated_infrastructure.build_log_group":  projectDoc.DedicatedInfrastructure.BuildLogGroup,
-			"dedicated_infrastructure.deploy_log_group": projectDoc.DedicatedInfrastructure.DeployLogGroup,
-			"dedicated_infrastructure.server_log_group": projectDoc.DedicatedInfrastructure.ServerLogGroup,
+			"dedicated_infrastructure": projectDoc.DedicatedInfrastructure,
 		},
 	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
 	if err != nil {
@@ -318,6 +315,10 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 				Arn:     eventCtx.BuildConfiguration.BuildJobQueueArn,
 				Id:      "battleshiper-project-build-queue",
 				RoleArn: aws.String(goformation.GetAtt(BUILD_RULE_ROLE, "Arn")),
+				RetryPolicy: &events.Rule_RetryPolicy{
+					MaximumRetryAttempts:     aws.Int(5),
+					MaximumEventAgeInSeconds: aws.Int(150),
+				},
 				BatchParameters: &events.Rule_BatchParameters{
 					JobDefinition: goformation.Ref(BUILD_JOB_DEFINITION),
 					JobName:       fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.Name),

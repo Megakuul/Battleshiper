@@ -48,12 +48,13 @@ type CDNInfrastructure struct {
 }
 
 type Project struct {
-	MongoID              interface{}      `bson:"_id"`
-	Name                 string           `bson:"name"`
-	OwnerId              string           `bson:"owner_id"`
-	Deleted              bool             `bson:"deleted"`
-	Initialized          bool             `bson:"initialized"`
-	Status               string           `bson:"status"`
+	MongoID     interface{} `bson:"_id"`
+	Name        string      `bson:"name"`
+	OwnerId     string      `bson:"owner_id"`
+	Deleted     bool        `bson:"deleted"`
+	Initialized bool        `bson:"initialized"`
+	Status      string      `bson:"status"`
+
 	Repository           Repository       `bson:"repository"`
 	BuildImage           string           `bson:"build_image"`
 	BuildCommand         string           `bson:"build_command"`
@@ -62,7 +63,8 @@ type Project struct {
 	LastBuildResult      BuildResult      `bson:"last_build_result"`
 	LastDeploymentResult DeploymentResult `bson:"last_deployment_result"`
 
+	PipelineLock            bool                    `bson:"pipeline_lock"`
 	DedicatedInfrastructure DedicatedInfrastructure `bson:"dedicated_infrastructure"`
-	SharedInfrastructure    SharedInfrastructure    `bson:"dedicated_infrastructure"`
+	SharedInfrastructure    SharedInfrastructure    `bson:"shared_infrastructure"`
 	CDNInfrastructure       CDNInfrastructure       `bson:"cdn_infrastructure"`
 }

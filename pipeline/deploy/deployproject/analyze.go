@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -23,7 +22,6 @@ const (
 
 // ObjectDescription provides information about the location of an s3 object.
 type ObjectDescription struct {
-	ObjectName string
 	// Key relative to the objects logical root
 	// e.g. build_asset_bucket/x/123/client/_app/static/myimage.png = _app/static/myimage.png.
 	RelativeKey string
@@ -36,6 +34,7 @@ type BuildInformation struct {
 	ClientObjects      []ObjectDescription
 	PrerenderedObjects []ObjectDescription
 	ServerObject       ObjectDescription
+	PageKeys           map[string]string
 }
 
 // analyzeBuildAssets analyzes the content of the build assets, expecting to find sveltekit build output from adapter-battleshiper.
@@ -69,6 +68,7 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 		ClientObjects:      clientObjects,
 		PrerenderedObjects: prerenderObjects,
 		ServerObject:       *serverObject,
+		PageKeys:           extractPageKeys(prerenderObjects, projectDoc.Name),
 	}, nil
 }
 
@@ -95,7 +95,6 @@ func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, buc
 			}
 
 			clientObjects = append(clientObjects, ObjectDescription{
-				ObjectName:  path.Base(*obj.Key),
 				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
 				RelativeKey: strings.TrimPrefix(*obj.Key, clientPrefix),
 			})
@@ -132,7 +131,6 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 			}
 
 			prerenderObjects = append(prerenderObjects, ObjectDescription{
-				ObjectName:  path.Base(*obj.Key),
 				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
 				RelativeKey: strings.TrimPrefix(*obj.Key, prerenderPrefix),
 			})
@@ -163,8 +161,16 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 	}
 
 	return &ObjectDescription{
-		ObjectName:  path.Base(serverKey),
 		SourcePath:  fmt.Sprintf("%s/%s", bucketName, serverKey),
 		RelativeKey: SERVER_PATH,
 	}, nil
+}
+
+func extractPageKeys(prerenderObjects []ObjectDescription, projectName string) map[string]string {
+	pageKeys := map[string]string{}
+	for _, object := range prerenderObjects {
+		pageKey := fmt.Sprintf("%s/%s", projectName, object.RelativeKey)
+		pageKeys[strings.TrimSuffix(pageKey, ".html")] = pageKey
+	}
+	return pageKeys
 }

@@ -9,12 +9,11 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
+	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -48,12 +47,32 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
 
 	projectDoc := &project.Project{}
-	err = projectCollection.FindOne(transportCtx, bson.D{
+	err = projectCollection.FindOneAndUpdate(transportCtx, bson.D{
 		{Key: "name", Value: deployClaims.Project},
 		{Key: "owner_id", Value: deployClaims.UserID},
+	}, bson.M{
+		// Lock the pipeline, this step is used to ensure only one deployment runs at a time.
+		// running multiple deployments at the same time should not cause major issues,
+		// however it can cause weird or unintended behavior for the project.
+		"$set": bson.M{
+			"pipeline_lock": true,
+		},
 	}).Decode(&projectDoc)
 	if err != nil {
-		return fmt.Errorf("failed to project from database")
+		return fmt.Errorf("failed to fetch project from database")
+	}
+	if projectDoc.PipelineLock {
+		return fmt.Errorf("project locked")
+	}
+
+	userCollection := eventCtx.Database.Collection(user.USER_COLLECTION)
+
+	userDoc := &user.User{}
+	err = userCollection.FindOne(transportCtx, bson.M{
+		"id": deployClaims.UserID,
+	}).Decode(&userDoc)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user from database")
 	}
 
 	// Finish build step
@@ -66,10 +85,11 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_build_result": buildResult,
+				"status":            fmt.Errorf("BUILD FAILED: %v", err),
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update last_build_result")
+			return fmt.Errorf("failed to update project (last_build_result)")
 		}
 		return nil
 	} else {
@@ -80,7 +100,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update last_build_result")
+			return fmt.Errorf("failed to update project (last_build_result)")
 		}
 	}
 
@@ -88,16 +108,17 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	deploymentResult := project.DeploymentResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
 	}
-	if err := deployProject(transportCtx, eventCtx, deployRequest, projectDoc); err != nil {
+	if err := deployProject(transportCtx, eventCtx, deployRequest, userDoc, projectDoc); err != nil {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = false
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
+				"status":                 fmt.Errorf("DEPLOYMENT FAILED: %v", err),
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update last_deployment_result")
+			return fmt.Errorf("failed to update project (last_deployment_result)")
 		}
 		return nil
 	} else {
@@ -106,54 +127,118 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
+				"status":                 "",
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update last_deployment_result")
+			return fmt.Errorf("failed to update project (last_deployment_result)")
 		}
 	}
 
 	return nil
 }
 
-func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, deployRequest *event.DeployRequest, projectDoc *project.Project) error {
-	logStreamIdentifier := fmt.Sprintf("%s/%s", time.Now().Format("2006/01/02"), deployRequest.Parameters.ExecutionIdentifier)
-	_, err := eventCtx.CloudwatchClient.CreateLogStream(transportCtx, &cloudwatchlogs.CreateLogStreamInput{
-		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
-		LogStreamName: aws.String(logStreamIdentifier),
-	})
+func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, deployRequest *event.DeployRequest, userDoc *user.User, projectDoc *project.Project) error {
+	cloudLogger, err := pipeline.NewCloudLogger(
+		transportCtx,
+		eventCtx.CloudwatchClient,
+		projectDoc.DedicatedInfrastructure.DeployLogGroup,
+		deployRequest.Parameters.ExecutionIdentifier,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create logstream on %s. %v", projectDoc.DedicatedInfrastructure.DeployLogGroup, err)
+		return err
 	}
 
-	logEvents := []cloudwatchtypes.InputLogEvent{cloudwatchtypes.InputLogEvent{
-		Message:   aws.String(fmt.Sprintf("START DEPLOYMENT %s", deployRequest.Parameters.ExecutionIdentifier)),
-		Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-	}}
+	cloudLogger.WriteLog("START DEPLOYMENT %s", deployRequest.Parameters.ExecutionIdentifier)
+	cloudLogger.WriteLog("loading user subscription...")
 
-	_, err = eventCtx.CloudwatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
-		LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
-		LogStreamName: aws.String(logStreamIdentifier),
-		LogEvents:     logEvents,
-	})
+	subscriptionCollection := eventCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+
+	subscriptionDoc := &subscription.Subscription{}
+	err = subscriptionCollection.FindOne(transportCtx, bson.M{
+		"id": userDoc.SubscriptionId,
+	}).Decode(&subscriptionDoc)
 	if err != nil {
-		return fmt.Errorf("failed to send logevents to %s. %v", projectDoc.DedicatedInfrastructure.DeployLogGroup, err)
+		cloudLogger.WriteLog("failed to fetch subscription from database")
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to fetch subscription from database")
 	}
 
+	cloudLogger.WriteLog("analyzing build assets...")
 	buildInformation, err := analyzeBuildAssets(transportCtx, eventCtx, projectDoc, subscriptionDoc, deployRequest.Parameters.ExecutionIdentifier)
 	if err != nil {
-		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-			Message:   aws.String(err.Error()),
-			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-		})
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
 	}
 
-	err = updateDedicatedInfrastructure(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
+	cloudLogger.WriteLog("updating page keys on database...")
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
+	}
+	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
+		"$set": bson.M{
+			"shared_infrastructure.prerender_page_keys": buildInformation.PageKeys,
+		},
+	})
+	if err != nil || result.MatchedCount < 1 {
+		cloudLogger.WriteLog("failed to update page keys on database")
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to update page keys on database")
+	}
+
+	cloudLogger.WriteLog("updating page keys on cdn...")
+	err = updateStaticPageKeys(transportCtx, eventCtx, buildInformation.PageKeys, projectDoc.SharedInfrastructure.PrerenderPageKeys)
 	if err != nil {
-		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-			Message:   aws.String(err.Error()),
-			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-		})
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cloudLogger.WriteLog("removing old static asset data...")
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
+	}
+	err = cleanStaticBucket(transportCtx, eventCtx, projectDoc)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cloudLogger.WriteLog("transferring new static assets...")
+	err = copyStaticAssets(transportCtx, eventCtx, projectDoc, buildInformation.ClientObjects)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cloudLogger.WriteLog("transferring new static pages...")
+	err = copyStaticPages(transportCtx, eventCtx, projectDoc, buildInformation.PrerenderedObjects)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
 	}
 
 	return nil

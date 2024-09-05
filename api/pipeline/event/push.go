@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	eventbridgetypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"github.com/go-playground/webhooks/v6/github"
@@ -53,8 +51,6 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		bson.D{
 			{Key: "repository.id", Value: event.Repository.ID},
 			{Key: "owner_id", Value: userDoc.Id},
-			{Key: "deleted", Value: false},
-			{Key: "initialized", Value: true},
 		},
 	)
 	if err != nil {
@@ -68,6 +64,10 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	}
 
 	for _, projectDoc := range foundProjectDocs {
+		if !projectDoc.Initialized || projectDoc.Deleted {
+			continue
+		}
+
 		execIdentifier := uuid.New().String()
 		eventResult := project.EventResult{
 			ExecutionIdentifier: execIdentifier,
@@ -78,10 +78,11 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 				"$set": bson.M{
 					"last_event_result": eventResult,
+					"status":            fmt.Errorf("EVENT FAILED: %v", err),
 				},
 			})
 			if err != nil && result.MatchedCount < 1 {
-				return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result")
+				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
 			return http.StatusInternalServerError, fmt.Errorf("failed to initiate project build: %v", err)
 		} else {
@@ -93,7 +94,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				},
 			})
 			if err != nil && result.MatchedCount < 1 {
-				return http.StatusInternalServerError, fmt.Errorf("failed to update last_event_result")
+				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
 		}
 	}
@@ -104,40 +105,26 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Context, execIdentifier string, userDoc *user.User, projectDoc *project.Project) error {
 	cloudLogger, err := pipeline.NewCloudLogger(transportCtx, routeCtx.CloudwatchClient, projectDoc.DedicatedInfrastructure.EventLogGroup, execIdentifier)
 	if err != nil {
-		return fmt.Errorf("failed to create logger: %v", err)
+		return err
 	}
 
 	cloudLogger.WriteLog("START INIT %s", execIdentifier)
 	cloudLogger.WriteLog("Emitting event to pipeline...")
-	cloudLogger.PushLog()
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
+	}
 
 	err = emitBuildEvent(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
 	if err != nil {
-		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-			Message:   aws.String(fmt.Sprintf("failed to emit build event: %v", err)),
-			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-		})
-		_, err = routeCtx.CloudwatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
-			LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
-			LogStreamName: aws.String(logStreamIdentifier),
-			LogEvents:     logEvents,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to send logevents to %s", projectDoc.DedicatedInfrastructure.EventLogGroup)
+		cloudLogger.WriteLog("failed to emit build event: %v", err)
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
 		}
 		return fmt.Errorf("failed to emit build event: %v", err)
 	} else {
-		logEvents = append(logEvents, cloudwatchtypes.InputLogEvent{
-			Message:   aws.String("project build was successfully initiated"),
-			Timestamp: aws.Int64(time.Now().UnixNano() / int64(time.Millisecond)),
-		})
-		_, err = routeCtx.CloudwatchClient.PutLogEvents(transportCtx, &cloudwatchlogs.PutLogEventsInput{
-			LogGroupName:  aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
-			LogStreamName: aws.String(logStreamIdentifier),
-			LogEvents:     logEvents,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to send logevents to %s", projectDoc.DedicatedInfrastructure.EventLogGroup)
+		cloudLogger.WriteLog("project build was successfully initiated")
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
 		}
 	}
 

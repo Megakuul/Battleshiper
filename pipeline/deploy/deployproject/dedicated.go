@@ -3,86 +3,28 @@ package deployproject
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
 	"github.com/awslabs/goformation/v7/cloudformation/batch"
 	"github.com/awslabs/goformation/v7/cloudformation/events"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
-// updateDedicatedInfrastructure updates the dedicated infrastructure components required by the project.
-func updateDedicatedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) (*project.Project, error) {
-	if projectDoc.DedicatedInfrastructure.StackName == "" {
-		return nil, fmt.Errorf("failed to create dedicated stack; project holds no stack")
-	}
-
-	if projectDoc.SharedInfrastructure.BuildAssetBucketPath == "" {
-		return nil, fmt.Errorf("invalid build asset bucket path: empty path is not allowed")
-	}
-
+func updateDedicatedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
 	_, err := eventCtx.CloudformationClient.GetTemplate(transportCtx, &cloudformation.GetTemplateInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cloudformation stack: %v", err)
 	}
-
-	stackTemplate := goformation.NewTemplate()
-
-	addApplicationSystem(stackTemplate, &eventCtx, projectDoc)
-
-	stackBody, err := stackTemplate.JSON()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse cloudformation stack body")
-	}
-	_, err = eventCtx.CloudformationClient.UpdateStack(transportCtx, &cloudformation.CreateStackInput{
-		StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
-		TemplateBody: aws.String(string(stackBody)),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cloudformation stack: %v", err)
-	}
-
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	updatedDoc := &project.Project{}
-	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
-		"$set": bson.M{
-			"dedicated_infrastructure.stack_name": stackName,
-		},
-	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
-	if err != nil {
-		_, err := eventCtx.CloudformationClient.DeleteStack(transportCtx, &cloudformation.DeleteStackInput{
-			StackName:    aws.String(stackName),
-			DeletionMode: types.DeletionModeStandard,
-		})
-		if err != nil {
-			log.Printf("ERROR RUNTIME: failed to delete stack '%s'. failed to reference stack in database; stack is leaking.\n", stackName)
-		}
-		return nil, fmt.Errorf("failed to update project on database")
-	}
-
-	waiter := cloudformation.NewStackCreateCompleteWaiter(eventCtx.CloudformationClient)
-	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
-		StackName: aws.String(stackName),
-	}, eventCtx.DeploymentTimeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to apply cloudformation stack: %v", err)
-	}
-
-	return updatedDoc, nil
 }
 
-func addBuildSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) {
+func addServerSystem(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) {
 	const BUILD_JOB_ROLE string = "BuildJobRole"
 	stackTemplate.Resources[BUILD_JOB_ROLE] = &iam.Role{
 		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.Name)),
