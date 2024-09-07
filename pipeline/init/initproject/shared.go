@@ -34,9 +34,6 @@ func generateSharedInfrastructure(eventCtx eventcontext.Context, projectName str
 	infrastructure.StaticBucketPath = fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.StaticBucketName, projectName)
 	infrastructure.BuildAssetBucketPath = fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.BuildAssetBucketName, projectName)
 	infrastructure.PrerenderPageKeys = map[string]string{}
-	infrastructure.RouteKeys = map[string]string{
-		projectName: projectName,
-	}
 
 	return infrastructure
 }

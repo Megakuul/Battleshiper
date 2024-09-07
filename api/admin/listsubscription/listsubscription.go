@@ -24,6 +24,7 @@ type pipelineSpecsOutput struct {
 
 type projectSpecsOutput struct {
 	ProjectCount     int64 `json:"project_count"`
+	AliasCount       int64 `bson:"alias_count"`
 	PrerenderRoutes  int64 `json:"prerender_routes"`
 	ServerStorage    int64 `json:"server_storage"`
 	ClientStorage    int64 `json:"client_storage"`
@@ -125,6 +126,7 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 			},
 			ProjectSpecs: projectSpecsOutput{
 				ProjectCount:     sub.ProjectSpecs.ProjectCount,
+				AliasCount:       sub.ProjectSpecs.AliasCount,
 				ServerStorage:    sub.ProjectSpecs.ServerStorage,
 				ClientStorage:    sub.ProjectSpecs.ClientStorage,
 				PrerenderStorage: sub.ProjectSpecs.PrerenderStorage,

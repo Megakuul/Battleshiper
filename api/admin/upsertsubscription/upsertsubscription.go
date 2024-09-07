@@ -25,6 +25,7 @@ type pipelineSpecsInput struct {
 
 type projectSpecsInput struct {
 	ProjectCount     int64 `json:"project_count"`
+	AliasCount       int64 `bson:"alias_count"`
 	PrerenderRoutes  int64 `json:"prerender_routes"`
 	ServerStorage    int64 `json:"server_storage"`
 	ClientStorage    int64 `json:"client_storage"`
@@ -120,6 +121,7 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 				},
 				ProjectSpecs: subscription.ProjectSpecs{
 					ProjectCount:     upsertSubscriptionInput.ProjectSpecs.ProjectCount,
+					AliasCount:       upsertSubscriptionInput.ProjectSpecs.AliasCount,
 					ServerStorage:    upsertSubscriptionInput.ProjectSpecs.ServerStorage,
 					ClientStorage:    upsertSubscriptionInput.ProjectSpecs.ClientStorage,
 					PrerenderStorage: upsertSubscriptionInput.ProjectSpecs.PrerenderStorage,

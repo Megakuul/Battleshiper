@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"go.mongodb.org/mongo-driver/bson"
@@ -135,17 +136,13 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must match a valid domain fragment format")
 	}
 
-	initTicket, err := pipeline.CreateTicket(routeCtx.InitEventOptions.TicketOpts, userDoc.Id, createProjectInput.ProjectName)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
-	}
-
 	_, err = projectCollection.InsertOne(transportCtx, project.Project{
 		Name:        createProjectInput.ProjectName,
 		OwnerId:     userDoc.Id,
 		Deleted:     false,
 		Initialized: false,
 		Status:      "",
+		Aliases:     map[string]struct{}{createProjectInput.ProjectName: struct{}{}},
 		Repository: project.Repository{
 			Id:     createProjectInput.Repository.Id,
 			URL:    createProjectInput.Repository.URL,
@@ -160,6 +157,15 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			return nil, http.StatusConflict, fmt.Errorf("project name is already registered")
 		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to insert project to database")
+	}
+
+	if err := initAlias(transportCtx, routeCtx, createProjectInput.ProjectName); err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+
+	initTicket, err := pipeline.CreateTicket(routeCtx.InitEventOptions.TicketOpts, userDoc.Id, createProjectInput.ProjectName)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
 
 	initRequest := &event.InitRequest{
@@ -186,4 +192,25 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	return &createProjectOutput{
 		Message: "project created; project infrastructure is being initialized...",
 	}, http.StatusOK, nil
+}
+
+// initAlias uploads the initial alias to the cloudfront cache.
+func initAlias(transportCtx context.Context, routeCtx routecontext.Context, projectName string) error {
+	storeMetadata, err := routeCtx.CloudfrontCacheClient.DescribeKeyValueStore(transportCtx, &cloudfrontkeyvaluestore.DescribeKeyValueStoreInput{
+		KvsARN: aws.String(routeCtx.CloudfrontCacheArn),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to describe cdn store: %v", err)
+	}
+	_, err = routeCtx.CloudfrontCacheClient.PutKey(transportCtx, &cloudfrontkeyvaluestore.PutKeyInput{
+		KvsARN:  aws.String(routeCtx.CloudfrontCacheArn),
+		Key:     aws.String(projectName),
+		Value:   aws.String(projectName),
+		IfMatch: storeMetadata.ETag,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to insert alias to cdn store: %v", err)
+	}
+
+	return nil
 }

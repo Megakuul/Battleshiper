@@ -6,14 +6,14 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
 	github.com/megakuul/battleshiper/lib/helper v0.1.10
-	github.com/megakuul/battleshiper/lib/model v0.2.1
+	github.com/megakuul/battleshiper/lib/model v0.2.2
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.17 // indirect
 	github.com/go-playground/webhooks/v6 v6.3.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 )
@@ -25,6 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore v1.6.6
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.39.0
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.33.4
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.3 // indirect

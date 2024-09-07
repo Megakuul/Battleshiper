@@ -39,7 +39,6 @@ type SharedInfrastructure struct {
 	ApiRoutePath         string            `bson:"api_route_path"`
 	StaticBucketPath     string            `bson:"static_bucket_path"`
 	BuildAssetBucketPath string            `bson:"build_asset_bucket_path"`
-	RouteKeys            map[string]string `bson:"route_keys"`
 	PrerenderPageKeys    map[string]string `bson:"prerender_page_keys"`
 }
 
@@ -56,13 +55,14 @@ type Project struct {
 	Initialized bool        `bson:"initialized"`
 	Status      string      `bson:"status"`
 
-	Repository           Repository       `bson:"repository"`
-	BuildImage           string           `bson:"build_image"`
-	BuildCommand         string           `bson:"build_command"`
-	OutputDirectory      string           `bson:"output_directory"`
-	LastEventResult      EventResult      `bson:"last_event_result"`
-	LastBuildResult      BuildResult      `bson:"last_build_result"`
-	LastDeploymentResult DeploymentResult `bson:"last_deployment_result"`
+	Repository           Repository          `bson:"repository"`
+	Aliases              map[string]struct{} `bson:"aliases"`
+	BuildImage           string              `bson:"build_image"`
+	BuildCommand         string              `bson:"build_command"`
+	OutputDirectory      string              `bson:"output_directory"`
+	LastEventResult      EventResult         `bson:"last_event_result"`
+	LastBuildResult      BuildResult         `bson:"last_build_result"`
+	LastDeploymentResult DeploymentResult    `bson:"last_deployment_result"`
 
 	PipelineLock            bool                    `bson:"pipeline_lock"`
 	DedicatedInfrastructure DedicatedInfrastructure `bson:"dedicated_infrastructure"`

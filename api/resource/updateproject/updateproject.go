@@ -5,21 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/user"
-)
-
-const (
-	MAX_ALIAS_SIZE = 30
 )
 
 type repositoryInput struct {
@@ -33,7 +27,6 @@ type updateProjectInput struct {
 	BuildImage      string          `json:"build_image"`
 	BuildCommand    string          `json:"build_command"`
 	OutputDirectory string          `json:"output_directory"`
-	Aliases         []string        `json:"aliases"`
 	Repository      repositoryInput `json:"repository"`
 }
 
@@ -114,24 +107,16 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			Branch: updateProjectInput.Repository.Branch,
 		}
 	}
-	if len(updateProjectInput.Aliases) > 0 {
-		routeKeys, err := createRouteKeys(updateProjectInput.ProjectName, updateProjectInput.Aliases)
-		if err != nil {
-			return nil, http.StatusBadRequest, err
-		}
-
-		updateSpec["dedicated_infrastructure.route_keys"] = routeKeys
-	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
-	_, err = projectCollection.UpdateOne(transportCtx, bson.D{
+	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
 		{Key: "name", Value: updateProjectInput.ProjectName},
 		{Key: "owner_id", Value: userDoc.Id},
 	}, bson.M{
 		"$set": updateSpec,
 	})
-	if err == mongo.ErrNoDocuments {
+	if result.MatchedCount < 1 {
 		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")
 	} else if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
@@ -140,22 +125,4 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	return &updateProjectOutput{
 		Message: "project updated",
 	}, http.StatusOK, nil
-}
-
-// createRouteKeys generates routeKeys from the provided aliases and checks if the aliases are valid.
-func createRouteKeys(projectName string, aliases []string) (map[string]string, error) {
-	expectedSuffix := fmt.Sprintf(".%s", projectName)
-
-	routeKeys := map[string]string{}
-	for _, alias := range aliases {
-		if len(alias) > MAX_ALIAS_SIZE {
-			return nil, fmt.Errorf("invalid alias: alias cannot be longer then %d", MAX_ALIAS_SIZE)
-		}
-		if !strings.HasSuffix(alias, expectedSuffix) && alias != projectName {
-			return nil, fmt.Errorf("invalid alias: alias must end with '%s'", expectedSuffix)
-		}
-		routeKeys[alias] = projectName
-	}
-
-	return routeKeys, nil
 }

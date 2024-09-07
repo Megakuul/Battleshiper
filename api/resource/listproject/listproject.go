@@ -48,6 +48,7 @@ type projectOutput struct {
 	BuildCommand         string                 `json:"build_command"`
 	OutputDirectory      string                 `json:"output_directory"`
 	Repository           repositoryOutput       `json:"repository"`
+	Aliases              map[string]struct{}    `json:"aliases"`
 	LastEventResult      eventResultOutput      `json:"last_event_result"`
 	LastBuildResult      buildResultOutput      `json:"last_build_result"`
 	LastDeploymentResult deploymentResultOutput `json:"last_deployment_result"`
@@ -141,6 +142,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				Timestamp:           project.LastDeploymentResult.Timepoint,
 				Successful:          project.LastDeploymentResult.Successful,
 			},
+			Aliases: project.Aliases,
 			Repository: repositoryOutput{
 				Id:     project.Repository.Id,
 				URL:    project.Repository.URL,

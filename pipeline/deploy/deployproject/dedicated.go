@@ -116,6 +116,11 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 		return fmt.Errorf("failed to execute changeset: %v", err)
 	}
 
+	waiter := cloudformation.NewStackUpdateCompleteWaiter(eventCtx.CloudformationClient)
+	stackOutput, err := waiter.WaitForOutput(transportCtx, &cloudformation.DescribeStacksInput{
+		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
+	}, eventCtx.DeploymentTimeout)
+
 	return nil
 }
 

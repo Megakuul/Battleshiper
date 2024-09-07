@@ -727,6 +727,7 @@ Resources:
           INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
           INIT_EVENT_ACTION: "battleshiper.init"
           INIT_EVENT_TICKET_TTL: 360
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperCDNRouteStore.Arn
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -956,8 +957,10 @@ Resources:
             Action:
               - "cloudfront-keyvaluestore:DescribeKeyValueStore"
               - "cloudfront-keyvaluestore:UpdateKeys"
+              - "cloudfront-keyvaluestore:PutKey"
             Resource: !GetAtt BattleshiperCDNRouteStore.Arn
       Roles:
+        - !Ref BattleshiperResourceFuncRole
         - !Ref BattleshiperPipelineDeployFuncRole
 
   BattleshiperCDNRouteFunc:
@@ -975,6 +978,8 @@ Resources:
 
         const kvsHandle = cf.kvs("${BattleshiperCDNRouteStore.Id}");
 
+        const domainSuffix = ".${ApplicationDomain}";
+
         async function handler(event) {
           let request = event.request;
 
@@ -982,15 +987,22 @@ Resources:
             const authorityHeader = request.headers[":authority"];
             const hostHeader = request.headers["host"];
             
+            // extract host (prefer :authority if present)
             const host = authorityHeader ? authorityHeader.value : hostHeader.value;
             if (!host) {
-              throw new Error("No host specified");
+              throw new Error("no host specified");
             }
+
+            // remove the application domain from the host
+            if (!host.endsWith(domainSuffix)) {
+              throw new Error("unexpected host");
+            }
+            const alias = host.slice(0, -domainSuffix.length);
 
             const pathSegments = request.uri.split('/');
             
-            const project = await kvsHandle.get(host, { format: "string" });
-            pathSegments.splice(1, 0, project);
+            const project = await kvsHandle.get(alias, { format: "string" });
+            pathSegments.splice(1, 0, project); // set the project as first segment in the uri
             
             request.uri = pathSegments.join('/');
 
@@ -1002,6 +1014,7 @@ Resources:
             return request;
           } catch (err) {
             request.uri = "/404.html";
+            request.querystring = `error=${err.message}`;
             return request;
           }
         }

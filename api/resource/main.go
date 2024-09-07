@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,6 +21,7 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/listproject"
 	"github.com/megakuul/battleshiper/api/resource/listrepository"
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
+	"github.com/megakuul/battleshiper/api/resource/updatealias"
 	"github.com/megakuul/battleshiper/api/resource/updateproject"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
@@ -41,6 +43,7 @@ var (
 	INIT_EVENT_SOURCE     = os.Getenv("INIT_EVENT_SOURCE")
 	INIT_EVENT_ACTION     = os.Getenv("INIT_TICKET_ACTION")
 	INIT_EVENT_TICKET_TTL = os.Getenv("INIT_TICKET_TTL")
+	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
 func main() {
@@ -59,6 +62,8 @@ func run() error {
 	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
 	eventClient := eventbridge.NewFromConfig(awsConfig)
+
+	cloudfrontClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -107,17 +112,20 @@ func run() error {
 	initEventOptions := pipeline.CreateEventOptions(INIT_EVENTBUS_NAME, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, initTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		CloudWatchClient: cloudwatchClient,
-		JwtOptions:       jwtOptions,
-		Database:         databaseHandle,
-		EventClient:      eventClient,
-		InitEventOptions: initEventOptions,
+		CloudWatchClient:      cloudwatchClient,
+		JwtOptions:            jwtOptions,
+		Database:              databaseHandle,
+		EventClient:           eventClient,
+		InitEventOptions:      initEventOptions,
+		CloudfrontCacheClient: cloudfrontClient,
+		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
 	})
 
 	httpRouter.AddRoute("GET", "/api/resource/listrepository", listrepository.HandleListRepositories)
 	httpRouter.AddRoute("GET", "/api/resource/listproject", listproject.HandleListProject)
 	httpRouter.AddRoute("GET", "/api/resource/fetchlog", fetchlog.HandleFetchLog)
 	httpRouter.AddRoute("POST", "/api/resource/createproject", createproject.HandleCreateProject)
+	httpRouter.AddRoute("POST", "/api/resource/updatealias", updatealias.HandleUpdateAlias)
 	httpRouter.AddRoute("PATCH", "/api/resource/updateproject", updateproject.HandleUpdateProject)
 	httpRouter.AddRoute("DELETE", "/api/resource/deleteproject", deleteproject.HandleDeleteProject)
 
