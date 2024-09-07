@@ -39,6 +39,7 @@ type SharedInfrastructure struct {
 	ApiRoutePath         string            `bson:"api_route_path"`
 	StaticBucketPath     string            `bson:"static_bucket_path"`
 	BuildAssetBucketPath string            `bson:"build_asset_bucket_path"`
+	RouteKeys            map[string]string `bson:"route_keys"`
 	PrerenderPageKeys    map[string]string `bson:"prerender_page_keys"`
 }
 

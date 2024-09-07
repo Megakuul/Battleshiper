@@ -1,6 +1,8 @@
 package eventcontext
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -14,6 +16,7 @@ type Context struct {
 	Database              *mongo.Database
 	TicketOptions         *pipeline.TicketOptions
 	CloudformationClient  *cloudformation.Client
+	DeploymentTimeout     time.Duration
 	S3Client              *s3.Client
 	CloudwatchClient      *cloudwatchlogs.Client
 	CloudfrontCacheClient *cloudfrontkeyvaluestore.Client

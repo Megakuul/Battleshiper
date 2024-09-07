@@ -10,7 +10,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -28,6 +30,7 @@ var (
 	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
 	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
 	DEPLOYMENT_TIMEOUT    = os.Getenv("DEPLOYMENT_TIMEOUT")
+	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
 func main() {
@@ -43,9 +46,13 @@ func run() error {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
+	cloudformationClient := cloudformation.NewFromConfig(awsConfig)
+
 	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
-	cloudformationClient := cloudformation.NewFromConfig(awsConfig)
+	s3Client := s3.NewFromConfig(awsConfig)
+
+	cloudfrontClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -82,11 +89,20 @@ func run() error {
 		return err
 	}
 
+	deploymentTimeout, err := time.ParseDuration(DEPLOYMENT_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
+	}
+
 	lambda.Start(deployproject.HandleDeployProject(eventcontext.Context{
-		Database:             databaseHandle,
-		TicketOptions:        ticketOptions,
-		CloudformationClient: cloudformationClient,
-		CloudwatchClient:     cloudwatchClient,
+		Database:              databaseHandle,
+		TicketOptions:         ticketOptions,
+		CloudformationClient:  cloudformationClient,
+		DeploymentTimeout:     deploymentTimeout,
+		S3Client:              s3Client,
+		CloudwatchClient:      cloudwatchClient,
+		CloudfrontCacheClient: cloudfrontClient,
+		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
 	}))
 
 	return nil

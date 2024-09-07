@@ -51,34 +51,21 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		{Key: "owner_id", Value: initClaims.UserID},
 	}).Decode(&projectDoc)
 	if err != nil {
-		return fmt.Errorf("failed to project from database")
+		return fmt.Errorf("failed to fetch project from database")
 	}
 
-	updatedDoc, err := initializeSharedInfrastructure(transportCtx, eventCtx, projectDoc)
+	err = initProject(transportCtx, eventCtx, projectDoc)
 	if err != nil {
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
-				"status": fmt.Sprintf("initialization of shared project infrastructure failed: %v", err),
+				"status": fmt.Errorf("INITIALIZATION FAILED: %v", err),
 			},
 		})
 		if err != nil || result.MatchedCount < 1 {
 			return fmt.Errorf("failed to update project on database")
 		}
+		return nil
 	}
-	projectDoc = updatedDoc
-
-	updatedDoc, err = initializeDedicatedInfrastructure(transportCtx, eventCtx, projectDoc)
-	if err != nil {
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"status": fmt.Sprintf("initialization of dedicated project infrastructure failed: %v", err),
-			},
-		})
-		if err != nil || result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project on database")
-		}
-	}
-	projectDoc = updatedDoc
 
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
@@ -89,5 +76,20 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	if err != nil || result.MatchedCount < 1 {
 		return fmt.Errorf("failed to update project on database")
 	}
+	return nil
+}
+
+func initProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
+
+	err := initSharedInfrastructure(transportCtx, eventCtx, projectDoc)
+	if err != nil {
+		return fmt.Errorf("failed to init shared infrastructure: %v", err)
+	}
+
+	err = createStack(transportCtx, eventCtx, projectDoc)
+	if err != nil {
+		return fmt.Errorf("failed to create dedicated infrastructure: %v", err)
+	}
+
 	return nil
 }

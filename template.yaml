@@ -59,7 +59,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.10.0/24"
-      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperApiSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -72,7 +72,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.20.0/24"
-      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperApiSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -85,7 +85,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.30.0/24"
-      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperApiSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -107,11 +107,11 @@ Resources:
       GatewayId: !Ref BattleshiperVPCInternetGateway
 
   BattleshiperPipelineSubnet1:
-    Type: AWS::VPC::Subnet
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.210.0/24"
-      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperPipelineSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -120,11 +120,11 @@ Resources:
       RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
 
   BattleshiperPipelineSubnet2:
-    Type: AWS::VPC::Subnet
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.220.0/24"
-      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
       
   BattleshiperPipelineSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -133,11 +133,11 @@ Resources:
       RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
 
   BattleshiperPipelineSubnet3:
-    Type: AWS::VPC::Subnet
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.230.0/24"
-      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperPipelineSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -151,21 +151,21 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.110.0/24"
-      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperDbSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.120.0/24"
-      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperDbSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.130.0/24"
-      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperDbReceiverGroup:
     Type: AWS::EC2::SecurityGroup
@@ -245,7 +245,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.110.0/24"
-      AvailabilityZone: !Select [0, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperBuildSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -258,7 +258,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.120.0/24"
-      AvailabilityZone: !Select [1, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperBuildSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -271,7 +271,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.130.0/24"
-      AvailabilityZone: !Select [2, !Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
 
   BattleshiperBuildSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -765,7 +765,6 @@ Resources:
           - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperPipelineFuncRole.Arn
       Events:
-      Events:
         Pipeline:
           Type: HttpApi
           Properties:
@@ -836,34 +835,6 @@ Resources:
             Resource:
               - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
       Roles: 
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineDeleteFuncRole
-
-
-  BattleshiperProjectFunctionBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-function-bucket"
-  
-  BattleshiperProjectFunctionBucketPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-function-bucket-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - "s3:HeadObject"
-              - "s3:GetObject"
-              - "s3:ListBucket"
-              - "s3:PutObject"
-              - "s3:DeleteObject"
-            Effect: Allow
-            Resource:
-              - !Sub "${BattleshiperProjectFunctionBucket.Arn}/*"
-      Roles:
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
 
@@ -972,7 +943,22 @@ Resources:
     Type: AWS::CloudFront::KeyValueStore
     Properties:
       Name: "battleshiper-cdn-route-store"
-      Comment: "Store used to lookup the path based on the requested host."
+      Comment: "Store used to lookup the path based on the requested host or prerendered pages."
+
+  BattleshiperCDNRouteStorePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-cdn-route-store-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudfront-keyvaluestore:DescribeKeyValueStore"
+              - "cloudfront-keyvaluestore:UpdateKeys"
+            Resource: !GetAtt BattleshiperCDNRouteStore.Arn
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
 
   BattleshiperCDNRouteFunc:
     Type: AWS::CloudFront::Function
@@ -980,7 +966,7 @@ Resources:
       Name: "battleshiper-cdn-route-func"
       AutoPublish: true
       FunctionConfig:
-        Comment: "Function to route cdn requests to a path based on the requested host."
+        Comment: "Function to route cdn requests to a path based on the requested host and to add .html extension on prerendered pages."
         Runtime: cloudfront-js-2.0
         KeyValueStoreAssociations:
           - KeyValueStoreARN: !GetAtt BattleshiperCDNRouteStore.Arn
@@ -1062,7 +1048,6 @@ Resources:
             - PATCH
             - POST
             - DELETE
-          ViewerProtocolPolicy: "redirect-to-https"
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
           OriginRequestPolicyId: !Ref BattleshiperCDNApiOriginRequestPolicy
@@ -1091,7 +1076,7 @@ Resources:
             AllowedMethods:
               - GET
               - HEAD
-            CacheMethods:
+            CachedMethods:
               - GET
               - HEAD
             Compress: true
@@ -1106,7 +1091,7 @@ Resources:
             AllowedMethods:
               - GET
               - HEAD
-            CacheMethods:
+            CachedMethods:
               - GET
               - HEAD
             Compress: true
@@ -1159,6 +1144,26 @@ Resources:
   # =========== Pipeline =======================
   # ============================================
 
+
+  BattleshiperPipelineCloudformationServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+              Action:
+                "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AWSBatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
+
+
   BattleshiperPipelineEventBus:
     Type: AWS::Events::EventBus
     Properties:
@@ -1187,6 +1192,7 @@ Resources:
       State: ENABLED
       Type: MANAGED
       ComputeResources:
+        Type: FARGATE_SPOT
         AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
         MaxvCpus: 20
         Subnets:
@@ -1222,7 +1228,7 @@ Resources:
             Action:
               - "batch:SubmitJob"
             Resource: !Ref BattleshiperPipelineBuildQueue
-      
+
 
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
@@ -1236,24 +1242,21 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-init-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:CreateStack"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
       # further policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineInitFuncCloudformationPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-init-cloudformation-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "cloudformation:DescribeStacks",
-              - "cloudformation:DescribeStackEvents",
-              - "cloudformation:ListStacks"
-              - "cloudformation:CreateStack"
-            Resource: "*"
-      Roles:
-        - !Ref BattleshiperPipelineInitFuncRole
 
   BattleshiperPipelineInitFunc:
     Type: AWS::Serverless::Function
@@ -1281,7 +1284,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-init-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            State: ENABLED
             RetryPolicy:
               MaximumEventAgeInSeconds: 360
               MaximumRetryAttempts: 5
@@ -1297,11 +1299,14 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
           DEPLOYMENT_TIMEOUT: "400s"
+          STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
+          BUILD_ASSET_BUCKET_NAME: !Ref BattleshiperProjectBuildAssetBucket
           EVENT_LOG_GROUP_PREFIX: "/battleshiper/project/event"
           BUILD_LOG_GROUP_PREFIX: "/battleshiper/project/build"
           DEPLOY_LOG_GROUP_PREFIX: "/battleshiper/project/deploy"
-          FUNCTION_LOG_GROUP_PREFIX: "/battleshiper/project/function"
+          SERVER_LOG_GROUP_PREFIX: "/battleshiper/project/server"
           LOG_GROUP_RETENTION_DAYS: 14
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
@@ -1327,30 +1332,25 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-deploy-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:GetTemplate"
+                  - "cloudformation:CreateChangeSet"
+                  - "cloudformation:DescribeChangeSet"
+                  - "cloudformation:ExecuteChangeSet"
+                  - "cloudformation:DeleteChangeSet"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
       # Policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineDeployFuncCloudformationPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-deploy-cloudformation-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "cloudformation:DescribeStacks",
-              - "cloudformation:DescribeStackEvents",
-              - "cloudformation:ListStacks"
-              - "cloudformation:ValidateTemplate",
-              - "cloudformation:GetTemplate"
-              - "cloudformation:CreateStack"
-              - "cloudformation:CreateChangeSet",
-              - "cloudformation:DescribeChangeSet",
-              - "cloudformation:ExecuteChangeSet",
-              - "cloudformation:DeleteStack"
-            Resource: "*"
-      Roles:
-        - !Ref BattleshiperPipelineDeployFuncRole
 
   BattleshiperPipelineDeployFunc:
     Type: AWS::Serverless::Function
@@ -1360,6 +1360,7 @@ Resources:
       CodeUri: pipeline/deploy
       Handler: deploy
       Runtime: provided.al2023
+      Timeout: 600
       Architectures:
         - x86_64
       VpcConfig:
@@ -1377,7 +1378,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-deploy-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            State: ENABLED
             RetryPolicy:
               MaximumEventAgeInSeconds: 120
               MaximumRetryAttempts: 5
@@ -1398,6 +1398,8 @@ Resources:
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DEPLOYMENT_TIMEOUT: "400s"
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperCDNRouteStore.Arn
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1414,21 +1416,20 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-delete-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DeleteStack"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
       # Policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineDeleteFuncCloudformationPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-delete-cloudformation-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "cloudformation:DeleteStack"
-            Resource: "*"
-      Roles:
-        - !Ref BattleshiperPipelineDeleteFuncRole
 
   BattleshiperPipelineDeleteFunc:
     Type: AWS::Serverless::Function

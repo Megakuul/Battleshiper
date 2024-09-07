@@ -10,6 +10,7 @@ type PipelineSpecs struct {
 
 type ProjectSpecs struct {
 	ProjectCount     int64 `bson:"project_count"`
+	AliasCount       int64 `bson:"alias_count"`
 	PrerenderRoutes  int64 `bson:"prerender_routes"`
 	ServerStorage    int64 `bson:"server_storage"`
 	ClientStorage    int64 `bson:"client_storage"`

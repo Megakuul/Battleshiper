@@ -14,80 +14,124 @@ import (
 	"github.com/awslabs/goformation/v7/cloudformation/events"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/logs"
+	"github.com/awslabs/goformation/v7/cloudformation/tags"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
-// initializeDedicatedInfrastructure initializes the dedicated infrastructure components required by the project.
-func initializeDedicatedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) (*project.Project, error) {
-	if projectDoc.DedicatedInfrastructure.StackName != "" {
-		return nil, fmt.Errorf("failed to create dedicated stack; project already holds a stack")
+// createStack builds and deploys the initial project stack.
+func createStack(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
+	if err := validateInfrastructureConfiguration(projectDoc); err != nil {
+		return fmt.Errorf("failed to validate: %v", err)
 	}
 
-	if projectDoc.SharedInfrastructure.BuildAssetBucketPath == "" {
-		return nil, fmt.Errorf("invalid build asset bucket path: empty path is not allowed")
+	projectDoc.DedicatedInfrastructure = generateDedicatedInfrastructure(eventCtx, projectDoc.Name)
+
+	stackBody := goformation.NewTemplate()
+	attachLogSystem(stackBody, eventCtx, projectDoc)
+	if err := attachBuildSystem(stackBody, eventCtx, projectDoc); err != nil {
+		return fmt.Errorf("failed to serialize build system blueprint")
 	}
 
-	projectDoc.DedicatedInfrastructure.EventLogGroup = fmt.Sprintf(
-		"%s/%s", eventCtx.BuildConfiguration.EventLogPrefix, projectDoc.Name)
-	projectDoc.DedicatedInfrastructure.BuildLogGroup = fmt.Sprintf(
-		"%s/%s", eventCtx.BuildConfiguration.BuildLogPrefix, projectDoc.Name)
-	projectDoc.DedicatedInfrastructure.DeployLogGroup = fmt.Sprintf(
-		"%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectDoc.Name)
-	projectDoc.DedicatedInfrastructure.ServerLogGroup = fmt.Sprintf(
-		"%s/%s", eventCtx.BuildConfiguration.FunctionLogPrefix, projectDoc.Name)
-	stackTemplate := goformation.NewTemplate()
-	if err := addProject(stackTemplate, &eventCtx, projectDoc); err != nil {
-		return nil, fmt.Errorf("failed to serialize build system blueprint")
-	}
-
-	stackName := fmt.Sprintf("battleshiper-project-stack-%s", projectDoc.Name)
-	stackBody, err := stackTemplate.JSON()
+	stackBodyRaw, err := stackBody.JSON()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse cloudformation stack body")
+		return fmt.Errorf("failed to parse cloudformation stack body")
 	}
-	projectDoc.DedicatedInfrastructure.StackName = stackName
 
 	_, err = eventCtx.CloudformationClient.CreateStack(transportCtx, &cloudformation.CreateStackInput{
-		StackName:    aws.String(stackName),
-		TemplateBody: aws.String(string(stackBody)),
+		StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
+		RoleARN:      aws.String(eventCtx.DeploymentServiceRoleArn),
+		Capabilities: []types.Capability{types.CapabilityCapabilityIam},
+		TemplateBody: aws.String(string(stackBodyRaw)),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cloudformation stack: %v", err)
+		return fmt.Errorf("failed to create cloudformation stack: %v", err)
 	}
 
 	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
 
-	updatedDoc := &project.Project{}
-	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"_id": projectDoc.MongoID}, bson.M{
+	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
-			"dedicated_infrastructure": projectDoc.DedicatedInfrastructure,
+			"dedicated_infrastructure": projectDoc.DedicatedInfrastructure.StackName,
 		},
-	}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
-	if err != nil {
+	})
+	if err != nil || result.MatchedCount < 1 {
 		_, err := eventCtx.CloudformationClient.DeleteStack(transportCtx, &cloudformation.DeleteStackInput{
-			StackName:    aws.String(stackName),
+			StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
 			DeletionMode: types.DeletionModeStandard,
 		})
 		if err != nil {
-			log.Printf("ERROR RUNTIME: failed to delete stack '%s'. failed to reference stack in database; stack is leaking.\n", stackName)
+			log.Printf(
+				"ERROR RUNTIME: failed to delete stack '%s'. failed to reference stack in database; stack is leaking.\n",
+				projectDoc.DedicatedInfrastructure.StackName,
+			)
 		}
-		return nil, fmt.Errorf("failed to update project on database")
+		return fmt.Errorf("failed to update project on database")
 	}
 
 	waiter := cloudformation.NewStackCreateCompleteWaiter(eventCtx.CloudformationClient)
 	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
-		StackName: aws.String(stackName),
+		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	}, eventCtx.DeploymentTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("failed to apply cloudformation stack: %v", err)
+		return fmt.Errorf("failed to apply cloudformation stack: %v", err)
 	}
 
-	return updatedDoc, nil
+	return nil
+}
+
+// validateInfrastructureConfiguration validates infrastructure options that can, if in a invalid state,
+// interfer with the whole battleshiper system.
+func validateInfrastructureConfiguration(projectDoc *project.Project) error {
+	// if stack name is already present, overwriting can lead to a resource leak.
+	if projectDoc.DedicatedInfrastructure.StackName != "" {
+		return fmt.Errorf("project already holds a stack")
+	}
+
+	// if bucket path is empty, this can potentially lead to unintended behavior in the iam policy.
+	if projectDoc.SharedInfrastructure.BuildAssetBucketPath == "" {
+		return fmt.Errorf("invalid build asset bucket path")
+	}
+
+	return nil
+}
+
+// generateDedicatedInfrastructure generates the initial dedicated infrastructure config based on eventCtx and the projectName.
+func generateDedicatedInfrastructure(eventCtx eventcontext.Context, projectName string) project.DedicatedInfrastructure {
+	infrastructure := project.DedicatedInfrastructure{}
+
+	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.EventLogPrefix, projectName)
+	infrastructure.BuildLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.BuildLogPrefix, projectName)
+	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectName)
+	infrastructure.ServerLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.ServerLogPrefix, projectName)
+
+	infrastructure.StackName = fmt.Sprintf("battleshiper-project-stack-%s", projectName)
+
+	return infrastructure
+}
+
+// attachLogSystem adds the projects logsystem to the stack.
+func attachLogSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project) {
+	const EVENT_LOG_GROUP string = "EventLogGroup"
+	stackTemplate.Resources[EVENT_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
+	const DEPLOY_LOG_GROUP string = "DeployLogGroup"
+	stackTemplate.Resources[DEPLOY_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
+
+	const SERVER_LOG_GROUP string = "ServerLogGroup"
+	stackTemplate.Resources[SERVER_LOG_GROUP] = &logs.LogGroup{
+		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.ServerLogGroup),
+		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+	}
 }
 
 type inputEnvironmentVariable struct {
@@ -104,34 +148,19 @@ type inputTransformTemplate struct {
 	ContainerOverrides inputContainerOverrides `json:"containerOverrides"`
 }
 
-func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Context, projectDoc *project.Project) error {
-	const EVENT_LOG_GROUP string = "EventLogGroup"
-	stackTemplate.Resources[EVENT_LOG_GROUP] = &logs.LogGroup{
-		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
-	}
-
+// attachBuildSystem adds the project pipeline build system to the stack.
+func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project) error {
 	const BUILD_LOG_GROUP string = "BuildLogGroup"
 	stackTemplate.Resources[BUILD_LOG_GROUP] = &logs.LogGroup{
 		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.BuildLogGroup),
 		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
 	}
 
-	const DEPLOY_LOG_GROUP string = "DeployLogGroup"
-	stackTemplate.Resources[DEPLOY_LOG_GROUP] = &logs.LogGroup{
-		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
-	}
-
-	const SERVER_LOG_GROUP string = "ServerLogGroup"
-	stackTemplate.Resources[SERVER_LOG_GROUP] = &logs.LogGroup{
-		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.ServerLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
-	}
-
 	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
 	stackTemplate.Resources[BUILD_JOB_EXEC_ROLE] = &iam.Role{
-		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)),
+		Tags: []tags.Tag{
+			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
+		},
 		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -147,7 +176,6 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-project-log-access-%s", projectDoc.Name),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -167,7 +195,9 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 
 	const BUILD_JOB_ROLE string = "BuildJobRole"
 	stackTemplate.Resources[BUILD_JOB_ROLE] = &iam.Role{
-		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.Name)),
+		Tags: []tags.Tag{
+			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.Name)},
+		},
 		Description: aws.String("role associated with the project build job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -183,7 +213,6 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-build-asset-bucket-access-%s", projectDoc.Name),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -238,7 +267,9 @@ func addProject(stackTemplate *goformation.Template, eventCtx *eventcontext.Cont
 
 	const BUILD_RULE_ROLE string = "BuildRuleRole"
 	stackTemplate.Resources[BUILD_RULE_ROLE] = &iam.Role{
-		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.Name)),
+		Tags: []tags.Tag{
+			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.Name)},
+		},
 		Description: aws.String("role to invoke the targets specified in the associated build rule"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",

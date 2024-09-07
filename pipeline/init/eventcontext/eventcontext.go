@@ -10,7 +10,6 @@ import (
 
 type BucketConfiguration struct {
 	StaticBucketName     string
-	FunctionBucketName   string
 	BuildAssetBucketName string
 }
 
@@ -18,7 +17,7 @@ type BuildConfiguration struct {
 	EventLogPrefix         string
 	BuildLogPrefix         string
 	DeployLogPrefix        string
-	FunctionLogPrefix      string
+	ServerLogPrefix        string
 	LogRetentionDays       int
 	BuildEventbusName      string
 	BuildEventSource       string
@@ -32,10 +31,11 @@ type BuildConfiguration struct {
 
 // Context provides data to event handlers.
 type Context struct {
-	Database             *mongo.Database
-	TicketOptions        *pipeline.TicketOptions
-	CloudformationClient *cloudformation.Client
-	DeploymentTimeout    time.Duration
-	BucketConfiguration  *BucketConfiguration
-	BuildConfiguration   *BuildConfiguration
+	Database                 *mongo.Database
+	TicketOptions            *pipeline.TicketOptions
+	CloudformationClient     *cloudformation.Client
+	DeploymentServiceRoleArn string
+	DeploymentTimeout        time.Duration
+	BucketConfiguration      *BucketConfiguration
+	BuildConfiguration       *BuildConfiguration
 }

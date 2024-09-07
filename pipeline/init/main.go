@@ -20,25 +20,28 @@ import (
 )
 
 var (
-	REGION                    = os.Getenv("AWS_REGION")
-	DATABASE_ENDPOINT         = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME             = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN       = os.Getenv("DATABASE_SECRET_ARN")
-	TICKET_CREDENTIAL_ARN     = os.Getenv("TICKET_CREDENTIAL_ARN")
-	DEPLOYMENT_TIMEOUT        = os.Getenv("DEPLOYMENT_TIMEOUT")
-	EVENT_LOG_GROUP_PREFIX    = os.Getenv("EVENT_LOG_GROUP_PREFIX")
-	BUILD_LOG_GROUP_PREFIX    = os.Getenv("BUILD_LOG_GROUP_PREFIX")
-	DEPLOY_LOG_GROUP_PREFIX   = os.Getenv("DEPLOY_LOG_GROUP_PREFIX")
-	FUNCTION_LOG_GROUP_PREFIX = os.Getenv("FUNCTION_LOG_GROUP_PREFIX")
-	LOG_GROUP_RETENTION_DAYS  = os.Getenv("LOG_GROUP_RETENTION_DAYS")
-	BUILD_EVENTBUS_NAME       = os.Getenv("BUILD_EVENTBUS_NAME")
-	BUILD_EVENT_SOURCE        = os.Getenv("BUILD_EVENT_SOURCE")
-	BUILD_EVENT_ACTION        = os.Getenv("BUILD_EVENT_ACTION")
-	BUILD_QUEUE_ARN           = os.Getenv("BUILD_QUEUE_ARN")
-	BUILD_QUEUE_POLICY_ARN    = os.Getenv("BUILD_QUEUE_POLICY_ARN")
-	BUILD_JOB_TIMEOUT         = os.Getenv("BUILD_JOB_TIMEOUT")
-	BUILD_JOB_VCPUS           = os.Getenv("BUILD_JOB_VCPUS")
-	BUILD_JOB_MEMORY          = os.Getenv("BUILD_JOB_MEMORY")
+	REGION                      = os.Getenv("AWS_REGION")
+	DATABASE_ENDPOINT           = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME               = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN         = os.Getenv("DATABASE_SECRET_ARN")
+	TICKET_CREDENTIAL_ARN       = os.Getenv("TICKET_CREDENTIAL_ARN")
+	DEPLOYMENT_SERVICE_ROLE_ARN = os.Getenv("DEPLOYMENT_SERVICE_ROLE_ARN")
+	DEPLOYMENT_TIMEOUT          = os.Getenv("DEPLOYMENT_TIMEOUT")
+	STATIC_BUCKET_NAME          = os.Getenv("STATIC_BUCKET_NAME")
+	BUILD_ASSET_BUCKET_NAME     = os.Getenv("BUILD_ASSET_BUCKET_NAME")
+	EVENT_LOG_GROUP_PREFIX      = os.Getenv("EVENT_LOG_GROUP_PREFIX")
+	BUILD_LOG_GROUP_PREFIX      = os.Getenv("BUILD_LOG_GROUP_PREFIX")
+	DEPLOY_LOG_GROUP_PREFIX     = os.Getenv("DEPLOY_LOG_GROUP_PREFIX")
+	SERVER_LOG_GROUP_PREFIX     = os.Getenv("SERVER_LOG_GROUP_PREFIX")
+	LOG_GROUP_RETENTION_DAYS    = os.Getenv("LOG_GROUP_RETENTION_DAYS")
+	BUILD_EVENTBUS_NAME         = os.Getenv("BUILD_EVENTBUS_NAME")
+	BUILD_EVENT_SOURCE          = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION          = os.Getenv("BUILD_EVENT_ACTION")
+	BUILD_QUEUE_ARN             = os.Getenv("BUILD_QUEUE_ARN")
+	BUILD_QUEUE_POLICY_ARN      = os.Getenv("BUILD_QUEUE_POLICY_ARN")
+	BUILD_JOB_TIMEOUT           = os.Getenv("BUILD_JOB_TIMEOUT")
+	BUILD_JOB_VCPUS             = os.Getenv("BUILD_JOB_VCPUS")
+	BUILD_JOB_MEMORY            = os.Getenv("BUILD_JOB_MEMORY")
 )
 
 func main() {
@@ -109,15 +112,20 @@ func run() error {
 	}
 
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database:             databaseHandle,
-		TicketOptions:        ticketOptions,
-		CloudformationClient: cloudformationClient,
-		DeploymentTimeout:    deploymentTimeout,
+		Database:                 databaseHandle,
+		TicketOptions:            ticketOptions,
+		CloudformationClient:     cloudformationClient,
+		DeploymentServiceRoleArn: DEPLOYMENT_SERVICE_ROLE_ARN,
+		DeploymentTimeout:        deploymentTimeout,
+		BucketConfiguration: &eventcontext.BucketConfiguration{
+			StaticBucketName:     STATIC_BUCKET_NAME,
+			BuildAssetBucketName: BUILD_ASSET_BUCKET_NAME,
+		},
 		BuildConfiguration: &eventcontext.BuildConfiguration{
 			EventLogPrefix:         EVENT_LOG_GROUP_PREFIX,
 			BuildLogPrefix:         BUILD_LOG_GROUP_PREFIX,
 			DeployLogPrefix:        DEPLOY_LOG_GROUP_PREFIX,
-			FunctionLogPrefix:      FUNCTION_LOG_GROUP_PREFIX,
+			ServerLogPrefix:        SERVER_LOG_GROUP_PREFIX,
 			LogRetentionDays:       logGroupRetentionDays,
 			BuildEventbusName:      BUILD_EVENTBUS_NAME,
 			BuildEventSource:       BUILD_EVENT_SOURCE,

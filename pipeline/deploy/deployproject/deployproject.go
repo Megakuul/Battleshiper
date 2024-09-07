@@ -13,7 +13,6 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -65,16 +64,6 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return fmt.Errorf("project locked")
 	}
 
-	userCollection := eventCtx.Database.Collection(user.USER_COLLECTION)
-
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{
-		"id": deployClaims.UserID,
-	}).Decode(&userDoc)
-	if err != nil {
-		return fmt.Errorf("failed to fetch user from database")
-	}
-
 	// Finish build step
 	buildResult := project.BuildResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
@@ -108,7 +97,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	deploymentResult := project.DeploymentResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
 	}
-	if err := deployProject(transportCtx, eventCtx, deployRequest, userDoc, projectDoc); err != nil {
+	if err := deployProject(transportCtx, eventCtx, projectDoc, deployClaims.UserID, deployRequest.Parameters.ExecutionIdentifier); err != nil {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = false
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
@@ -138,25 +127,25 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	return nil
 }
 
-func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, deployRequest *event.DeployRequest, userDoc *user.User, projectDoc *project.Project) error {
+func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, userId string, execId string) error {
 	cloudLogger, err := pipeline.NewCloudLogger(
 		transportCtx,
 		eventCtx.CloudwatchClient,
 		projectDoc.DedicatedInfrastructure.DeployLogGroup,
-		deployRequest.Parameters.ExecutionIdentifier,
+		execId,
 	)
 	if err != nil {
 		return err
 	}
 
-	cloudLogger.WriteLog("START DEPLOYMENT %s", deployRequest.Parameters.ExecutionIdentifier)
+	cloudLogger.WriteLog("START DEPLOYMENT %s", execId)
 	cloudLogger.WriteLog("loading user subscription...")
 
 	subscriptionCollection := eventCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{
-		"id": userDoc.SubscriptionId,
+		"id": userId,
 	}).Decode(&subscriptionDoc)
 	if err != nil {
 		cloudLogger.WriteLog("failed to fetch subscription from database")
@@ -167,7 +156,38 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	cloudLogger.WriteLog("analyzing build assets...")
-	buildInformation, err := analyzeBuildAssets(transportCtx, eventCtx, projectDoc, subscriptionDoc, deployRequest.Parameters.ExecutionIdentifier)
+	buildInformation, err := analyzeBuildAssets(transportCtx, eventCtx, projectDoc, subscriptionDoc, execId)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	// the stack state is validated to provide a more descriptive error message to the user
+	cloudLogger.WriteLog("validating stack state...")
+	err = validateStackState(transportCtx, eventCtx, projectDoc)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cloudLogger.WriteLog("creating stack changeset...")
+	err = createChangeSet(transportCtx, eventCtx, projectDoc)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cloudLogger.WriteLog("executing stack changeset...")
+	err = createChangeSet(transportCtx, eventCtx, projectDoc)
 	if err != nil {
 		cloudLogger.WriteLog(err.Error())
 		if err := cloudLogger.PushLogs(); err != nil {
