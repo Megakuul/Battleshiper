@@ -18,6 +18,7 @@ import (
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
@@ -83,7 +84,6 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -91,7 +91,6 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	projectDoc := &project.Project{}
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: updateAliasInput.ProjectName},
@@ -105,6 +104,19 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 
 	if err := validateAliases(projectDoc.Name, updateAliasInput.Aliases); err != nil {
 		return nil, http.StatusBadRequest, err
+	}
+
+	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+	subscriptionDoc := &subscription.Subscription{}
+	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
+	if err == mongo.ErrNoDocuments {
+		return nil, http.StatusForbidden, fmt.Errorf("user does not have a valid subscription associated")
+	} else if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
+	}
+
+	if len(updateAliasInput.Aliases) > int(subscriptionDoc.ProjectSpecs.AliasCount) {
+		return nil, http.StatusBadRequest, fmt.Errorf("subscription limit reached; no additional aliases can be created")
 	}
 
 	if err := updateAliases(transportCtx, routeCtx, projectDoc.Name, projectDoc.Aliases, updateAliasInput.Aliases); err != nil {

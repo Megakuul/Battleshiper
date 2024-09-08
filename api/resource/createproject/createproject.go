@@ -94,7 +94,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -102,7 +101,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
@@ -112,7 +110,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	count, err := projectCollection.CountDocuments(transportCtx, bson.M{
 		"owner_id": userDoc.Id,
 		"deleted":  false,

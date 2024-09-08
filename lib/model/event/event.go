@@ -9,6 +9,7 @@ type BuildRequest struct {
 	DeployTicket        string `json:"deploy_ticket"`
 	ExecutionIdentifier string `json:"execution_identifier"`
 	RepositoryURL       string `json:"repository_url"`
+	RepositoryBranch    string `json:"repository_branch"`
 	BuildCommand        string `json:"build_command"`
 	OutputDirectory     string `json:"output_directory"`
 }

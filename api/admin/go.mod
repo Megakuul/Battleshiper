@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
 	github.com/megakuul/battleshiper/lib/helper v0.1.10
-	github.com/megakuul/battleshiper/lib/model v0.2.2
+	github.com/megakuul/battleshiper/lib/model v0.2.3
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.0
 )

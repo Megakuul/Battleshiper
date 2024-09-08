@@ -98,7 +98,6 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
@@ -108,11 +107,17 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 	}
 
 	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("failed to read user subscription: Subscription %s does not exist", userDoc.SubscriptionId)
+		return &fetchInfoOutput{
+			Id:           userToken.Id,
+			Name:         userToken.Username,
+			Roles:        userDoc.Roles,
+			Provider:     userToken.Provider,
+			AvatarURL:    userToken.AvatarURL,
+			Subscription: nil,
+		}, http.StatusOK, nil
 	} else if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
 	}

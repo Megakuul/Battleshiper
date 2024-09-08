@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -23,12 +24,16 @@ import (
 )
 
 func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context, event github.PushPayload) (int, error) {
-	installationId := event.Installation.ID
+	// events not triggered by branch pushes are not handled.
+	if !strings.HasPrefix(event.Ref, "refs/heads/") {
+		return http.StatusOK, nil
+	}
+	branch := strings.TrimPrefix(event.Ref, "refs/heads/")
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
 
 	userDoc := &user.User{}
-	err := userCollection.FindOne(transportCtx, bson.M{"github_data.installation_id": installationId}).Decode(&userDoc)
+	err := userCollection.FindOne(transportCtx, bson.M{"github_data.installation_id": event.Installation.ID}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
 		return http.StatusNotFound, fmt.Errorf("user installation not found")
 	} else if err != nil {
@@ -47,10 +52,13 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
+	// operation uses the defined compound index for {"repository.id", "owner_id", "repository.branch", "deleted"}
 	projectCursor, err := projectCollection.Find(transportCtx,
 		bson.D{
 			{Key: "repository.id", Value: event.Repository.ID},
 			{Key: "owner_id", Value: userDoc.Id},
+			{Key: "repository.branch", Value: branch},
+			{Key: "deleted", Value: false},
 		},
 	)
 	if err != nil {
@@ -146,6 +154,7 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 		ExecutionIdentifier: execIdentifier,
 		DeployTicket:        deployTicket,
 		RepositoryURL:       projectDoc.Repository.URL,
+		RepositoryBranch:    projectDoc.Repository.Branch,
 		BuildCommand:        projectDoc.BuildCommand,
 		OutputDirectory:     projectDoc.OutputDirectory,
 	}

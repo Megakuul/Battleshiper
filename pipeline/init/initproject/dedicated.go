@@ -252,7 +252,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			Command: []string{
 				"/bin/sh", "-c",
 				"echo \"START BUILD $EXECUTION_IDENTIFIER\" &&",
-				"git clone $REPOSITORY_URL . &&",
+				"git clone --branch $REPOSITORY_BRANCH $REPOSITORY_URL . &&",
 				"$BUILD_COMMAND &&",
 				"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH/$EXECUTION_IDENTIFIER --recursive",
 			},
@@ -292,6 +292,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		"TMPL_EXECUTION_IDENTIFIER": "$.detail.execution_identifier",
 		"TMPL_DEPLOY_TICKET":        "$.detail.deploy_ticket",
 		"TMPL_REPOSITORY_URL":       "$.detail.repository_url",
+		"TMPL_REPOSITORY_BRANCH":    "$.detail.repository_branch",
 		"TMPL_BUILD_COMMAND":        "$.detail.build_command",
 		"TMPL_OUTPUT_DIRECTORY":     "$.detail.output_directory",
 	}
@@ -310,6 +311,10 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 				{
 					Name:  "REPOSITORY_URL",
 					Value: "<TMPL_REPOSITORY_URL>",
+				},
+				{
+					Name:  "REPOSITORY_BRANCH",
+					Value: "<TMPL_REPOSITORY_BRANCH>",
 				},
 				{
 					Name:  "BUILD_COMMAND",
