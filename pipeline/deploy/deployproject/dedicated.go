@@ -9,6 +9,9 @@ import (
 	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	goform "github.com/awslabs/goformation/v7"
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
+	"github.com/awslabs/goformation/v7/cloudformation/iam"
+	"github.com/awslabs/goformation/v7/cloudformation/lambda"
+	"github.com/awslabs/goformation/v7/cloudformation/tags"
 
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
@@ -37,7 +40,7 @@ func validateStackState(transportCtx context.Context, eventCtx eventcontext.Cont
 }
 
 // createChangeSet loads the current stack, builds a changeset with the new system and pushes the change set to cloudformation.
-func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execIdentifier string) (string, error) {
+func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execId string) (string, error) {
 	stackTemplate, err := eventCtx.CloudformationClient.GetTemplate(transportCtx, &cloudformation.GetTemplateInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	})
@@ -63,7 +66,7 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 		return "", fmt.Errorf("failed to validate stack template: %v", err)
 	}
 
-	changeSetName := fmt.Sprintf("deployment-%s", execIdentifier)
+	changeSetName := fmt.Sprintf("deployment-%s", execId)
 	_, err = eventCtx.CloudformationClient.CreateChangeSet(transportCtx, &cloudformation.CreateChangeSetInput{
 		StackName:     aws.String(projectDoc.DedicatedInfrastructure.StackName),
 		ChangeSetName: aws.String(changeSetName),
@@ -117,14 +120,56 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 	}
 
 	waiter := cloudformation.NewStackUpdateCompleteWaiter(eventCtx.CloudformationClient)
-	stackOutput, err := waiter.WaitForOutput(transportCtx, &cloudformation.DescribeStacksInput{
+	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	}, eventCtx.DeploymentTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait for update completion: %v", err)
+	}
 
 	return nil
 }
 
 // attachServerSystem adds the project server system to the stack.
 func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project) {
+	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
+	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
+		Tags: []tags.Tag{
+			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
+		},
+		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
+		AssumeRolePolicyDocument: map[string]interface{}{
+			"Version": "2012-10-17",
+			"Statement": []map[string]interface{}{
+				{
+					"Effect": "Allow",
+					"Principal": map[string]interface{}{
+						"Service": "lambda.amazonaws.com",
+					},
+					"Action": "sts:AssumeRole",
+				},
+			},
+		},
+		Policies: []iam.Role_Policy{
+			{
+				PolicyDocument: map[string]interface{}{
+					"Version": "2012-10-17",
+					"Statement": []map[string]interface{}{
+						{
+							"Effect": "Allow",
+							"Action": []string{
+								"logs:CreateLogStream",
+								"logs:PutLogEvents",
+							},
+							"Resource": goformation.GetAtt(BUILD_LOG_GROUP, "Arn"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	const SERVER_FUNCTION string = "ServerFunction"
+	stackTemplate.Resources[SERVER_FUNCTION] = &lambda.Function{}
 
 }

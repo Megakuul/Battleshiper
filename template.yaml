@@ -885,7 +885,6 @@ Resources:
       StageName: Prod
 
 
-
   # ============================================
   # =========== CDN Proxy ======================
   # ============================================
@@ -1171,7 +1170,9 @@ Resources:
               Action:
                 "sts:AssumeRole"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
         - arn:aws:iam::aws:policy/AWSBatchFullAccess
         - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess

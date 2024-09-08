@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.28
 	github.com/megakuul/battleshiper/lib/helper v0.1.10
-	github.com/megakuul/battleshiper/lib/model v0.2.3
+	github.com/megakuul/battleshiper/lib/model v0.2.4
 )
 
 require (

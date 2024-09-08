@@ -177,7 +177,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	cloudLogger.WriteLog("creating stack changeset...")
-	err = createChangeSet(transportCtx, eventCtx, projectDoc)
+	changeSetName, err := createChangeSet(transportCtx, eventCtx, projectDoc, execId)
 	if err != nil {
 		cloudLogger.WriteLog(err.Error())
 		if err := cloudLogger.PushLogs(); err != nil {
@@ -186,8 +186,22 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
+	cloudLogger.WriteLog("describing stack changeset...")
+	changeSetDescription, err := describeChangeSet(transportCtx, eventCtx, projectDoc, changeSetName)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+	cloudLogger.WriteLog(changeSetDescription)
+
 	cloudLogger.WriteLog("executing stack changeset...")
-	err = createChangeSet(transportCtx, eventCtx, projectDoc)
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
+	}
+	err = executeChangeSet(transportCtx, eventCtx, projectDoc, changeSetName)
 	if err != nil {
 		cloudLogger.WriteLog(err.Error())
 		if err := cloudLogger.PushLogs(); err != nil {
