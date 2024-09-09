@@ -114,7 +114,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'server', 'event', 'build' or 'deploy'")
 	}
 
-	activeLogStream, err := routeCtx.CloudWatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{
+	activeLogStream, err := routeCtx.CloudwatchClient.DescribeLogStreams(transportCtx, &cloudwatchlogs.DescribeLogStreamsInput{
 		LogGroupName: aws.String(logType),
 		OrderBy:      types.OrderByLastEventTime,
 		Descending:   aws.Bool(true),
@@ -128,7 +128,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusInternalServerError, fmt.Errorf("no associated log stream found")
 	}
 
-	logEventOutput, err := routeCtx.CloudWatchClient.GetLogEvents(transportCtx, &cloudwatchlogs.GetLogEventsInput{
+	logEventOutput, err := routeCtx.CloudwatchClient.GetLogEvents(transportCtx, &cloudwatchlogs.GetLogEventsInput{
 		LogStreamName: activeLogStream.LogStreams[0].LogStreamName,
 		StartTime:     aws.Int64(fetchLogInput.StartTime),
 		EndTime:       aws.Int64(fetchLogInput.EndTime),

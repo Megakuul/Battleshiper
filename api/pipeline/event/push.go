@@ -31,7 +31,6 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	branch := strings.TrimPrefix(event.Ref, "refs/heads/")
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	userDoc := &user.User{}
 	err := userCollection.FindOne(transportCtx, bson.M{"github_data.installation_id": event.Installation.ID}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
@@ -41,24 +40,21 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	}
 
 	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
-		return http.StatusNotFound, fmt.Errorf("user does not have a valid subscription associated")
+		return http.StatusForbidden, fmt.Errorf("user does not have a valid subscription associated")
 	} else if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	// operation uses the defined compound index for {"repository.id", "owner_id", "repository.branch", "deleted"}
+	// operation uses the defined compound index for {"repository.id", "owner_id", "repository.branch"}
 	projectCursor, err := projectCollection.Find(transportCtx,
 		bson.D{
 			{Key: "repository.id", Value: event.Repository.ID},
 			{Key: "owner_id", Value: userDoc.Id},
 			{Key: "repository.branch", Value: branch},
-			{Key: "deleted", Value: false},
 		},
 	)
 	if err != nil {
@@ -76,11 +72,11 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			continue
 		}
 
-		execIdentifier := uuid.New().String()
+		execId := uuid.New().String()
 		eventResult := project.EventResult{
-			ExecutionIdentifier: execIdentifier,
+			ExecutionIdentifier: execId,
 		}
-		if err = initiateProjectBuild(transportCtx, routeCtx, execIdentifier, userDoc, &projectDoc); err != nil {
+		if err = initiateProjectBuild(transportCtx, routeCtx, execId, userDoc, &projectDoc); err != nil {
 			eventResult.Successful = false
 			eventResult.Timepoint = time.Now().Unix()
 			result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
@@ -110,19 +106,20 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	return http.StatusOK, nil
 }
 
-func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Context, execIdentifier string, userDoc *user.User, projectDoc *project.Project) error {
-	cloudLogger, err := pipeline.NewCloudLogger(transportCtx, routeCtx.CloudwatchClient, projectDoc.DedicatedInfrastructure.EventLogGroup, execIdentifier)
+func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Context, execId string, userDoc *user.User, projectDoc *project.Project) error {
+	cloudLogger, err := pipeline.NewCloudLogger(transportCtx, routeCtx.CloudwatchClient, projectDoc.DedicatedInfrastructure.EventLogGroup, execId)
 	if err != nil {
 		return err
 	}
 
-	cloudLogger.WriteLog("START INIT %s", execIdentifier)
+	cloudLogger.WriteLog("START INIT %s", execId)
+	cloudLogger.WriteLog("Event triggered by github webhook")
 	cloudLogger.WriteLog("Emitting event to pipeline...")
 	if err := cloudLogger.PushLogs(); err != nil {
 		return err
 	}
 
-	err = emitBuildEvent(transportCtx, routeCtx, execIdentifier, userDoc, projectDoc)
+	err = emitBuildEvent(transportCtx, routeCtx, execId, userDoc, projectDoc)
 	if err != nil {
 		cloudLogger.WriteLog("failed to emit build event: %v", err)
 		if err := cloudLogger.PushLogs(); err != nil {
@@ -139,7 +136,7 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 	return nil
 }
 
-func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execIdentifier string, userDoc *user.User, projectDoc *project.Project) error {
+func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execId string, userDoc *user.User, projectDoc *project.Project) error {
 	err := pipeline.CheckBuildSubscriptionLimit(transportCtx, routeCtx.Database, userDoc)
 	if err != nil {
 		return err
@@ -151,7 +148,7 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 	}
 
 	buildRequest := &event.BuildRequest{
-		ExecutionIdentifier: execIdentifier,
+		ExecutionIdentifier: execId,
 		DeployTicket:        deployTicket,
 		RepositoryURL:       projectDoc.Repository.URL,
 		RepositoryBranch:    projectDoc.Repository.Branch,

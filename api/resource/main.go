@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/megakuul/battleshiper/api/resource/buildproject"
 	"github.com/megakuul/battleshiper/api/resource/createproject"
 	"github.com/megakuul/battleshiper/api/resource/deleteproject"
 	"github.com/megakuul/battleshiper/api/resource/fetchlog"
@@ -33,17 +34,23 @@ import (
 )
 
 var (
-	REGION                = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
-	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
-	INIT_EVENTBUS_NAME    = os.Getenv("INIT_EVENTBUS_NAME")
-	INIT_EVENT_SOURCE     = os.Getenv("INIT_EVENT_SOURCE")
-	INIT_EVENT_ACTION     = os.Getenv("INIT_TICKET_ACTION")
-	INIT_EVENT_TICKET_TTL = os.Getenv("INIT_TICKET_TTL")
-	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
+	REGION                  = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN      = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT       = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME           = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN     = os.Getenv("DATABASE_SECRET_ARN")
+	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
+	INIT_EVENTBUS_NAME      = os.Getenv("INIT_EVENTBUS_NAME")
+	INIT_EVENT_SOURCE       = os.Getenv("INIT_EVENT_SOURCE")
+	INIT_EVENT_ACTION       = os.Getenv("INIT_TICKET_ACTION")
+	INIT_EVENT_TICKET_TTL   = os.Getenv("INIT_TICKET_TTL")
+	BUILD_EVENTBUS_NAME     = os.Getenv("BUILD_EVENTBUS_NAME")
+	BUILD_EVENT_SOURCE      = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION      = os.Getenv("BUILD_EVENT_ACTION")
+	DEPLOY_EVENT_SOURCE     = os.Getenv("DEPLOY_EVENT_SOURCE")
+	DEPLOY_EVENT_ACTION     = os.Getenv("DEPLOY_EVENT_ACTION")
+	DEPLOY_EVENT_TICKET_TTL = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
+	CLOUDFRONT_CACHE_ARN    = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
 func main() {
@@ -111,12 +118,26 @@ func run() error {
 	}
 	initEventOptions := pipeline.CreateEventOptions(INIT_EVENTBUS_NAME, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, initTicketOptions)
 
+	buildEventOptions := pipeline.CreateEventOptions(BUILD_EVENTBUS_NAME, BUILD_EVENT_SOURCE, BUILD_EVENT_ACTION, nil)
+
+	deployTicketTTL, err := strconv.Atoi(DEPLOY_EVENT_TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse DEPLOY_EVENT_TICKET_TTL environment variable")
+	}
+	deployTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
-		CloudWatchClient:      cloudwatchClient,
+		CloudwatchClient:      cloudwatchClient,
 		JwtOptions:            jwtOptions,
 		Database:              databaseHandle,
 		EventClient:           eventClient,
 		InitEventOptions:      initEventOptions,
+		BuildEventOptions:     buildEventOptions,
+		DeployTicketOptions:   deployTicketOptions,
 		CloudfrontCacheClient: cloudfrontClient,
 		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
 	})
@@ -125,6 +146,7 @@ func run() error {
 	httpRouter.AddRoute("GET", "/api/resource/listproject", listproject.HandleListProject)
 	httpRouter.AddRoute("GET", "/api/resource/fetchlog", fetchlog.HandleFetchLog)
 	httpRouter.AddRoute("POST", "/api/resource/createproject", createproject.HandleCreateProject)
+	httpRouter.AddRoute("POST", "/api/resource/buildproject", buildproject.HandleBuildProject)
 	httpRouter.AddRoute("POST", "/api/resource/updatealias", updatealias.HandleUpdateAlias)
 	httpRouter.AddRoute("PATCH", "/api/resource/updateproject", updateproject.HandleUpdateProject)
 	httpRouter.AddRoute("DELETE", "/api/resource/deleteproject", deleteproject.HandleDeleteProject)

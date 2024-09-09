@@ -80,7 +80,7 @@ func run() error {
 	})
 
 	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"repository.id", "owner_id", "repository.branch", "deleted"}, SortingOrder: 1, Unique: false},
+		{FieldNames: []string{"repository.id", "owner_id", "repository.branch"}, SortingOrder: 1, Unique: false},
 	})
 
 	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{

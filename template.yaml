@@ -429,10 +429,10 @@ Resources:
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperResourceFuncRole
 
-  BattleshiperPipelineProjectFunctionLogPolicy:
+  BattleshiperPipelineProjectServerLogPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-pipeline-project-function-log-access"
+      PolicyName: "battleshiper-pipeline-project-server-log-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -440,7 +440,7 @@ Resources:
             Action:
               - "logs:DescribeLogStreams"
               - "logs:GetLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/function/*"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/server/*"
       Roles:
         - !Ref BattleshiperResourceFuncRole
 
@@ -727,6 +727,14 @@ Resources:
           INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
           INIT_EVENT_ACTION: "battleshiper.init"
           INIT_EVENT_TICKET_TTL: 360
+          BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          BUILD_EVENT_ACTION: "battleshiper.build"
+          # deployment ticket is used as parameter of the aws.batch event
+          # https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
+          DEPLOY_EVENT_SOURCE: "aws.batch"
+          DEPLOY_EVENT_ACTION: "Batch Job State Change"
+          DEPLOY_EVENT_TICKET_TTL: 1000
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperCDNRouteStore.Arn
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
