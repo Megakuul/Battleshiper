@@ -503,7 +503,6 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       Name: "battleshiper-api"
-      StageName: Prod
 
 
   BattleshiperAuthFuncRole:
@@ -886,12 +885,20 @@ Resources:
   # =========== Project API Gateway ============
   # ============================================
 
+  # TODO: Add permission to the staticBucket for the api gateway (s3:GetObject)
+
   BattleshiperProjectApi:
-    Type: AWS::Serverless::HttpApi
+    Type: AWS::ApiGatewayV2::Api
     Properties:
       Name: "battleshiper-project-api"
-      StageName: Prod
+      ProtocolType: HTTP
 
+  BattleshiperProjectApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref BattleshiperProjectApi
+      StageName: "$default"
+      AutoDeploy: true
 
   # ============================================
   # =========== CDN Proxy ======================
@@ -1184,6 +1191,7 @@ Resources:
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
         - arn:aws:iam::aws:policy/AWSBatchFullAccess
         - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
 
 
   BattleshiperPipelineEventBus:

@@ -9,6 +9,7 @@ import (
 	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	goform "github.com/awslabs/goformation/v7"
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
+	"github.com/awslabs/goformation/v7/cloudformation/apigatewayv2"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/lambda"
 	"github.com/awslabs/goformation/v7/cloudformation/tags"
@@ -131,13 +132,13 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 }
 
 // attachServerSystem adds the project server system to the stack.
-func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project) {
+func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project, apiGatewayId string, staticBucketUri string) {
 	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
 	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
 			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
 		},
-		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
+		Description: aws.String("role associated with the battleshiper server function"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
@@ -150,26 +151,36 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 				},
 			},
 		},
-		Policies: []iam.Role_Policy{
-			{
-				PolicyDocument: map[string]interface{}{
-					"Version": "2012-10-17",
-					"Statement": []map[string]interface{}{
-						{
-							"Effect": "Allow",
-							"Action": []string{
-								"logs:CreateLogStream",
-								"logs:PutLogEvents",
-							},
-							"Resource": goformation.GetAtt(BUILD_LOG_GROUP, "Arn"),
-						},
-					},
-				},
-			},
-		},
 	}
 
 	const SERVER_FUNCTION string = "ServerFunction"
 	stackTemplate.Resources[SERVER_FUNCTION] = &lambda.Function{}
+
+	const API_INTEGRATION_STATIC string = "ApiIntegrationStatic"
+	stackTemplate.Resources[API_INTEGRATION_STATIC] = &apigatewayv2.Integration{
+		ApiId:             apiGatewayId,
+		IntegrationType:   "HTTP_PROXY",
+		IntegrationUri:    aws.String(staticBucketUri),
+		IntegrationMethod: aws.String("GET"),
+	}
+
+	const API_ROUTE_STATIC string = "ApiRouteStatic"
+	stackTemplate.Resources[API_ROUTE_STATIC] = &apigatewayv2.Route{
+		ApiId:    apiGatewayId,
+		RouteKey: fmt.Sprintf("GET /%s/{page}.html", projectDoc.Name),
+		Target:   aws.String(fmt.Sprintf("integrations/%s", goformation.Ref(API_INTEGRATION_STATIC))),
+	}
+
+	const API_INTEGRATION_SERVER string = "ApiIntegrationServer"
+	stackTemplate.Resources[API_INTEGRATION_SERVER] = &apigatewayv2.Integration{
+		ApiId: apiGatewayId,
+	}
+
+	const API_ROUTE_SERVER string = "ApiRouteServer"
+	stackTemplate.Resources[API_ROUTE_SERVER] = &apigatewayv2.Route{
+		ApiId:    apiGatewayId,
+		RouteKey: fmt.Sprintf("ANY /%s/{proxy+}", projectDoc.Name),
+		Target:   aws.String(fmt.Sprintf("integrations/%s", goformation.Ref(API_INTEGRATION_SERVER))),
+	}
 
 }
