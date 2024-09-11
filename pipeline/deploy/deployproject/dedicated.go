@@ -173,7 +173,13 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 
 	const API_INTEGRATION_SERVER string = "ApiIntegrationServer"
 	stackTemplate.Resources[API_INTEGRATION_SERVER] = &apigatewayv2.Integration{
-		ApiId: apiGatewayId,
+		ApiId:             apiGatewayId,
+		IntegrationType:   "AWS_PROXY",
+		IntegrationMethod: aws.String("ANY"),
+		IntegrationUri: aws.String(goformation.Sub(fmt.Sprintf(
+			"arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${%s.Arn}/invocations", SERVER_FUNCTION),
+		)),
+		PayloadFormatVersion: aws.String("2.0"),
 	}
 
 	const API_ROUTE_SERVER string = "ApiRouteServer"
