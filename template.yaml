@@ -4,10 +4,13 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   ApplicationDomain:
     Type: String
-    Description: "Domain used for the battleshiper deployment."
+    Description: "Domain used for the battleshiper endpoints."
   ApplicationDomainCertificateArn:
     Type: String
     Description: "ARN of the ACM certificate for the ApplicationDomain."
+  ApplicationDomainWildcardCertificateArn:
+    Type: String
+    Description: "ARN of the wildcard ACM certificate for '*.ApplicationDomain'."
   GithubOAuthClientCredentialArn:
     Type: String
     Description: "ARN of the Secret containing Github Application App ID, App Secret Key, Client ID & Client Secret ('app_id', 'app_secret', 'client_id' & 'client_secret')."
@@ -281,77 +284,6 @@ Resources:
 
 
   # ============================================
-  # =========== Database =======================
-  # ============================================
-
-  BattleshiperDbAdminSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: "battleshiper-db-cluster-admin-credentials"
-      Description: "Secret for battleshiper db administrator credentials."
-      GenerateSecretString:
-        SecretStringTemplate: '{"username": "admin"}'
-        GenerateStringKey: "password"
-        PasswordLength: 60
-        ExcludeCharacters: '"@/\\'
-
-  BattleshiperDbApiSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: "battleshiper-db-cluster-api-credentials"
-      Description: "Secret for battleshiper api access credentials."
-      GenerateSecretString:
-        SecretStringTemplate: '{"username": "api"}'
-        GenerateStringKey: "password"
-        PasswordLength: 40
-        ExcludeCharacters: '"@/\\'
-
-  BattleshiperDbApiSecretAttachment:
-    Type: AWS::SecretsManager::SecretTargetAttachment
-    Properties:
-      SecretId: !Ref BattleshiperDbApiSecret
-      TargetId: !Ref BattleshiperDb
-      TargetType: "AWS::DocDB::DBCluster"
-
-  BattleshiperDbApiSecretPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-db-cluster-api-credentials-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "secretsmanager:GetSecretValue"
-            Resource:
-              - !Ref BattleshiperDbApiSecret
-      Roles: 
-        - !Ref BattleshiperUserFuncRole
-        - !Ref BattleshiperAdminFuncRole
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
-
-  BattleshiperDb:
-    Type: AWS::DocDBElastic::Cluster
-    Properties:
-      AdminUserName: !Sub '{{resolve:secretsmanager:BattleshiperDbAdminSecret:SecretString:username}}'
-      # Admin password is set to the secret's ARN.
-      # This usage is not documented unfortunaly: https://github.com/aws/aws-cdk/issues/28935.
-      AdminUserPassword: !Ref BattleshiperDbAdminSecret
-      AuthType: "SECRET_ARN"
-      ClusterName: "battleshiper-db-cluster"
-      ShardCapacity: 2
-      ShardCount: 1
-      ShardInstanceCount: 3
-      SubnetIds: 
-        - !Ref BattleshiperDbSubnet1
-        - !Ref BattleshiperDbSubnet2
-        - !Ref BattleshiperDbSubnet3
-      VpcSecurityGroupIds:
-        - !Ref BattleshiperDbAccessGroup
-
-
-  # ============================================
   # =========== CloudWatch Logging =============
   # ============================================
 
@@ -444,6 +376,78 @@ Resources:
       Roles:
         - !Ref BattleshiperResourceFuncRole
 
+
+  # ============================================
+  # =========== Database =======================
+  # ============================================
+
+  BattleshiperDbAdminSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-db-cluster-admin-credentials"
+      Description: "Secret for battleshiper db administrator credentials."
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 60
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperDbApiSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-db-cluster-api-credentials"
+      Description: "Secret for battleshiper api access credentials."
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "api"}'
+        GenerateStringKey: "password"
+        PasswordLength: 40
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperDbApiSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref BattleshiperDbApiSecret
+      TargetId: !Ref BattleshiperDb
+      TargetType: "AWS::DocDB::DBCluster"
+
+  BattleshiperDbApiSecretPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-db-cluster-api-credentials-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource:
+              - !Ref BattleshiperDbApiSecret
+      Roles: 
+        - !Ref BattleshiperUserFuncRole
+        - !Ref BattleshiperAdminFuncRole
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
+
+  BattleshiperDb:
+    Type: AWS::DocDBElastic::Cluster
+    Properties:
+      AdminUserName: !Sub '{{resolve:secretsmanager:BattleshiperDbAdminSecret:SecretString:username}}'
+      # Admin password is set to the secret's ARN.
+      # This usage is not documented unfortunaly: https://github.com/aws/aws-cdk/issues/28935.
+      AdminUserPassword: !Ref BattleshiperDbAdminSecret
+      AuthType: "SECRET_ARN"
+      ClusterName: "battleshiper-db-cluster"
+      ShardCapacity: 2
+      ShardCount: 1
+      ShardInstanceCount: 3
+      SubnetIds: 
+        - !Ref BattleshiperDbSubnet1
+        - !Ref BattleshiperDbSubnet2
+        - !Ref BattleshiperDbSubnet3
+      VpcSecurityGroupIds:
+        - !Ref BattleshiperDbAccessGroup
+
+
   # ============================================
   # =========== Auth Secrets ===================
   # ============================================
@@ -494,6 +498,51 @@ Resources:
         - !Ref BattleshiperAdminFuncRole
         - !Ref BattleshiperResourceFuncRole
         - !Ref BattleshiperPipelineFuncRole
+
+
+  # ============================================
+  # =========== Core Routing System ============
+  # ============================================
+
+  BattleshiperRouteLoadbalancer:
+    Type: AWS::EC2::ApplicationLoadbalancer
+    Properties:
+
+  BattleshiperRouteFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: router/router
+      Handler: router
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperApiSubnet1
+          - !Ref BattleshiperApiSubnet2
+          - !Ref BattleshiperApiSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperApiEgressGroup
+      Role: !GetAtt BattleshiperUserFuncRole.Arn
+      Events:
+        User:
+          Type: HttpApi
+          Properties:
+            Path: /api/user/{proxy+}
+            Method: ANY
+            ApiId: !Ref BattleshiperApi
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
 
   # ============================================
   # =========== API ============================
@@ -734,7 +783,7 @@ Resources:
           DEPLOY_EVENT_SOURCE: "aws.batch"
           DEPLOY_EVENT_ACTION: "Batch Job State Change"
           DEPLOY_EVENT_TICKET_TTL: 1000
-          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperCDNRouteStore.Arn
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -799,341 +848,6 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-
-  # ============================================
-  # =========== Project S3 Storage =============
-  # ============================================
-
-  BattleshiperProjectStaticBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-static-bucket"
-
-  BattleshiperProjectStaticBucketBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref BattleshiperProjectStaticBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - "s3:GetObject"
-            Effect: Allow
-            Resource:
-              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
-            Principal:
-              Service: cloudfront.amazonaws.com
-
-  BattleshiperProjectStaticBucketPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-static-bucket-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - "s3:HeadObject"
-              - "s3:GetObject"
-              - "s3:ListBucket"
-              - "s3:PutObject"
-              - "s3:DeleteObject"
-            Effect: Allow
-            Resource:
-              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
-      Roles: 
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineDeleteFuncRole
-
-
-  BattleshiperProjectBuildAssetBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-build-asset-bucket"
-      LifecycleConfiguration:
-        Rules:
-          - Id: "delete-assets"
-            Status: "Enabled"
-            ExpirationInDays: 1
-            Prefix: ""
-  
-  BattleshiperProjectBuildAssetBucketPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-build-asset-bucket-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - "s3:HeadObject"
-              - "s3:GetObject"
-              - "s3:ListBucket"
-              - "s3:PutObject"
-              - "s3:DeleteObject"
-            Effect: Allow
-            Resource:
-              - !Sub "${BattleshiperProjectBuildAssetBucket.Arn}/*"
-      Roles:
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineDeleteFuncRole
-
-
-  # ============================================
-  # =========== Project API Gateway ============
-  # ============================================
-
-  # TODO: Add permission to the staticBucket for the api gateway (s3:GetObject)
-
-  BattleshiperProjectApi:
-    Type: AWS::ApiGatewayV2::Api
-    Properties:
-      Name: "battleshiper-project-api"
-      ProtocolType: HTTP
-
-  BattleshiperProjectApiStage:
-    Type: AWS::ApiGatewayV2::Stage
-    Properties:
-      ApiId: !Ref BattleshiperProjectApi
-      StageName: "$default"
-      AutoDeploy: true
-
-  # ============================================
-  # =========== CDN Proxy ======================
-  # ============================================
-
-  BattleshiperCDNWebCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: "battleshiper-web-cache-policy"
-        DefaultTTL: 86400 # 1 day
-        MinTTL: 1 # 1 second
-        MaxTTL: 31536000 # 1 year
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: "none"
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: none
-
-  BattleshiperCDNApiCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: "battleshiper-api-cache-policy"
-        DefaultTTL: 0
-        MinTTL: 0
-        MaxTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: "none"
-          EnableAcceptEncodingBrotli: false
-          EnableAcceptEncodingGzip: false
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: none
-
-  BattleshiperCDNApiOriginRequestPolicy:
-    Type: AWS::CloudFront::OriginRequestPolicy
-    Properties:
-      OriginRequestPolicyConfig:
-        Name: "battleshiper-api-origin-policy"
-        CookiesConfig:
-          CookieBehavior: all
-        HeadersConfig:
-          HeaderBehavior: allExcept
-          Headers:
-            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host
-        QueryStringsConfig:
-          QueryStringBehavior: all
-
-  BattleshiperCDNRouteStore:
-    Type: AWS::CloudFront::KeyValueStore
-    Properties:
-      Name: "battleshiper-cdn-route-store"
-      Comment: "Store used to lookup the path based on the requested host or prerendered pages."
-
-  BattleshiperCDNRouteStorePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-cdn-route-store-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "cloudfront-keyvaluestore:DescribeKeyValueStore"
-              - "cloudfront-keyvaluestore:UpdateKeys"
-              - "cloudfront-keyvaluestore:PutKey"
-            Resource: !GetAtt BattleshiperCDNRouteStore.Arn
-      Roles:
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineDeployFuncRole
-
-  BattleshiperCDNRouteFunc:
-    Type: AWS::CloudFront::Function
-    Properties:
-      Name: "battleshiper-cdn-route-func"
-      AutoPublish: true
-      FunctionConfig:
-        Comment: "Function to route cdn requests to a path based on the requested host and to add .html extension on prerendered pages."
-        Runtime: cloudfront-js-2.0
-        KeyValueStoreAssociations:
-          - KeyValueStoreARN: !GetAtt BattleshiperCDNRouteStore.Arn
-      FunctionCode: !Sub |
-        import cf from "cloudfront";
-
-        const kvsHandle = cf.kvs("${BattleshiperCDNRouteStore.Id}");
-
-        const domainSuffix = ".${ApplicationDomain}";
-
-        async function handler(event) {
-          let request = event.request;
-
-          try {
-            const authorityHeader = request.headers[":authority"];
-            const hostHeader = request.headers["host"];
-            
-            // extract host (prefer :authority if present)
-            const host = authorityHeader ? authorityHeader.value : hostHeader.value;
-            if (!host) {
-              throw new Error("no host specified");
-            }
-
-            // remove the application domain from the host
-            if (!host.endsWith(domainSuffix)) {
-              throw new Error("unexpected host");
-            }
-            const alias = host.slice(0, -domainSuffix.length);
-
-            const pathSegments = request.uri.split('/');
-            
-            const project = await kvsHandle.get(alias, { format: "string" });
-            pathSegments.splice(1, 0, project); // set the project as first segment in the uri
-            
-            request.uri = pathSegments.join('/');
-
-            const prerenderedPage = await kvsHandle.get(request.uri, { format: "string" }).catch(() => null);
-            if (prerenderedPage) {
-              request.uri = prerenderedPage;
-            }
-
-            return request;
-          } catch (err) {
-            request.uri = "/404.html";
-            request.querystring = `error=${err.message}`;
-            return request;
-          }
-        }
-
-  BattleshiperCDNOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: "battleshiper-cdn-origin-access"
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
-  BattleshiperCDN:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Enabled: true
-        PriceClass: "PriceClass_All"
-        ViewerCertificate:
-          AcmCertificateArn: !Ref ApplicationDomainCertificateArn
-          SslSupportMethod: "sni-only"
-          MinimumProtocolVersion: "TLSv1.2_2021"
-        Origins:
-          - Id: "battleshiper-project-static-bucket"
-            DomainName: !GetAtt BattleshiperProjectStaticBucket.DomainName
-            OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
-            S3OriginConfig: {}
-          - Id: "battleshiper-api"
-            DomainName: !GetAtt BattleshiperApi.ApiEndpoint
-            CustomOriginConfig:
-              OriginProtocolPolicy: "https-only"
-          - Id: "battleshiper-project-api"
-            DomainName: !GetAtt BattleshiperProjectApi.ApiEndpoint
-            CustomOriginConfig:
-              OriginProtocolPolicy: "https-only"
-        DefaultCacheBehavior:
-          TargetOriginId: "battleshiper-project-api"
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - PATCH
-            - POST
-            - DELETE
-          ViewerProtocolPolicy: redirect-to-https
-          CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
-          OriginRequestPolicyId: !Ref BattleshiperCDNApiOriginRequestPolicy
-          FunctionAssociations:
-            - EventType: viewer-request
-              FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
-
-        CacheBehaviors:
-          - PathPattern: "/api/*"
-            TargetOriginId: "battleshiper-api"
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - PATCH
-              - POST
-              - DELETE
-            Compress: false
-            ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref BattleshiperCDNApiCachePolicy
-            OriginRequestPolicyId: !Ref BattleshiperCDNApiOriginRequestPolicy
-
-          - PathPattern: "/_app/*"
-            TargetOriginId: "battleshiper-project-static-bucket"
-            AllowedMethods:
-              - GET
-              - HEAD
-            CachedMethods:
-              - GET
-              - HEAD
-            Compress: true
-            ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
-            FunctionAssociations:
-              - EventType: viewer-request
-                FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
-
-          - PathPattern: "/*.*"
-            TargetOriginId: "battleshiper-project-static-bucket"
-            AllowedMethods:
-              - GET
-              - HEAD
-            CachedMethods:
-              - GET
-              - HEAD
-            Compress: true
-            ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
-            FunctionAssociations:
-              - EventType: viewer-request
-                FunctionARN: !GetAtt BattleshiperCDNRouteFunc.FunctionMetadata.FunctionARN
-
-        Aliases:
-          - !Sub "*.${ApplicationDomain}"
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-cdn"
-
   # ============================================
   # ======= Pipeline Ticket Credentials ========
   # ============================================
@@ -1171,7 +885,6 @@ Resources:
   # =========== Pipeline =======================
   # ============================================
 
-
   BattleshiperPipelineCloudformationServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1192,6 +905,40 @@ Resources:
         - arn:aws:iam::aws:policy/AWSBatchFullAccess
         - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
         - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+
+
+  BattleshiperPipelineBuildAssetBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-pipeline-build-asset-bucket"
+      LifecycleConfiguration:
+        Rules:
+          - Id: "delete-assets"
+            Status: "Enabled"
+            ExpirationInDays: 1
+            Prefix: ""
+  
+  BattleshiperPipelineBuildAssetBucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-build-asset-bucket-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:HeadObject"
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperPipelineBuildAssetBucket.Arn}/*"
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
 
   BattleshiperPipelineEventBus:
@@ -1332,7 +1079,7 @@ Resources:
           DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
           DEPLOYMENT_TIMEOUT: "400s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
-          BUILD_ASSET_BUCKET_NAME: !Ref BattleshiperProjectBuildAssetBucket
+          BUILD_ASSET_BUCKET_NAME: !Ref BattleshiperPipelineBuildAssetBucket
           EVENT_LOG_GROUP_PREFIX: "/battleshiper/project/event"
           BUILD_LOG_GROUP_PREFIX: "/battleshiper/project/build"
           DEPLOY_LOG_GROUP_PREFIX: "/battleshiper/project/deploy"
@@ -1429,7 +1176,7 @@ Resources:
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
-          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperCDNRouteStore.Arn
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1498,11 +1245,435 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
           
 
-Outputs:
-  BattleshiperAPI:
-    Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api"
+  # ============================================
+  # =========== S3 Storage =====================
+  # ============================================
 
+  BattleshiperStaticBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-static-bucket"
+
+  BattleshiperStaticBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BattleshiperStaticBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperStaticBucket.Arn}/*"
+            Principal:
+              Service: cloudfront.amazonaws.com
+
+  # ============================================
+  # =========== CDN ============================
+  # ============================================
+
+  BattleshiperCDNWebCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-web-cache-policy"
+        DefaultTTL: 86400 # 1 day
+        MinTTL: 1 # 1 second
+        MaxTTL: 31536000 # 1 year
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  BattleshiperCDNServerCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-server-cache-policy"
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: "none"
+          QueryStringsConfig:
+            QueryStringBehavior: "none"
+
+  BattleshiperCDNServerOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: "battleshiper-server-origin-policy"
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: all
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  BattleshiperCDNOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:        
+        Name: "battleshiper-cdn-origin-access"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  BattleshiperCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        PriceClass: "PriceClass_100"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ApplicationDomainCertificateArn
+          SslSupportMethod: "sni-only"
+          MinimumProtocolVersion: "TLSv1.2_2021"
+        Origins:
+          - Id: "battleshiper-static-bucket"
+            DomainName: !GetAtt BattleshiperStaticBucket.DomainName
+            OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
+            S3OriginConfig: {}
+          - Id: "battleshiper-server"
+            DomainName: !GetAtt TODO Alb endpoint
+            CustomOriginConfig:
+              OriginProtocolPolicy: "https-only"
+          - Id: "battleshiper-api"
+            DomainName: !GetAtt BattleshiperApi.ApiEndpoint
+            CustomOriginConfig:
+              OriginProtocolPolicy: "https-only"
+        DefaultCacheBehavior:
+          TargetOriginId: "battleshiper-server"
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref BattleshiperCDNServerCachePolicy
+          OriginRequestPolicyId: !Ref BattleshiperCDNServerOriginRequestPolicy
+        CacheBehaviors:
+          - PathPattern: "/api/*"
+            TargetOriginId: "battleshiper-api"
+            AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNServerCachePolicy
+            OriginRequestPolicyId: !Ref BattleshiperCDNServerOriginRequestPolicy
+          - PathPattern: "/_app/*"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
+          - PathPattern: "/*.*"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
+        Aliases:
+          - !Sub "${ApplicationDomain}"
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-cdn"
+
+
+  # ============================================
+  # =========== Project S3 Storage =============
+  # ============================================
+
+  BattleshiperProjectStaticBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-project-static-bucket"
+
+  BattleshiperProjectStaticBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BattleshiperProjectStaticBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
+            Principal:
+              Service: cloudfront.amazonaws.com
+
+  BattleshiperProjectStaticBucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-project-static-bucket-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:HeadObject"
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
+      Roles: 
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
+
+  # ============================================
+  # =========== Project CDN Router =============
+  # ============================================
+
+  BattleshiperProjectCDNRouteStore:
+    Type: AWS::CloudFront::KeyValueStore
+    Properties:
+      Name: "battleshiper-cdn-route-store"
+      Comment: "Store used to lookup the path based on the requested host or prerendered pages."
+
+  BattleshiperProjectCDNRouteStorePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-cdn-route-store-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudfront-keyvaluestore:DescribeKeyValueStore"
+              - "cloudfront-keyvaluestore:UpdateKeys"
+              - "cloudfront-keyvaluestore:PutKey"
+            Resource: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+
+  BattleshiperProjectCDNRouteFunc:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: "battleshiper-cdn-route-func"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: "Function to route cdn requests to a path based on the requested host and to add .html extension on prerendered pages."
+        Runtime: cloudfront-js-2.0
+        KeyValueStoreAssociations:
+          - KeyValueStoreARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+      FunctionCode: !Sub |
+        import cf from "cloudfront";
+
+        const kvsHandle = cf.kvs("${BattleshiperProjectCDNRouteStore.Id}");
+
+        const domainSuffix = ".${ApplicationDomain}";
+
+        async function handler(event) {
+          let request = event.request;
+
+          try {
+            const authorityHeader = request.headers[":authority"];
+            const hostHeader = request.headers["host"];
+            
+            // extract host (prefer :authority if present)
+            const host = authorityHeader ? authorityHeader.value : hostHeader.value;
+            if (!host) {
+              throw new Error("no host specified");
+            }
+
+            // remove the application domain from the host
+            if (!host.endsWith(domainSuffix)) {
+              throw new Error("unexpected host");
+            }
+            const alias = host.slice(0, -domainSuffix.length);
+
+            const pathSegments = request.uri.split('/');
+            
+            const project = await kvsHandle.get(alias, { format: "string" });
+            pathSegments.splice(1, 0, project); // set the project as first segment in the uri
+            
+            request.uri = pathSegments.join('/');
+
+            const prerenderedPage = await kvsHandle.get(request.uri, { format: "string" }).catch(() => null);
+            if (prerenderedPage) {
+              request.uri = prerenderedPage;
+            }
+
+            return request;
+          } catch (err) {
+            request.uri = "/404.html";
+            request.querystring = `error=${err.message}`;
+            return request;
+          }
+        }
+
+  # ============================================
+  # =========== Project CDN ====================
+  # ============================================
+
+  BattleshiperProjectCDNWebCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-project-web-cache-policy"
+        DefaultTTL: 86400 # 1 day
+        MinTTL: 1 # 1 second
+        MaxTTL: 31536000 # 1 year
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  BattleshiperProjectCDNServerCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "battleshiper-project-server-cache-policy"
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: "none"
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: "none"
+          QueryStringsConfig:
+            QueryStringBehavior: "none"
+
+  BattleshiperProjectCDNServerOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: "battleshiper-project-server-origin-policy"
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: all
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  BattleshiperProjectCDNOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:        Name: "battleshiper-project-cdn-origin-access"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  BattleshiperProjectCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        PriceClass: "PriceClass_All"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ApplicationDomainWildcardCertificateArn
+          SslSupportMethod: "sni-only"
+          MinimumProtocolVersion: "TLSv1.2_2021"
+        Origins:
+          - Id: "battleshiper-project-static-bucket"
+            DomainName: !GetAtt BattleshiperProjectStaticBucket.DomainName
+            OriginAccessControlId: !GetAtt BattleshiperProjectCDNOriginAccessControl.Id
+            S3OriginConfig: {}
+          - Id: "battleshiper-project-server"
+            DomainName: !GetAtt TODO Alb endpoint
+            CustomOriginConfig:
+              OriginProtocolPolicy: "https-only"
+        DefaultCacheBehavior:
+          TargetOriginId: "battleshiper-project-server"
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref BattleshiperProjectCDNServerCachePolicy
+          OriginRequestPolicyId: !Ref BattleshiperProjectCDNServerOriginRequestPolicy
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: "/_app/*"
+            TargetOriginId: "battleshiper-project-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperProjectCDNWebCachePolicy
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+          - PathPattern: "/*.*"
+            TargetOriginId: "battleshiper-project-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperProjectCDNWebCachePolicy
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+
+        Aliases:
+          - !Sub "*.${ApplicationDomain}"
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-project-cdn"
+
+
+Outputs:
   BattleshiperDbAdminSecret:
     Description: "Secret where the credentials of the database admin are stored"
     Value: !Ref BattleshiperDbAdminSecret

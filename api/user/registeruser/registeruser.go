@@ -16,7 +16,7 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-// HandleRegisterUser registers a user in the database (if not existent) based on the cognito user attributes.
+// HandleRegisterUser registers a user in the database (if not existent).
 func HandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	code, err := runHandleRegisterUser(request, transportCtx, routeCtx)
 	if err != nil {
