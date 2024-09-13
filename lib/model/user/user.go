@@ -6,9 +6,9 @@ import "github.com/megakuul/battleshiper/lib/model/rbac"
 const USER_COLLECTION = "users"
 
 type ExecutionLimitCounter struct {
-	PipelineBuilds                int   `bson:"pipeline_builds"`
+	PipelineBuilds                int64 `bson:"pipeline_builds"`
 	PipelineBuildsExpiration      int64 `bson:"pipeline_builds_exp"`
-	PipelineDeployments           int   `bson:"pipeline_deployments"`
+	PipelineDeployments           int64 `bson:"pipeline_deployments"`
 	PipelineDeploymentsExpiration int64 `bson:"pipeline_deployments_exp"`
 }
 

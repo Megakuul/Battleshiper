@@ -1,35 +1,50 @@
-package registeruser
+package routerequest
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 )
 
-// HandleRouteRequest routes request either to s3 or to the corresponding lambda http endpoint.
-func HandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.ALBTargetGroupResponse, error) {
-	project, exists := request.Headers["Battleshiper-Project"]
-	if !exists || project == "" {
-		return events.ALBTargetGroupResponse{
-			StatusCode: 404,
-			Headers:    map[string]string{"Content-Type": "text/plain"},
-			Body:       "Project not found",
-		}, nil
+type AdapterRequest struct {
+	Method  string            `json:"method"`
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
+type AdapterResponse struct {
+	StatusCode        int               `json:"status_code"`
+	StatusDescription string            `json:"status_description"`
+	Headers           map[string]string `json:"headers"`
+	Body              string            `json:"body"`
+}
+
+// HandleRouteRequest routes request either to s3 or to the corresponding server function.
+func HandleRouteRequest(routeCtx routecontext.Context) func(context.Context, events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+	return func(ctx context.Context, request events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+		return runHandleRouteRequest(request, ctx, routeCtx)
 	}
+}
+
+func runHandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.ALBTargetGroupResponse, error) {
+	project := request.Headers["Battleshiper-Project"]
 
 	if strings.HasSuffix(request.Path, ".html") && request.HTTPMethod == "GET" {
-		response, code, err := proxyPrerendered(request, transportCtx, routeCtx)
+		response, code, err := proxyStatic(request, transportCtx, routeCtx)
 		if err != nil {
 			return events.ALBTargetGroupResponse{
 				StatusCode: code,
@@ -41,7 +56,7 @@ func HandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx conte
 		return *response, nil
 	}
 
-	response, code, err := proxyServer(request, transportCtx, routeCtx)
+	response, code, err := proxyServer(request, transportCtx, routeCtx, project)
 	if err != nil {
 		return events.ALBTargetGroupResponse{
 			StatusCode: code,
@@ -53,7 +68,8 @@ func HandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx conte
 	return *response, nil
 }
 
-func proxyPrerendered(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.ALBTargetGroupResponse, int, error) {
+// proxyStatic reads the requested path from the static s3 bucket and returns it as Content-Type text/html.
+func proxyStatic(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.ALBTargetGroupResponse, int, error) {
 	objectOutput, err := routeCtx.S3Client.GetObject(transportCtx, &s3.GetObjectInput{
 		Bucket: aws.String(routeCtx.S3Bucket),
 		Key:    aws.String(request.Path),
@@ -61,7 +77,7 @@ func proxyPrerendered(request events.ALBTargetGroupRequest, transportCtx context
 	if err != nil {
 		var nsk *s3types.NoSuchKey
 		if errors.As(err, &nsk) {
-			return nil, http.StatusNotFound, fmt.Errorf("prerendered asset not found")
+			return nil, http.StatusNotFound, fmt.Errorf("static asset not found")
 		} else {
 			return nil, http.StatusInternalServerError, err
 		}
@@ -79,44 +95,41 @@ func proxyPrerendered(request events.ALBTargetGroupRequest, transportCtx context
 	}, http.StatusOK, nil
 }
 
-func proxyServer(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.ALBTargetGroupResponse, int, error) {
-	query := url.Values{}
-	for key, val := range request.QueryStringParameters {
-		query.Set(key, val)
+// proxyServer invokes the origin server function (LambdaPrefix-ProjectName) and returns the server response.
+func proxyServer(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context, projectName string) (*events.ALBTargetGroupResponse, int, error) {
+	adapterRequest := &AdapterRequest{
+		Method:  request.HTTPMethod,
+		Path:    request.Path,
+		Headers: request.Headers,
+		Body:    request.Body,
 	}
 
-	rawPath := fmt.Sprintf("https://%s.%s/%s", request.Path) // TODO find endpoint
-	if len(query) > 0 {
-		rawPath = fmt.Sprintf("%s?%s", rawPath, query.Encode())
-	}
-
-	httpRequest, err := http.NewRequestWithContext(
-		transportCtx,
-		request.HTTPMethod,
-		rawPath,
-		strings.NewReader(request.Body),
-	)
+	adapterRequestRaw, err := json.Marshal(adapterRequest)
 	if err != nil {
-		return nil, http.StatusInternalServerError, err
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize adapter request")
 	}
 
-	httpResponse, err := routeCtx.HttpClient.Do(httpRequest)
+	result, err := routeCtx.FunctionClient.Invoke(transportCtx, &lambda.InvokeInput{
+		FunctionName:   aws.String(fmt.Sprintf("%s-%s", routeCtx.FunctionPrefix, projectName)),
+		Payload:        adapterRequestRaw,
+		InvocationType: lambdatypes.InvocationTypeRequestResponse,
+	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, err
+		return nil, http.StatusBadGateway, fmt.Errorf("failed to invoke origin server")
+	}
+	if result.FunctionError != nil && *result.FunctionError != "" {
+		return nil, http.StatusInternalServerError, fmt.Errorf(*result.FunctionError)
 	}
 
-	body, err := io.ReadAll(httpResponse.Body)
+	adapterResponse := &AdapterResponse{}
+	err = json.Unmarshal(result.Payload, adapterResponse)
 	if err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-
-	headers := map[string][]string{}
-	for key, val := range httpResponse.Header {
-		headers[key] = val
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to deserialize adapter response")
 	}
 
 	return &events.ALBTargetGroupResponse{
-		MultiValueHeaders: headers,
-		Body:              string(body),
-	}, http.StatusOK, nil
+		StatusDescription: adapterResponse.StatusDescription,
+		Headers:           adapterResponse.Headers,
+		Body:              adapterResponse.Body,
+	}, adapterResponse.StatusCode, nil
 }

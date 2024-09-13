@@ -169,7 +169,7 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 func extractPageKeys(prerenderObjects []ObjectDescription, projectName string) map[string]string {
 	pageKeys := map[string]string{}
 	for _, object := range prerenderObjects {
-		pageKey := fmt.Sprintf("%s/%s", projectName, object.RelativeKey)
+		pageKey := fmt.Sprintf("/%s", object.RelativeKey)
 		pageKeys[strings.TrimSuffix(pageKey, ".html")] = pageKey
 	}
 	return pageKeys

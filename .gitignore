@@ -1,2 +1,5 @@
 .vscode/**
 .aws-sam/**
+
+go.work
+go.work.sum

@@ -53,7 +53,7 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.D
 		return fmt.Errorf("failed to update user limit counter on database")
 	}
 
-	if updatedUserDoc.LimitCounter.PipelineBuilds > subscriptionDoc.DailyPipelineBuilds {
+	if updatedUserDoc.LimitCounter.PipelineBuilds > subscriptionDoc.PipelineSpecs.DailyBuilds {
 		return fmt.Errorf("subscription limit reached; no further pipeline builds can be performed")
 	}
 
@@ -102,7 +102,7 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, database *mongo.
 		return fmt.Errorf("failed to update user limit counter on database")
 	}
 
-	if updatedUserDoc.LimitCounter.PipelineDeployments > subscriptionDoc.DailyPipelineDeployments {
+	if updatedUserDoc.LimitCounter.PipelineDeployments > subscriptionDoc.PipelineSpecs.DailyDeployments {
 		return fmt.Errorf("subscription limit reached; no further pipeline deployments can be performed")
 	}
 

@@ -1485,13 +1485,13 @@ Resources:
         - !Ref BattleshiperResourceFuncRole
         - !Ref BattleshiperPipelineDeployFuncRole
 
-  BattleshiperProjectCDNRouteFunc:
+  BattleshiperProjectCDNCacheRouteFunc:
     Type: AWS::CloudFront::Function
     Properties:
-      Name: "battleshiper-cdn-route-func"
+      Name: "battleshiper-cdn-cache-route-func"
       AutoPublish: true
       FunctionConfig:
-        Comment: "Function to route cdn requests to a path based on the requested host and to add .html extension on prerendered pages."
+        Comment: "Function to route cdn cache requests to the project path based on the requested host."
         Runtime: cloudfront-js-2.0
         KeyValueStoreAssociations:
           - KeyValueStoreARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
@@ -1528,6 +1528,54 @@ Resources:
             
             request.uri = pathSegments.join('/');
 
+            return request;
+          } catch (err) {
+            // update the uri to /404.html page and add the error as query param
+            request.uri = "/404.html";
+            request.querystring = `error=${err.message}`;
+            return request;
+          }
+        }
+
+  BattleshiperProjectCDNServerRouteFunc:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: "battleshiper-cdn-server-route-func"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: "Function to tag cdn requests with the project based on the requested host and to add .html extension on prerendered pages."
+        Runtime: cloudfront-js-2.0
+        KeyValueStoreAssociations:
+          - KeyValueStoreARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+      FunctionCode: !Sub |
+        import cf from "cloudfront";
+
+        const kvsHandle = cf.kvs("${BattleshiperProjectCDNRouteStore.Id}");
+
+        const domainSuffix = ".${ApplicationDomain}";
+
+        async function handler(event) {
+          let request = event.request;
+
+          try {
+            const authorityHeader = request.headers[":authority"];
+            const hostHeader = request.headers["host"];
+            
+            // extract host (prefer :authority if present)
+            const host = authorityHeader ? authorityHeader.value : hostHeader.value;
+            if (!host) {
+              throw new Error("no host specified");
+            }
+
+            // remove the application domain from the host
+            if (!host.endsWith(domainSuffix)) {
+              throw new Error("unexpected host");
+            }
+            const alias = host.slice(0, -domainSuffix.length);
+            
+            const project = await kvsHandle.get(alias, { format: "string" });
+            request.headers["Battleshiper-Project"] = project;
+
             const prerenderedPage = await kvsHandle.get(request.uri, { format: "string" }).catch(() => null);
             if (prerenderedPage) {
               request.uri = prerenderedPage;
@@ -1535,6 +1583,9 @@ Resources:
 
             return request;
           } catch (err) {
+            // ensure request is not further mutated and handled as static page request to /404.html
+            request.headers["Battleshiper-Project"] = "";
+            // update the uri to /404.html page and add the error as query param
             request.uri = "/404.html";
             request.querystring = `error=${err.message}`;
             return request;
@@ -1561,7 +1612,7 @@ Resources:
           HeadersConfig:
             HeaderBehavior: none
           QueryStringsConfig:
-            QueryStringBehavior: none
+            QueryStringBehavior: all
 
   BattleshiperProjectCDNServerCachePolicy:
     Type: AWS::CloudFront::CachePolicy
@@ -1596,7 +1647,8 @@ Resources:
   BattleshiperProjectCDNOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
-      OriginAccessControlConfig:        Name: "battleshiper-project-cdn-origin-access"
+      OriginAccessControlConfig:        
+        Name: "battleshiper-project-cdn-origin-access"
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
@@ -1635,7 +1687,7 @@ Resources:
           OriginRequestPolicyId: !Ref BattleshiperProjectCDNServerOriginRequestPolicy
           FunctionAssociations:
             - EventType: viewer-request
-              FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+              FunctionARN: !GetAtt BattleshiperProjectCDNServerRouteFunc.FunctionMetadata.FunctionARN
         CacheBehaviors:
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-project-static-bucket"
@@ -1650,7 +1702,7 @@ Resources:
             CachePolicyId: !Ref BattleshiperProjectCDNWebCachePolicy
             FunctionAssociations:
               - EventType: viewer-request
-                FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+                FunctionARN: !GetAtt BattleshiperProjectCDNCacheRouteFunc.FunctionMetadata.FunctionARN
           - PathPattern: "/*.*"
             TargetOriginId: "battleshiper-project-static-bucket"
             AllowedMethods:
@@ -1664,7 +1716,7 @@ Resources:
             CachePolicyId: !Ref BattleshiperProjectCDNWebCachePolicy
             FunctionAssociations:
               - EventType: viewer-request
-                FunctionARN: !GetAtt BattleshiperProjectCDNRouteFunc.FunctionMetadata.FunctionARN
+                FunctionARN: !GetAtt BattleshiperProjectCDNCacheRouteFunc.FunctionMetadata.FunctionARN
 
         Aliases:
           - !Sub "*.${ApplicationDomain}"
