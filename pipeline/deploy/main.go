@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -31,6 +32,10 @@ var (
 	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
 	DEPLOYMENT_TIMEOUT    = os.Getenv("DEPLOYMENT_TIMEOUT")
 	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
+	SERVER_NAME_PREFIX    = os.Getenv("SERVER_NAME_PREFIX")
+	SERVER_RUNTIME        = os.Getenv("SERVER_RUNTIME")
+	SERVER_MEMORY         = os.Getenv("SERVER_MEMORY")
+	SERVER_TIMEOUT        = os.Getenv("SERVER_TIMEOUT")
 )
 
 func main() {
@@ -94,15 +99,33 @@ func run() error {
 		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
 	}
 
+	serverMemory, err := strconv.Atoi(SERVER_MEMORY)
+	if err != nil {
+		return fmt.Errorf("failed to parse SERVER_MEMORY environment variable")
+	}
+
+	serverTimeout, err := strconv.Atoi(SERVER_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse SERVER_TIMEOUT environment variable")
+	}
+
 	lambda.Start(deployproject.HandleDeployProject(eventcontext.Context{
 		Database:              databaseHandle,
 		TicketOptions:         ticketOptions,
 		CloudformationClient:  cloudformationClient,
-		DeploymentTimeout:     deploymentTimeout,
 		S3Client:              s3Client,
 		CloudwatchClient:      cloudwatchClient,
 		CloudfrontCacheClient: cloudfrontClient,
-		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
+		DeploymentConfiguration: &eventcontext.DeploymentConfiguration{
+			Timeout: deploymentTimeout,
+		},
+		ProjectConfiguration: &eventcontext.ProjectConfiguration{
+			ServerNamePrefix:   SERVER_NAME_PREFIX,
+			ServerRuntime:      SERVER_RUNTIME,
+			ServerMemory:       serverMemory,
+			ServerTimeout:      serverTimeout,
+			CloudfrontCacheArn: CLOUDFRONT_CACHE_ARN,
+		},
 	}))
 
 	return nil

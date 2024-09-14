@@ -57,7 +57,7 @@ func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx 
 // proxyStatic reads the requested path from the static s3 bucket and returns it as Content-Type text/html.
 func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.APIGatewayV2HTTPResponse, int, error) {
 	objectOutput, err := routeCtx.S3Client.GetObject(transportCtx, &s3.GetObjectInput{
-		Bucket: aws.String(routeCtx.S3Bucket),
+		Bucket: aws.String(routeCtx.StaticBucketName),
 		Key:    aws.String(request.RawPath),
 	})
 	if err != nil {
@@ -89,7 +89,7 @@ func proxyServer(request events.APIGatewayV2HTTPRequest, transportCtx context.Co
 	}
 
 	result, err := routeCtx.FunctionClient.Invoke(transportCtx, &lambda.InvokeInput{
-		FunctionName:   aws.String(fmt.Sprintf("%s%s", routeCtx.FunctionPrefix, projectName)),
+		FunctionName:   aws.String(fmt.Sprintf("%s%s", routeCtx.ServerNamePrefix, projectName)),
 		Payload:        requestRaw,
 		InvocationType: lambdatypes.InvocationTypeRequestResponse,
 	})

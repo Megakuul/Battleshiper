@@ -43,7 +43,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 
 	_, err = eventCtx.CloudformationClient.CreateStack(transportCtx, &cloudformation.CreateStackInput{
 		StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
-		RoleARN:      aws.String(eventCtx.DeploymentServiceRoleArn),
+		RoleARN:      aws.String(eventCtx.DeploymentConfiguration.ServiceRoleArn),
 		Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		TemplateBody: aws.String(string(stackBodyRaw)),
 	})
@@ -75,7 +75,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 	waiter := cloudformation.NewStackCreateCompleteWaiter(eventCtx.CloudformationClient)
 	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
-	}, eventCtx.DeploymentTimeout)
+	}, eventCtx.DeploymentConfiguration.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to apply cloudformation stack: %v", err)
 	}
@@ -103,10 +103,10 @@ func validateInfrastructureConfiguration(projectDoc *project.Project) error {
 func generateDedicatedInfrastructure(eventCtx eventcontext.Context, projectName string) project.DedicatedInfrastructure {
 	infrastructure := project.DedicatedInfrastructure{}
 
-	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.EventLogPrefix, projectName)
-	infrastructure.BuildLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.BuildLogPrefix, projectName)
-	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.DeployLogPrefix, projectName)
-	infrastructure.ServerLogGroup = fmt.Sprintf("%s/%s", eventCtx.BuildConfiguration.ServerLogPrefix, projectName)
+	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.EventLogPrefix, projectName)
+	infrastructure.BuildLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.BuildLogPrefix, projectName)
+	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.DeployLogPrefix, projectName)
+	infrastructure.ServerLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.ServerLogPrefix, projectName)
 
 	infrastructure.StackName = fmt.Sprintf("battleshiper-project-stack-%s", projectName)
 
@@ -118,19 +118,19 @@ func attachLogSystem(stackTemplate *goformation.Template, eventCtx eventcontext.
 	const EVENT_LOG_GROUP string = "EventLogGroup"
 	stackTemplate.Resources[EVENT_LOG_GROUP] = &logs.LogGroup{
 		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.EventLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+		RetentionInDays: aws.Int(eventCtx.ProjectConfiguration.LogRetentionDays),
 	}
 
 	const DEPLOY_LOG_GROUP string = "DeployLogGroup"
 	stackTemplate.Resources[DEPLOY_LOG_GROUP] = &logs.LogGroup{
 		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.DeployLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+		RetentionInDays: aws.Int(eventCtx.ProjectConfiguration.LogRetentionDays),
 	}
 
 	const SERVER_LOG_GROUP string = "ServerLogGroup"
 	stackTemplate.Resources[SERVER_LOG_GROUP] = &logs.LogGroup{
 		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.ServerLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+		RetentionInDays: aws.Int(eventCtx.ProjectConfiguration.LogRetentionDays),
 	}
 }
 
@@ -153,7 +153,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 	const BUILD_LOG_GROUP string = "BuildLogGroup"
 	stackTemplate.Resources[BUILD_LOG_GROUP] = &logs.LogGroup{
 		LogGroupName:    aws.String(projectDoc.DedicatedInfrastructure.BuildLogGroup),
-		RetentionInDays: aws.Int(eventCtx.BuildConfiguration.LogRetentionDays),
+		RetentionInDays: aws.Int(eventCtx.ProjectConfiguration.LogRetentionDays),
 	}
 
 	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
@@ -233,8 +233,8 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		Type:              "container",
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
 			Image:            projectDoc.BuildImage,
-			Vcpus:            aws.Int(eventCtx.BuildConfiguration.BuildJobVCPUS),
-			Memory:           aws.Int(eventCtx.BuildConfiguration.BuildJobMemory),
+			Vcpus:            aws.Int(eventCtx.ProjectConfiguration.BuildJobVCPUS),
+			Memory:           aws.Int(eventCtx.ProjectConfiguration.BuildJobMemory),
 			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
 			ExecutionRoleArn: aws.String(goformation.Ref(BUILD_JOB_EXEC_ROLE)),
 			LogConfiguration: &batch.JobDefinition_LogConfiguration{
@@ -261,7 +261,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			},
 		},
 		Timeout: &batch.JobDefinition_Timeout{
-			AttemptDurationSeconds: aws.Int(int(eventCtx.BuildConfiguration.BuildJobTimeout.Seconds())),
+			AttemptDurationSeconds: aws.Int(int(eventCtx.ProjectConfiguration.BuildJobTimeout.Seconds())),
 		},
 	}
 
@@ -284,7 +284,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			},
 		},
 		ManagedPolicyArns: []string{
-			eventCtx.BuildConfiguration.BuildJobQueuePolicyArn,
+			eventCtx.ProjectConfiguration.BuildJobQueuePolicyArn,
 		},
 	}
 
@@ -334,21 +334,21 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_RULE string = "BuildRule"
 	stackTemplate.Resources[BUILD_RULE] = &events.Rule{
-		EventBusName: aws.String(eventCtx.BuildConfiguration.BuildEventbusName),
+		EventBusName: aws.String(eventCtx.ProjectConfiguration.BuildEventbusName),
 		Name:         aws.String(fmt.Sprintf("battleshiper-project-build-rule-%s", projectDoc.Name)),
 		Description:  aws.String("triggers the associated build targets"),
 		State:        aws.String("ENABLED"),
 		EventPattern: map[string]interface{}{
 			"source": []string{
-				eventCtx.BuildConfiguration.BuildEventSource,
+				eventCtx.ProjectConfiguration.BuildEventSource,
 			},
 			"detail-type": []string{
-				fmt.Sprintf("%s.%s", eventCtx.BuildConfiguration.BuildEventAction, projectDoc.Name),
+				fmt.Sprintf("%s.%s", eventCtx.ProjectConfiguration.BuildEventAction, projectDoc.Name),
 			},
 		},
 		Targets: []events.Rule_Target{
 			{
-				Arn:     eventCtx.BuildConfiguration.BuildJobQueueArn,
+				Arn:     eventCtx.ProjectConfiguration.BuildJobQueueArn,
 				Id:      "battleshiper-project-build-queue",
 				RoleArn: aws.String(goformation.GetAtt(BUILD_RULE_ROLE, "Arn")),
 				RetryPolicy: &events.Rule_RetryPolicy{

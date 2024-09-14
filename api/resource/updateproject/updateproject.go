@@ -113,6 +113,7 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
 		{Key: "name", Value: updateProjectInput.ProjectName},
 		{Key: "owner_id", Value: userDoc.Id},
+		{Key: "deleted", Value: false},
 	}, bson.M{
 		"$set": updateSpec,
 	})

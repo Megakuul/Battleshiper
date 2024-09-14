@@ -177,7 +177,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	cloudLogger.WriteLog("creating stack changeset...")
-	changeSetName, err := createChangeSet(transportCtx, eventCtx, projectDoc, execId)
+	changeSetName, err := createChangeSet(transportCtx, eventCtx, projectDoc, execId, buildInformation.ServerObject)
 	if err != nil {
 		cloudLogger.WriteLog(err.Error())
 		if err := cloudLogger.PushLogs(); err != nil {

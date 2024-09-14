@@ -71,7 +71,7 @@ func copyStaticAssets(transportCtx context.Context, eventCtx eventcontext.Contex
 	for _, obj := range assets {
 		_, err := eventCtx.S3Client.CopyObject(transportCtx, &s3.CopyObjectInput{
 			Bucket:     aws.String(bucketName),
-			CopySource: aws.String(obj.SourcePath),
+			CopySource: aws.String(fmt.Sprintf("%s/%s", obj.SourceBucket, obj.SourceKey)),
 			Key:        aws.String(fmt.Sprintf("%s%s", bucketPrefix, obj.RelativeKey)),
 		})
 		if err != nil {
@@ -93,7 +93,7 @@ func copyStaticPages(transportCtx context.Context, eventCtx eventcontext.Context
 	for _, obj := range pages {
 		_, err := eventCtx.S3Client.CopyObject(transportCtx, &s3.CopyObjectInput{
 			Bucket:     aws.String(bucketName),
-			CopySource: aws.String(obj.SourcePath),
+			CopySource: aws.String(fmt.Sprintf("%s/%s", obj.SourceBucket, obj.SourceKey)),
 			Key:        aws.String(fmt.Sprintf("%s%s", bucketPrefix, obj.RelativeKey)),
 		})
 		if err != nil {
@@ -123,13 +123,13 @@ func updateStaticPageKeys(transportCtx context.Context, eventCtx eventcontext.Co
 	}
 
 	storeMetadata, err := eventCtx.CloudfrontCacheClient.DescribeKeyValueStore(transportCtx, &cloudfrontkeyvaluestore.DescribeKeyValueStoreInput{
-		KvsARN: aws.String(eventCtx.CloudfrontCacheArn),
+		KvsARN: aws.String(eventCtx.ProjectConfiguration.CloudfrontCacheArn),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to describe cdn store: %v", err)
 	}
 	_, err = eventCtx.CloudfrontCacheClient.UpdateKeys(transportCtx, &cloudfrontkeyvaluestore.UpdateKeysInput{
-		KvsARN:  aws.String(eventCtx.CloudfrontCacheArn),
+		KvsARN:  aws.String(eventCtx.ProjectConfiguration.CloudfrontCacheArn),
 		Puts:    addStaticPageKeys,
 		Deletes: deleteStaticPageKeys,
 		IfMatch: storeMetadata.ETag,

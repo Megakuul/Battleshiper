@@ -95,6 +95,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: updateAliasInput.ProjectName},
 		{Key: "owner_id", Value: userDoc.Id},
+		{Key: "deleted", Value: false},
 	}).Decode(&projectDoc)
 	if err == mongo.ErrNoDocuments {
 		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")

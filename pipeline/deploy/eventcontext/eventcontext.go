@@ -11,14 +11,26 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type DeploymentConfiguration struct {
+	Timeout time.Duration
+}
+
+type ProjectConfiguration struct {
+	ServerNamePrefix   string
+	ServerRuntime      string
+	ServerMemory       int
+	ServerTimeout      int
+	CloudfrontCacheArn string
+}
+
 // Context provides data to event handlers.
 type Context struct {
-	Database              *mongo.Database
-	TicketOptions         *pipeline.TicketOptions
-	CloudformationClient  *cloudformation.Client
-	DeploymentTimeout     time.Duration
-	S3Client              *s3.Client
-	CloudwatchClient      *cloudwatchlogs.Client
-	CloudfrontCacheClient *cloudfrontkeyvaluestore.Client
-	CloudfrontCacheArn    string
+	Database                *mongo.Database
+	TicketOptions           *pipeline.TicketOptions
+	CloudformationClient    *cloudformation.Client
+	S3Client                *s3.Client
+	CloudwatchClient        *cloudwatchlogs.Client
+	CloudfrontCacheClient   *cloudfrontkeyvaluestore.Client
+	DeploymentConfiguration *DeploymentConfiguration
+	ProjectConfiguration    *ProjectConfiguration
 }

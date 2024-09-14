@@ -16,7 +16,7 @@ import (
 )
 
 type deleteProjectInput struct {
-	ProjectId string `json:"project_id"`
+	ProjectName string `json:"project_name"`
 }
 
 type deleteProjectOutput struct {
@@ -73,25 +73,19 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	deletedProject := &project.Project{}
-	err = projectCollection.FindOneAndUpdate(transportCtx, bson.M{"id": deleteProjectInput.ProjectId}, bson.M{
+	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
+		{Key: "name", Value: deleteProjectInput.ProjectName},
+		{Key: "owner_id", Value: userToken.Id},
+		{Key: "deleted", Value: false},
+	}, bson.M{
 		"$set": bson.M{
-			"deleted": bson.M{
-				"$cond": bson.M{
-					"if":   bson.M{"$eq": bson.A{"$owner_id", userToken.Id}},
-					"then": true,
-					"else": false,
-				},
-			},
+			"deleted": true,
 		},
-	}).Decode(&deletedProject)
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to mark project as deleted on database")
-	}
-
-	if !deletedProject.Deleted {
-		return nil, http.StatusForbidden, fmt.Errorf("user is not the owner of the project")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
+	} else if result.MatchedCount < 1 {
+		return nil, http.StatusNotFound, fmt.Errorf("project '%s' not found", deleteProjectInput.ProjectName)
 	}
 
 	return &deleteProjectOutput{

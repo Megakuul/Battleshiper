@@ -9,7 +9,7 @@
     "sveltekit",
     "battleshiper"
   ],
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "Megakuul",
   "license": "MIT",
   "private": false,
@@ -39,6 +39,7 @@
     "@types/aws-lambda": "^8.10.140"
   },
   "dependencies": {
-    "esbuild": "^0.23.0"
+    "adm-zip": "^0.5.16",
+    "esbuild": "^0.23.1"
   }
 }

@@ -9,7 +9,6 @@ import (
 	cloudformationtypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	goform "github.com/awslabs/goformation/v7"
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
-	"github.com/awslabs/goformation/v7/cloudformation/apigatewayv2"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/lambda"
 	"github.com/awslabs/goformation/v7/cloudformation/tags"
@@ -41,7 +40,7 @@ func validateStackState(transportCtx context.Context, eventCtx eventcontext.Cont
 }
 
 // createChangeSet loads the current stack, builds a changeset with the new system and pushes the change set to cloudformation.
-func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execId string) (string, error) {
+func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execId string, serverAsset ObjectDescription) (string, error) {
 	stackTemplate, err := eventCtx.CloudformationClient.GetTemplate(transportCtx, &cloudformation.GetTemplateInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	})
@@ -53,7 +52,7 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 		return "", fmt.Errorf("failed to parse stack template: %v", err)
 	}
 
-	attachServerSystem(stackBody, eventCtx, projectDoc)
+	attachServerSystem(stackBody, eventCtx, projectDoc, serverAsset.SourceBucket, serverAsset.SourceKey)
 
 	stackBodyRaw, err := stackBody.JSON()
 	if err != nil {
@@ -123,7 +122,7 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 	waiter := cloudformation.NewStackUpdateCompleteWaiter(eventCtx.CloudformationClient)
 	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
-	}, eventCtx.DeploymentTimeout)
+	}, eventCtx.DeploymentConfiguration.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to wait for update completion: %v", err)
 	}
@@ -132,7 +131,10 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 }
 
 // attachServerSystem adds the project server system to the stack.
-func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project, apiGatewayId string, staticBucketUri string) {
+func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventcontext.Context, projectDoc *project.Project, serverBucketName, serverBucketKey string) {
+	// ServerLogGroup is deployed at initialization (combined with all other log groups)
+	const SERVER_LOG_GROUP string = "ServerLogGroup"
+
 	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
 	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
@@ -154,39 +156,22 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 	}
 
 	const SERVER_FUNCTION string = "ServerFunction"
-	stackTemplate.Resources[SERVER_FUNCTION] = &lambda.Function{}
-
-	const API_INTEGRATION_STATIC string = "ApiIntegrationStatic"
-	stackTemplate.Resources[API_INTEGRATION_STATIC] = &apigatewayv2.Integration{
-		ApiId:             apiGatewayId,
-		IntegrationType:   "HTTP_PROXY",
-		IntegrationUri:    aws.String(staticBucketUri),
-		IntegrationMethod: aws.String("GET"),
+	stackTemplate.Resources[SERVER_FUNCTION] = &lambda.Function{
+		FunctionName:  aws.String(fmt.Sprintf("%s%s", eventCtx.ProjectConfiguration.ServerNamePrefix, projectDoc.Name)),
+		Description:   aws.String(fmt.Sprintf("Server backend for battleshiper project %s", projectDoc.Name)),
+		Architectures: []string{"x86_64"},
+		Runtime:       aws.String(eventCtx.ProjectConfiguration.ServerRuntime),
+		MemorySize:    aws.Int(eventCtx.ProjectConfiguration.ServerMemory),
+		Timeout:       aws.Int(eventCtx.ProjectConfiguration.ServerTimeout),
+		Role:          goformation.GetAtt(SERVER_FUNCTION_ROLE, "Arn"),
+		Code: &lambda.Function_Code{
+			S3Bucket: aws.String(serverBucketName),
+			S3Key:    aws.String(serverBucketKey),
+		},
+		Handler: aws.String("index.handler"),
+		LoggingConfig: &lambda.Function_LoggingConfig{
+			LogGroup:  aws.String(SERVER_LOG_GROUP),
+			LogFormat: aws.String("Text"),
+		},
 	}
-
-	const API_ROUTE_STATIC string = "ApiRouteStatic"
-	stackTemplate.Resources[API_ROUTE_STATIC] = &apigatewayv2.Route{
-		ApiId:    apiGatewayId,
-		RouteKey: fmt.Sprintf("GET /%s/{page}.html", projectDoc.Name),
-		Target:   aws.String(fmt.Sprintf("integrations/%s", goformation.Ref(API_INTEGRATION_STATIC))),
-	}
-
-	const API_INTEGRATION_SERVER string = "ApiIntegrationServer"
-	stackTemplate.Resources[API_INTEGRATION_SERVER] = &apigatewayv2.Integration{
-		ApiId:             apiGatewayId,
-		IntegrationType:   "AWS_PROXY",
-		IntegrationMethod: aws.String("ANY"),
-		IntegrationUri: aws.String(goformation.Sub(fmt.Sprintf(
-			"arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${%s.Arn}/invocations", SERVER_FUNCTION),
-		)),
-		PayloadFormatVersion: aws.String("2.0"),
-	}
-
-	const API_ROUTE_SERVER string = "ApiRouteServer"
-	stackTemplate.Resources[API_ROUTE_SERVER] = &apigatewayv2.Route{
-		ApiId:    apiGatewayId,
-		RouteKey: fmt.Sprintf("ANY /%s/{proxy+}", projectDoc.Name),
-		Target:   aws.String(fmt.Sprintf("integrations/%s", goformation.Ref(API_INTEGRATION_SERVER))),
-	}
-
 }

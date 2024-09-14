@@ -88,9 +88,10 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	specifiedProject := &project.Project{}
 	err = projectCollection.FindOne(transportCtx,
-		bson.M{
-			"owner_id": userToken.Id,
-			"name":     fetchLogInput.ProjectName,
+		bson.D{
+			{Key: "owner_id", Value: userToken.Id},
+			{Key: "name", Value: fetchLogInput.ProjectName},
+			{Key: "deleted", Value: false},
 		},
 	).Decode(&specifiedProject)
 	if err == mongo.ErrNoDocuments {

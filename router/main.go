@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	REGION                 = os.Getenv("AWS_REGION")
-	STATIC_BUCKET_NAME     = os.Getenv("STATIC_BUCKET_NAME")
-	SERVER_FUNCTION_PREFIX = os.Getenv("SERVER_FUNCTION_PREFIX")
+	REGION             = os.Getenv("AWS_REGION")
+	STATIC_BUCKET_NAME = os.Getenv("STATIC_BUCKET_NAME")
+	SERVER_NAME_PREFIX = os.Getenv("SERVER_NAME_PREFIX")
 )
 
 func main() {
@@ -38,10 +38,10 @@ func run() error {
 	functionClient := function.NewFromConfig(awsConfig)
 
 	lambda.Start(routerequest.HandleRouteRequest(routecontext.Context{
-		S3Client:       s3Client,
-		S3Bucket:       STATIC_BUCKET_NAME,
-		FunctionClient: functionClient,
-		FunctionPrefix: SERVER_FUNCTION_PREFIX,
+		S3Client:         s3Client,
+		StaticBucketName: STATIC_BUCKET_NAME,
+		FunctionClient:   functionClient,
+		ServerNamePrefix: SERVER_NAME_PREFIX,
 	}))
 
 	return nil

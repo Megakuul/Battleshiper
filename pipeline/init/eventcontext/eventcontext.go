@@ -8,12 +8,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type DeploymentConfiguration struct {
+	ServiceRoleArn string
+	Timeout        time.Duration
+}
+
 type BucketConfiguration struct {
 	StaticBucketName     string
 	BuildAssetBucketName string
 }
 
-type BuildConfiguration struct {
+type ProjectConfiguration struct {
 	EventLogPrefix         string
 	BuildLogPrefix         string
 	DeployLogPrefix        string
@@ -31,11 +36,10 @@ type BuildConfiguration struct {
 
 // Context provides data to event handlers.
 type Context struct {
-	Database                 *mongo.Database
-	TicketOptions            *pipeline.TicketOptions
-	CloudformationClient     *cloudformation.Client
-	DeploymentServiceRoleArn string
-	DeploymentTimeout        time.Duration
-	BucketConfiguration      *BucketConfiguration
-	BuildConfiguration       *BuildConfiguration
+	Database                *mongo.Database
+	TicketOptions           *pipeline.TicketOptions
+	CloudformationClient    *cloudformation.Client
+	DeploymentConfiguration *DeploymentConfiguration
+	BucketConfiguration     *BucketConfiguration
+	ProjectConfiguration    *ProjectConfiguration
 }

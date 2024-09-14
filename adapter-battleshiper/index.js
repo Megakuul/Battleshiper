@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import esbuild from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
+import AdmZip from "adm-zip"; 
 
 /** @param {import('./index.js').default} */
 export default function (options = {}) {
@@ -50,7 +51,6 @@ export default function (options = {}) {
           bundle: true,
           sourcemap: "linked",
         })
-
         if (result.warnings.length > 0) {
           console.error((await esbuild.formatMessages(result.warnings, {
             kind: "warning",
@@ -65,6 +65,15 @@ export default function (options = {}) {
           color: true,
         })).join("\n"))
         return
+      }
+
+      try {
+        const zip = new AdmZip();
+        zip.addLocalFile(`${dest}/server/index.js`, "", "index.js");
+        await zip.writeZipPromise(`${dest}/server/handler.zip`);
+      } catch (err) {
+        console.error("failed to create zip file:")
+        console.error(err.message)
       }
 		},
 	};

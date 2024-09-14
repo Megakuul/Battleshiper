@@ -78,7 +78,7 @@ Resources:
         Variables:
           AWS_REGION: !Ref AWS::Region
           STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
-          SERVER_FUNCTION_PREFIX: "battleshiper-project-server-"
+          SERVER_NAME_PREFIX: "battleshiper-project-server-"
       LoggingConfig:
         LogGroup: !Ref BattleshiperRouterLogGroup 
 
@@ -721,6 +721,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
+
   # ============================================
   # =========== S3 Storage =====================
   # ============================================
@@ -823,16 +824,12 @@ Resources:
             DomainName: !GetAtt BattleshiperStaticBucket.DomainName
             OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
             S3OriginConfig: {}
-          - Id: "battleshiper-server"
-            DomainName: !GetAtt BattleshiperRouterApi.ApiEndpoint
-            CustomOriginConfig:
-              OriginProtocolPolicy: "https-only"
           - Id: "battleshiper-api"
             DomainName: !GetAtt BattleshiperApi.ApiEndpoint
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
         DefaultCacheBehavior:
-          TargetOriginId: "battleshiper-server"
+          TargetOriginId: "battleshiper-api"
           AllowedMethods:
             - GET
             - HEAD
@@ -845,19 +842,6 @@ Resources:
           CachePolicyId: !Ref BattleshiperCDNServerCachePolicy
           OriginRequestPolicyId: !Ref BattleshiperCDNServerOriginRequestPolicy
         CacheBehaviors:
-          - PathPattern: "/api/*"
-            TargetOriginId: "battleshiper-api"
-            AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - PATCH
-            - POST
-            - DELETE
-            ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref BattleshiperCDNServerCachePolicy
-            OriginRequestPolicyId: !Ref BattleshiperCDNServerOriginRequestPolicy
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-static-bucket"
             AllowedMethods:
@@ -1371,7 +1355,10 @@ Resources:
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
-          SERVER_FUNCTION_PREFIX: "battleshiper-project-server"
+          SERVER_NAME_PREFIX: "battleshiper-project-server-"
+          SERVER_RUNTIME: "nodejs20.x" # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
+          SERVER_MEMORY: 128
+          SERVER_TIMEOUT: 3 # ideally this should be lower then the timeout of the core router function
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1413,6 +1400,7 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
+      Timeout: 180
       VpcConfig:
         SubnetIds:
           - !Ref BattleshiperPipelineSubnet1

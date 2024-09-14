@@ -7,8 +7,8 @@ import (
 
 // Context provides data to route handlers.
 type Context struct {
-	S3Bucket       string
-	S3Client       *s3.Client
-	FunctionPrefix string
-	FunctionClient *lambda.Client
+	S3Client         *s3.Client
+	StaticBucketName string
+	FunctionClient   *lambda.Client
+	ServerNamePrefix string
 }

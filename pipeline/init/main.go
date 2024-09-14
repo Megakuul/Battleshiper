@@ -112,16 +112,18 @@ func run() error {
 	}
 
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database:                 databaseHandle,
-		TicketOptions:            ticketOptions,
-		CloudformationClient:     cloudformationClient,
-		DeploymentServiceRoleArn: DEPLOYMENT_SERVICE_ROLE_ARN,
-		DeploymentTimeout:        deploymentTimeout,
+		Database:             databaseHandle,
+		TicketOptions:        ticketOptions,
+		CloudformationClient: cloudformationClient,
+		DeploymentConfiguration: &eventcontext.DeploymentConfiguration{
+			ServiceRoleArn: DEPLOYMENT_SERVICE_ROLE_ARN,
+			Timeout:        deploymentTimeout,
+		},
 		BucketConfiguration: &eventcontext.BucketConfiguration{
 			StaticBucketName:     STATIC_BUCKET_NAME,
 			BuildAssetBucketName: BUILD_ASSET_BUCKET_NAME,
 		},
-		BuildConfiguration: &eventcontext.BuildConfiguration{
+		ProjectConfiguration: &eventcontext.ProjectConfiguration{
 			EventLogPrefix:         EVENT_LOG_GROUP_PREFIX,
 			BuildLogPrefix:         BUILD_LOG_GROUP_PREFIX,
 			DeployLogPrefix:        DEPLOY_LOG_GROUP_PREFIX,

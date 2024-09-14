@@ -100,6 +100,7 @@ func run() error {
 	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
 		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
 		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
+		{FieldNames: []string{"deleted"}, SortingOrder: 1, Unique: false},
 	})
 
 	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	SERVER_PATH    = "server/index.js"
+	SERVER_PATH    = "server/handler.zip"
 	CLIENT_PATH    = "client"
 	PRERENDER_PATH = "prerendered"
 )
@@ -25,8 +25,10 @@ type ObjectDescription struct {
 	// Key relative to the objects logical root
 	// e.g. build_asset_bucket/x/123/client/_app/static/myimage.png = _app/static/myimage.png.
 	RelativeKey string
-	// Full source bucket path of the object (including key).
-	SourcePath string
+	// Source bucket name of the object.
+	SourceBucket string
+	// Source bucket key of the object.
+	SourceKey string
 }
 
 // BuildInformation provides information about the content of the build output.
@@ -95,8 +97,9 @@ func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, buc
 			}
 
 			clientObjects = append(clientObjects, ObjectDescription{
-				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
-				RelativeKey: strings.TrimPrefix(*obj.Key, clientPrefix),
+				SourceBucket: bucketName,
+				SourceKey:    *obj.Key,
+				RelativeKey:  strings.TrimPrefix(*obj.Key, clientPrefix),
 			})
 		}
 	}
@@ -131,8 +134,9 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 			}
 
 			prerenderObjects = append(prerenderObjects, ObjectDescription{
-				SourcePath:  fmt.Sprintf("%s/%s", bucketName, obj.Key),
-				RelativeKey: strings.TrimPrefix(*obj.Key, prerenderPrefix),
+				SourceBucket: bucketName,
+				SourceKey:    *obj.Key,
+				RelativeKey:  strings.TrimPrefix(*obj.Key, prerenderPrefix),
 			})
 		}
 	}
@@ -161,8 +165,9 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 	}
 
 	return &ObjectDescription{
-		SourcePath:  fmt.Sprintf("%s/%s", bucketName, serverKey),
-		RelativeKey: SERVER_PATH,
+		SourceBucket: bucketName,
+		SourceKey:    serverKey,
+		RelativeKey:  SERVER_PATH,
 	}, nil
 }
 
