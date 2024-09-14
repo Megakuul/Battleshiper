@@ -19,34 +19,20 @@ import (
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 )
 
-type AdapterRequest struct {
-	Method  string            `json:"method"`
-	Path    string            `json:"path"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
-}
-
-type AdapterResponse struct {
-	StatusCode        int               `json:"status_code"`
-	StatusDescription string            `json:"status_description"`
-	Headers           map[string]string `json:"headers"`
-	Body              string            `json:"body"`
-}
-
 // HandleRouteRequest routes request either to s3 or to the corresponding server function.
-func HandleRouteRequest(routeCtx routecontext.Context) func(context.Context, events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
-	return func(ctx context.Context, request events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+func HandleRouteRequest(routeCtx routecontext.Context) func(context.Context, events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	return func(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 		return runHandleRouteRequest(request, ctx, routeCtx)
 	}
 }
 
-func runHandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.ALBTargetGroupResponse, error) {
+func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	project := request.Headers["Battleshiper-Project"]
 
-	if strings.HasSuffix(request.Path, ".html") && request.HTTPMethod == "GET" {
+	if strings.HasSuffix(request.RawPath, ".html") && request.RequestContext.HTTP.Method == "GET" {
 		response, code, err := proxyStatic(request, transportCtx, routeCtx)
 		if err != nil {
-			return events.ALBTargetGroupResponse{
+			return events.APIGatewayV2HTTPResponse{
 				StatusCode: code,
 				Headers:    map[string]string{"Content-Type": "text/plain"},
 				Body:       err.Error(),
@@ -58,7 +44,7 @@ func runHandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx co
 
 	response, code, err := proxyServer(request, transportCtx, routeCtx, project)
 	if err != nil {
-		return events.ALBTargetGroupResponse{
+		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
 			Headers:    map[string]string{"Content-Type": "text/plain"},
 			Body:       err.Error(),
@@ -69,10 +55,10 @@ func runHandleRouteRequest(request events.ALBTargetGroupRequest, transportCtx co
 }
 
 // proxyStatic reads the requested path from the static s3 bucket and returns it as Content-Type text/html.
-func proxyStatic(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.ALBTargetGroupResponse, int, error) {
+func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.APIGatewayV2HTTPResponse, int, error) {
 	objectOutput, err := routeCtx.S3Client.GetObject(transportCtx, &s3.GetObjectInput{
 		Bucket: aws.String(routeCtx.S3Bucket),
-		Key:    aws.String(request.Path),
+		Key:    aws.String(request.RawPath),
 	})
 	if err != nil {
 		var nsk *s3types.NoSuchKey
@@ -87,7 +73,7 @@ func proxyStatic(request events.ALBTargetGroupRequest, transportCtx context.Cont
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
-	return &events.ALBTargetGroupResponse{
+	return &events.APIGatewayV2HTTPResponse{
 		Headers: map[string]string{
 			"Content-Type": "text/html",
 		},
@@ -96,22 +82,15 @@ func proxyStatic(request events.ALBTargetGroupRequest, transportCtx context.Cont
 }
 
 // proxyServer invokes the origin server function (LambdaPrefix-ProjectName) and returns the server response.
-func proxyServer(request events.ALBTargetGroupRequest, transportCtx context.Context, routeCtx routecontext.Context, projectName string) (*events.ALBTargetGroupResponse, int, error) {
-	adapterRequest := &AdapterRequest{
-		Method:  request.HTTPMethod,
-		Path:    request.Path,
-		Headers: request.Headers,
-		Body:    request.Body,
-	}
-
-	adapterRequestRaw, err := json.Marshal(adapterRequest)
+func proxyServer(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context, projectName string) (*events.APIGatewayV2HTTPResponse, int, error) {
+	requestRaw, err := json.Marshal(request)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize adapter request")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize api request")
 	}
 
 	result, err := routeCtx.FunctionClient.Invoke(transportCtx, &lambda.InvokeInput{
-		FunctionName:   aws.String(fmt.Sprintf("%s-%s", routeCtx.FunctionPrefix, projectName)),
-		Payload:        adapterRequestRaw,
+		FunctionName:   aws.String(fmt.Sprintf("%s%s", routeCtx.FunctionPrefix, projectName)),
+		Payload:        requestRaw,
 		InvocationType: lambdatypes.InvocationTypeRequestResponse,
 	})
 	if err != nil {
@@ -121,15 +100,11 @@ func proxyServer(request events.ALBTargetGroupRequest, transportCtx context.Cont
 		return nil, http.StatusInternalServerError, fmt.Errorf(*result.FunctionError)
 	}
 
-	adapterResponse := &AdapterResponse{}
-	err = json.Unmarshal(result.Payload, adapterResponse)
+	response := &events.APIGatewayV2HTTPResponse{}
+	err = json.Unmarshal(result.Payload, response)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to deserialize adapter response")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to deserialize api response")
 	}
 
-	return &events.ALBTargetGroupResponse{
-		StatusDescription: adapterResponse.StatusDescription,
-		Headers:           adapterResponse.Headers,
-		Body:              adapterResponse.Body,
-	}, adapterResponse.StatusCode, nil
+	return response, response.StatusCode, nil
 }

@@ -8,7 +8,7 @@ stack_name = "battleshiper"
 
 [default.build.parameters]
 cached = true
-parallel = true
+parallel = false
 
 [default.validate.parameters]
 lint = true

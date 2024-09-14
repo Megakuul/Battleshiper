@@ -21,11 +21,70 @@ Globals:
     Timeout: 5
     MemorySize: 128
 
+
 Resources:
 
   # Using ugly separator comments because cloudformation is dogwater:
   # ============================================
-  # =========== Network ========================
+  # =========== Router =========================
+  # ============================================
+
+  BattleshiperRouterApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: "battleshiper-router-api"
+
+  BattleshiperRouterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/battleshiper-router-logs
+      LogGroupClass: INFREQUENT_ACCESS
+      RetentionInDays: 14
+
+
+  BattleshiperRouterFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperRouterFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: router
+      Handler: router
+      Runtime: provided.al2023
+      Role: !GetAtt BattleshiperRouterFuncRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        Auth:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            ApiId: !Ref BattleshiperRouterApi
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
+          SERVER_FUNCTION_PREFIX: "battleshiper-project-server-"
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperRouterLogGroup 
+
+
+  # ============================================
+  # =========== Core Network ===================
   # ============================================
 
   BattleshiperVPC:
@@ -213,170 +272,6 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
 
-
-  BattleshiperBuildVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: "10.120.0.0/16"
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-
-  BattleshiperBuildVPCInternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  BattleshiperBuildVPCGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref BattleshiperBuildVPCInternetGateway
-      VpcId: !Ref BattleshiperBuildVPC
-
-
-  BattleshiperBuildSubnetRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref BattleshiperBuildVPC
-
-  BattleshiperBuildSubnetInternetRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref BattleshiperBuildVPCInternetGateway
-
-  BattleshiperBuildSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperBuildVPC
-      CidrBlock: "10.120.110.0/24"
-      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
-
-  BattleshiperBuildSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperBuildSubnet1
-      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
-
-  BattleshiperBuildSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperBuildVPC
-      CidrBlock: "10.120.120.0/24"
-      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
-
-  BattleshiperBuildSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperBuildSubnet2
-      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
-
-  BattleshiperBuildSubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperBuildVPC
-      CidrBlock: "10.120.130.0/24"
-      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
-
-  BattleshiperBuildSubnet3RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperBuildSubnet3
-      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
-
-
-  # ============================================
-  # =========== CloudWatch Logging =============
-  # ============================================
-
-  BattleshiperApiLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: /aws/lambda/battleshiper-api-logs
-      LogGroupClass: INFREQUENT_ACCESS
-      RetentionInDays: 14
-
-  BattleshiperApiLogGroupPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-api-logs-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "logs:DescribeLogStreams"
-              - "logs:GetLogEvents"
-            Resources:
-              - !GetAtt BattleshiperApiLogGroup.Arn
-      Roles:
-        - !Ref BattleshiperAdminFuncRole
-
-  BattleshiperPipelineProjectEventLogPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-project-event-log-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "logs:DescribeLogStreams"
-              - "logs:GetLogEvents"
-              - "logs:CreateLogStream"
-              - "logs:PutLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
-      Roles:
-        - !Ref BattleshiperPipelineFuncRole
-        - !Ref BattleshiperResourceFuncRole
-
-  BattleshiperPipelineProjectBuildLogPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-project-build-log-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "logs:DescribeLogStreams"
-              - "logs:GetLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/build/*"
-      Roles:
-        - !Ref BattleshiperResourceFuncRole
-
-  BattleshiperPipelineProjectDeployLogPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-project-deploy-log-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "logs:DescribeLogStreams"
-              - "logs:GetLogEvents"
-              - "logs:CreateLogStream"
-              - "logs:PutLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
-      Roles:
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperResourceFuncRole
-
-  BattleshiperPipelineProjectServerLogPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-project-server-log-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "logs:DescribeLogStreams"
-              - "logs:GetLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/server/*"
-      Roles:
-        - !Ref BattleshiperResourceFuncRole
-
-
   # ============================================
   # =========== Database =======================
   # ============================================
@@ -410,10 +305,10 @@ Resources:
       TargetId: !Ref BattleshiperDb
       TargetType: "AWS::DocDB::DBCluster"
 
-  BattleshiperDbApiSecretPolicy:
+  BattleshiperDbApiSecretReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-db-cluster-api-credentials-access"
+      PolicyName: "battleshiper-db-cluster-api-credentials-read-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -449,8 +344,20 @@ Resources:
 
 
   # ============================================
-  # =========== Auth Secrets ===================
+  # =========== API ============================
   # ============================================
+
+  BattleshiperApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: "battleshiper-api"
+
+  BattleshiperApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/battleshiper-api-logs
+      LogGroupClass: INFREQUENT_ACCESS
+      RetentionInDays: 14
 
   BattleshiperJwtCredentials:
     Type: AWS::SecretsManager::Secret
@@ -463,10 +370,10 @@ Resources:
         PasswordLength: 40
         ExcludeCharacters: '"@/\\'
 
-  BattleshiperJwtCredentialPolicy:
+  BattleshiperJwtCredentialReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-jwt-credentials-access"
+      PolicyName: "battleshiper-jwt-credentials-read-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -481,10 +388,10 @@ Resources:
         - !Ref BattleshiperResourceFuncRole
         - !Ref BattleshiperPipelineFuncRole
 
-  BattleshiperGhClientCredentialPolicy:
+  BattleshiperGhClientCredentialReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-gh-client-credentials-access"
+      PolicyName: "battleshiper-gh-client-credentials-read-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -498,60 +405,6 @@ Resources:
         - !Ref BattleshiperAdminFuncRole
         - !Ref BattleshiperResourceFuncRole
         - !Ref BattleshiperPipelineFuncRole
-
-
-  # ============================================
-  # =========== Core Routing System ============
-  # ============================================
-
-  BattleshiperRouteLoadbalancer:
-    Type: AWS::EC2::ApplicationLoadbalancer
-    Properties:
-
-  BattleshiperRouteFunction:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: go1.x
-    Properties:
-      CodeUri: router/router
-      Handler: router
-      Runtime: provided.al2023
-      Architectures:
-        - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperUserFuncRole.Arn
-      Events:
-        User:
-          Type: HttpApi
-          Properties:
-            Path: /api/user/{proxy+}
-            Method: ANY
-            ApiId: !Ref BattleshiperApi
-      Environment:
-        Variables:
-          AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-      LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
-
-  # ============================================
-  # =========== API ============================
-  # ============================================
-
-  BattleshiperApi:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      Name: "battleshiper-api"
 
 
   BattleshiperAuthFuncRole:
@@ -627,7 +480,7 @@ Resources:
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
     DependsOn: 
-      - BattleshiperDbApiSecretPolicy
+      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -682,7 +535,7 @@ Resources:
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
     DependsOn: 
-      - BattleshiperDbApiSecretPolicy
+      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -738,12 +591,12 @@ Resources:
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
     DependsOn: 
-      - BattleshiperDbApiSecretPolicy
+      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
       CodeUri: api/resource
-      Handler: resource
+      Handler: main.go
       Runtime: provided.al2023
       Architectures:
         - x86_64
@@ -848,402 +701,25 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  # ============================================
-  # ======= Pipeline Ticket Credentials ========
-  # ============================================
-
-  BattleshiperPipelineTicketCredentials:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: "battleshiper-pipeline-ticket-credentials"
-      Description: "Battleshiper pipeline ticket secret used to sign and verify pipeline tickets."
-      GenerateSecretString:
-        SecretStringTemplate: '{}'
-        GenerateStringKey: "secret"
-        PasswordLength: 40
-        ExcludeCharacters: '"@/\\'
-
-  BattleshiperPipelineTicketCredentialPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-ticket-credentials-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "secretsmanager:GetSecretValue"
-            Resource: !Ref BattleshiperPipelineTicketCredentials
-      Roles:
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineInitFuncRole
-
-
-  # ============================================
-  # =========== Pipeline =======================
-  # ============================================
-
-  BattleshiperPipelineCloudformationServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - cloudformation.amazonaws.com
-              Action:
-                "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/IAMFullAccess
-        - arn:aws:iam::aws:policy/AmazonS3FullAccess
-        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
-        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
-        - arn:aws:iam::aws:policy/AWSBatchFullAccess
-        - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
-        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
-
-
-  BattleshiperPipelineBuildAssetBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      Tags:
-        - Key: "Name"
-          Value: "battleshiper-pipeline-build-asset-bucket"
-      LifecycleConfiguration:
-        Rules:
-          - Id: "delete-assets"
-            Status: "Enabled"
-            ExpirationInDays: 1
-            Prefix: ""
-  
-  BattleshiperPipelineBuildAssetBucketPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-build-asset-bucket-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - "s3:HeadObject"
-              - "s3:GetObject"
-              - "s3:ListBucket"
-              - "s3:PutObject"
-              - "s3:DeleteObject"
-            Effect: Allow
-            Resource:
-              - !Sub "${BattleshiperPipelineBuildAssetBucket.Arn}/*"
-      Roles:
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineDeleteFuncRole
-
-
-  BattleshiperPipelineEventBus:
-    Type: AWS::Events::EventBus
-    Properties:
-      Name: "battleshiper-pipeline-eventbus"
-
-  BattleshiperPipelineEventBusPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-eventbus-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "events:PutEvents"
-            Resource: !GetAtt BattleshiperPipelineEventBus.Arn
-      Roles:
-        - !Ref BattleshiperPipelineFuncRole
-        - !Ref BattleshiperResourceFuncRole
-
-
-  BattleshiperPipelineBuildComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    Properties:
-      ComputeEnvironmentName: "battleshiper-pipeline-build-computer-environment"
-      State: ENABLED
-      Type: MANAGED
-      ComputeResources:
-        Type: FARGATE_SPOT
-        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
-        MaxvCpus: 20
-        Subnets:
-          - !Ref BattleshiperBuildSubnet1
-          - !Ref BattleshiperBuildSubnet2
-          - !Ref BattleshiperBuildSubnet3
-      UpdatePolicy:
-        JobExecutionTimeoutMinutes: 3
-
-  BattleshiperPipelineBuildQueue:
-    Type: AWS::Batch::JobQueue
-    Properties:
-      JobQueueName: "battleshiper-pipeline-build-queue"
-      State: ENABLED
-      Priority: 1
-      JobStateTimeLimitActions:
-        - Action: CANCEL
-          State: RUNNABLE
-          MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
-          Reason: "build job exceeded queue timeout"
-      ComputeEnvironmentOrder:
-        - Order: 1
-          ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
-
-  BattleshiperPipelineBuildQueuePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-build-queue-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "batch:SubmitJob"
-            Resource: !Ref BattleshiperPipelineBuildQueue
-
-
-  BattleshiperPipelineInitFuncRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - "sts:AssumeRole"
-      Policies:
-        - PolicyName: "battleshiper-pipeline-init-cloudformation-access"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "cloudformation:DescribeStacks"
-                  - "cloudformation:CreateStack"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "iam:PassRole"
-                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      # further policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineInitFunc:
+  BattleshiperWebFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
-      CodeUri: pipeline/init
-      Handler: init
-      Runtime: provided.al2023
-      Timeout: 600
+      CodeUri: web/build
+      Handler: index.handler
+      Runtime: nodejs18.x
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
-      Role: !GetAtt BattleshiperPipelineInitFuncRole.Arn
       Events:
-        BuildEvent:
-          Type: EventBridgeRule
+        Pipeline:
+          Type: HttpApi
           Properties:
-            RuleName: "battleshiper-pipeline-init-rule"
-            EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 360
-              MaximumRetryAttempts: 5
-            Pattern:
-              source:
-                - "ch.megakuul.battleshiper"
-              detail-type:
-                - "battleshiper.init"
-      Environment:
-        Variables:
-          AWS_REGION: !Ref AWS::Region
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
-          DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-          DEPLOYMENT_TIMEOUT: "400s"
-          STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
-          BUILD_ASSET_BUCKET_NAME: !Ref BattleshiperPipelineBuildAssetBucket
-          EVENT_LOG_GROUP_PREFIX: "/battleshiper/project/event"
-          BUILD_LOG_GROUP_PREFIX: "/battleshiper/project/build"
-          DEPLOY_LOG_GROUP_PREFIX: "/battleshiper/project/deploy"
-          SERVER_LOG_GROUP_PREFIX: "/battleshiper/project/server"
-          LOG_GROUP_RETENTION_DAYS: 14
-          BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
-          BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
-          BUILD_EVENT_ACTION: "battleshiper.build"
-          BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
-          BUILD_QUEUE_POLICY_ARN: !Ref BattleshiperPipelineBuildQueuePolicy
-          BUILD_JOB_TIMEOUT: "600s"
-          BUILD_JOB_VCPUS: 1
-          BUILD_JOB_MEMORY: 1024
+            Path: /{proxy+}
+            Method: ANY
+            ApiId: !Ref BattleshiperApi
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
-
-
-  BattleshiperPipelineDeployFuncRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - "sts:AssumeRole"
-      Policies:
-        - PolicyName: "battleshiper-pipeline-deploy-cloudformation-access"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "cloudformation:DescribeStacks"
-                  - "cloudformation:GetTemplate"
-                  - "cloudformation:CreateChangeSet"
-                  - "cloudformation:DescribeChangeSet"
-                  - "cloudformation:ExecuteChangeSet"
-                  - "cloudformation:DeleteChangeSet"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "iam:PassRole"
-                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      # Policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineDeployFunc:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: go1.x
-    Properties:
-      CodeUri: pipeline/deploy
-      Handler: deploy
-      Runtime: provided.al2023
-      Timeout: 600
-      Architectures:
-        - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
-      Role: !GetAtt BattleshiperPipelineDeployFuncRole.Arn
-      Events:
-        DeployEvent:
-          Type: EventBridgeRule
-          Properties:
-            RuleName: "battleshiper-pipeline-deploy-rule"
-            EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 120
-              MaximumRetryAttempts: 5
-            Pattern:
-              # Pattern accepts incomming batch events from the build queue
-              # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
-              source:
-                - "aws.batch"
-              detail:
-                jobQueue: !Ref BattleshiperPipelineBuildQueue
-                status:
-                  - "SUCCEEDED"
-                  - "FAILED"
-      Environment:
-        Variables:
-          AWS_REGION: !Ref AWS::Region
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
-          DEPLOYMENT_TIMEOUT: "400s"
-          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
-      LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
-
-
-  BattleshiperPipelineDeleteFuncRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - "sts:AssumeRole"
-      Policies:
-        - PolicyName: "battleshiper-pipeline-delete-cloudformation-access"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "cloudformation:DeleteStack"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "iam:PassRole"
-                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      # Policies are defined as separate policy objects and attached to the IAM role.
-
-  BattleshiperPipelineDeleteFunc:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: go1.x
-    Properties:
-      CodeUri: pipeline/delete
-      Handler: delete
-      Runtime: provided.al2023
-      Architectures:
-        - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
-      Role: !GetAtt BattleshiperPipelineDeleteFuncRole.Arn
-      Events:
-        BuildEvent:
-          Type: Schedule
-          Properties:
-            Name: "battleshiper-pipeline-delete-rule"
-            Enabled: true
-            Description: "schedules resource deletion of all projects marked as 'deleted'"
-            Schedule: "rate(1 hour)"
-      Environment:
-        Variables:
-          AWS_REGION: !Ref AWS::Region
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-      LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
-          
 
   # ============================================
   # =========== S3 Storage =====================
@@ -1348,7 +824,7 @@ Resources:
             OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-server"
-            DomainName: !GetAtt TODO Alb endpoint
+            DomainName: !GetAtt BattleshiperRouterApi.ApiEndpoint
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
           - Id: "battleshiper-api"
@@ -1412,6 +888,594 @@ Resources:
 
 
   # ============================================
+  # =========== Pipeline Build Network =========
+  # ============================================
+
+  BattleshiperBuildVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.120.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  BattleshiperBuildVPCInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  BattleshiperBuildVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref BattleshiperBuildVPCInternetGateway
+      VpcId: !Ref BattleshiperBuildVPC
+
+
+  BattleshiperBuildSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+
+  BattleshiperBuildSubnetInternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref BattleshiperBuildVPCInternetGateway
+
+  BattleshiperBuildSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.110.0/24"
+      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet1
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+  BattleshiperBuildSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.120.0/24"
+      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet2
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+  BattleshiperBuildSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BattleshiperBuildVPC
+      CidrBlock: "10.120.130.0/24"
+      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
+
+  BattleshiperBuildSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BattleshiperBuildSubnet3
+      RouteTableId: !Ref BattleshiperBuildSubnetRouteTable
+
+
+  BattleshiperBuildEgressGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "battleshiper-build-egress"
+      GroupDescription: "Allows HTTPS egress traffic"
+      VpcId: !Ref BattleshiperBuildVPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  # ============================================
+  # ======= Pipeline Ticket Credentials ========
+  # ============================================
+
+  BattleshiperPipelineTicketCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "battleshiper-pipeline-ticket-credentials"
+      Description: "Battleshiper pipeline ticket secret used to sign and verify pipeline tickets."
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: "secret"
+        PasswordLength: 40
+        ExcludeCharacters: '"@/\\'
+
+  BattleshiperPipelineTicketCredentialReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-ticket-credentials-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource: !Ref BattleshiperPipelineTicketCredentials
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+
+
+  # ============================================
+  # =========== Pipeline Access Environment ====
+  # ============================================
+
+  BattleshiperPipelineCloudformationServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+              Action:
+                "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AWSBatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+
+
+  BattleshiperPipelineProjectEventLogExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-event-log-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
+      Roles:
+        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperResourceFuncRole
+
+  BattleshiperPipelineProjectBuildLogExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-build-log-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/build/*"
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+
+  BattleshiperPipelineProjectDeployLogExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-deploy-log-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperResourceFuncRole
+
+
+  # ============================================
+  # =========== Pipeline S3 Storage ============
+  # ============================================
+
+  BattleshiperPipelineBuildAssetBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "battleshiper-pipeline-build-asset-bucket"
+      LifecycleConfiguration:
+        Rules:
+          - Id: "delete-assets"
+            Status: "Enabled"
+            ExpirationInDays: 1
+            Prefix: ""
+  
+  BattleshiperPipelineBuildAssetBucketFullPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-build-asset-bucket-full-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:HeadObject"
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperPipelineBuildAssetBucket.Arn}/*"
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
+
+  # ============================================
+  # =========== Pipeline EventBus ==============
+  # ============================================
+
+  BattleshiperPipelineEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: "battleshiper-pipeline-eventbus"
+
+  BattleshiperPipelineEventBusExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-eventbus-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "events:PutEvents"
+            Resource: !GetAtt BattleshiperPipelineEventBus.Arn
+      Roles:
+        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperResourceFuncRole
+
+
+  # ============================================
+  # =========== Pipeline Batch Environment =====
+  # ============================================
+
+  BattleshiperPipelineBuildComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: "battleshiper-pipeline-build-computer-environment"
+      State: ENABLED
+      Type: MANAGED
+      ComputeResources:
+        Type: FARGATE_SPOT
+        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
+        MaxvCpus: 20
+        Subnets:
+          - !Ref BattleshiperBuildSubnet1
+          - !Ref BattleshiperBuildSubnet2
+          - !Ref BattleshiperBuildSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperBuildEgressGroup
+      UpdatePolicy:
+        JobExecutionTimeoutMinutes: 3
+
+  BattleshiperPipelineBuildQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: "battleshiper-pipeline-build-queue"
+      State: ENABLED
+      Priority: 1
+      JobStateTimeLimitActions:
+        - Action: CANCEL
+          State: RUNNABLE
+          MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
+          Reason: "build job exceeded queue timeout"
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
+
+  BattleshiperPipelineBuildQueueExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-build-queue-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "batch:SubmitJob"
+            Resource: !Ref BattleshiperPipelineBuildQueue
+
+
+  # ============================================
+  # =========== Pipeline API ===================
+  # ============================================
+
+  BattleshiperPipelineInitFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-init-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:CreateStack"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      # further policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineInitFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/init
+      Handler: init
+      Runtime: provided.al2023
+      Timeout: 600
+      Architectures:
+        - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
+      Role: !GetAtt BattleshiperPipelineInitFuncRole.Arn
+      Events:
+        BuildEvent:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: "battleshiper-pipeline-init-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
+            RetryPolicy:
+              MaximumEventAgeInSeconds: 360
+              MaximumRetryAttempts: 5
+            Pattern:
+              source:
+                - "ch.megakuul.battleshiper"
+              detail-type:
+                - "battleshiper.init"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+          DEPLOYMENT_TIMEOUT: "400s"
+          STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
+          BUILD_ASSET_BUCKET_NAME: !Ref BattleshiperPipelineBuildAssetBucket
+          EVENT_LOG_GROUP_PREFIX: "/battleshiper/project/event"
+          BUILD_LOG_GROUP_PREFIX: "/battleshiper/project/build"
+          DEPLOY_LOG_GROUP_PREFIX: "/battleshiper/project/deploy"
+          SERVER_LOG_GROUP_PREFIX: "/battleshiper/project/server"
+          LOG_GROUP_RETENTION_DAYS: 14
+          BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          BUILD_EVENT_ACTION: "battleshiper.build"
+          BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
+          BUILD_QUEUE_POLICY_ARN: !Ref BattleshiperPipelineBuildQueueExecPolicy
+          BUILD_JOB_TIMEOUT: "600s"
+          BUILD_JOB_VCPUS: 1
+          BUILD_JOB_MEMORY: 1024
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
+
+  BattleshiperPipelineDeployFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-deploy-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DescribeStacks"
+                  - "cloudformation:GetTemplate"
+                  - "cloudformation:CreateChangeSet"
+                  - "cloudformation:DescribeChangeSet"
+                  - "cloudformation:ExecuteChangeSet"
+                  - "cloudformation:DeleteChangeSet"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineDeployFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/deploy
+      Handler: deploy
+      Runtime: provided.al2023
+      Timeout: 600
+      Architectures:
+        - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
+      Role: !GetAtt BattleshiperPipelineDeployFuncRole.Arn
+      Events:
+        DeployEvent:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: "battleshiper-pipeline-deploy-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
+            RetryPolicy:
+              MaximumEventAgeInSeconds: 120
+              MaximumRetryAttempts: 5
+            Pattern:
+              # Pattern accepts incomming batch events from the build queue
+              # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
+              source:
+                - "aws.batch"
+              detail:
+                jobQueue: !Ref BattleshiperPipelineBuildQueue
+                status:
+                  - "SUCCEEDED"
+                  - "FAILED"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DEPLOYMENT_TIMEOUT: "400s"
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+          SERVER_FUNCTION_PREFIX: "battleshiper-project-server"
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+
+
+  BattleshiperPipelineDeleteFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "battleshiper-pipeline-delete-cloudformation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudformation:DeleteStack"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
+  BattleshiperPipelineDeleteFunc:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: pipeline/delete
+      Handler: delete
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      VpcConfig:
+        SubnetIds:
+          - !Ref BattleshiperPipelineSubnet1
+          - !Ref BattleshiperPipelineSubnet2
+          - !Ref BattleshiperPipelineSubnet3
+        SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
+          - !Ref BattleshiperPipelineEgressGroup
+      Role: !GetAtt BattleshiperPipelineDeleteFuncRole.Arn
+      Events:
+        BuildEvent:
+          Type: Schedule
+          Properties:
+            Name: "battleshiper-pipeline-delete-rule"
+            Enabled: true
+            Description: "schedules resource deletion of all projects marked as 'deleted'"
+            Schedule: "rate(1 hour)"
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
+          DATABASE_NAME: "battleshiper"
+          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
+          
+
+
+  # ============================================
+  # =========== Project Access Environment =====
+  # ============================================
+
+  BattleshiperProjectServerExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-project-server-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "lambda:InvokeFunction"
+            Resource: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:battleshiper-project-server-*"
+      Roles:
+        - !Ref BattleshiperRouterFuncRole
+
+  BattleshiperProjectServerLogReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-project-server-log-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:DescribeLogStreams"
+              - "logs:GetLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/server/*"
+      Roles:
+        - !Ref BattleshiperResourceFuncRole
+
+
+  # ============================================
   # =========== Project S3 Storage =============
   # ============================================
 
@@ -1437,10 +1501,28 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
 
-  BattleshiperProjectStaticBucketPolicy:
+  BattleshiperProjectStaticBucketReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-project-static-bucket-access"
+      PolicyName: "battleshiper-project-static-bucket-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:HeadObject"
+              - "s3:GetObject"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
+      PolicyName:
+      PolicyDocument:
+      Roles:
+        - !Ref BattleshiperRouterFuncRole
+
+  BattleshiperProjectStaticBucketFullPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-project-static-bucket-full-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1468,10 +1550,10 @@ Resources:
       Name: "battleshiper-cdn-route-store"
       Comment: "Store used to lookup the path based on the requested host or prerendered pages."
 
-  BattleshiperProjectCDNRouteStorePolicy:
+  BattleshiperProjectCDNRouteStoreWritePolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-cdn-route-store-access"
+      PolicyName: "battleshiper-cdn-route-store-write-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1669,7 +1751,7 @@ Resources:
             OriginAccessControlId: !GetAtt BattleshiperProjectCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-project-server"
-            DomainName: !GetAtt TODO Alb endpoint
+            DomainName: !GetAtt BattleshiperRouterApi.ApiEndpoint
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
         DefaultCacheBehavior:

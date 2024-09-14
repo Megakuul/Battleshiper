@@ -5,32 +5,19 @@ import { manifest, prerendered } from 'MANIFEST';
 const server = new Server(manifest);
 
 /**
- * @typedef {Object} AdapterRequest
- * @property {string} method
- * @property {string} path
- * @property {Object.<string, string>} headers
- * @property {string} body
- */
-
-/**
- * @typedef {Object} AdapterResponse
- * @property {number} status_code
- * @property {string} status_description
- * @property {Object.<string, string>} headers
- * @property {string} body
- */
-
-/**
- * @param {AdapterRequest} event
+ * @param {import('aws-lambda').APIGatewayProxyEventV2} event
  * @param {import('aws-lambda').Context} context
- * @returns {AdapterResponse}
+ * @returns {Promise<import('aws-lambda').APIGatewayProxyResultV2>}
  */
 export const handler = async (event, context) => {
   await server.init({ env: process.env });
+
+  const url = new URL(`${event.requestContext.http.protocol}://${event.requestContext.domainName}/${event.rawPath}${event.rawQueryString}`);
+
   /** @type {Request} */
-  const req = new Request(event.path, {
-    method: event.method,
-    headers: event.headers,
+  const req = new Request(url, {
+    method: event.requestContext.http.method,
+    headers: new Headers(event.headers),
     body: event.body,
   })
 
@@ -38,14 +25,15 @@ export const handler = async (event, context) => {
   const res = await server.respond(req, {
     platform: { context },
     getClientAddress: (request) => {
-      return event.headers["x-forwarded-for"];
+      return event.headers["x-forwarded-for"] || event.requestContext.http.sourceIp;
     }
   })
 
   return {
     statusCode: res.status,
-    status_description: res.statusText,
     headers: res.headers,
+    // Object.fromEntries(res.headers.entries())
     body: await res.text(),
+    isBase64Encoded: false,
   }
 };
