@@ -1185,6 +1185,13 @@ Resources:
   # =========== Pipeline API ===================
   # ============================================
 
+  BattleshiperPipelineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/battleshiper-pipeline-logs
+      LogGroupClass: INFREQUENT_ACCESS
+      RetentionInDays: 14
+
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1272,7 +1279,7 @@ Resources:
           BUILD_JOB_VCPUS: 1
           BUILD_JOB_MEMORY: 1024
       LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
+        LogGroup: !Ref BattleshiperPipelineLogGroup 
 
 
   BattleshiperPipelineDeployFuncRole:
@@ -1360,7 +1367,7 @@ Resources:
           SERVER_MEMORY: 128
           SERVER_TIMEOUT: 3 # ideally this should be lower then the timeout of the core router function
       LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
+        LogGroup: !Ref BattleshiperPipelineLogGroup 
 
 
   BattleshiperPipelineDeleteFuncRole:
@@ -1400,7 +1407,7 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      Timeout: 180
+      Timeout: 240
       VpcConfig:
         SubnetIds:
           - !Ref BattleshiperPipelineSubnet1
@@ -1424,8 +1431,11 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          DELETION_TIMEOUT: "120s"
+          STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
+          CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       LoggingConfig:
-        LogGroup: !Ref BattleshiperApiLogGroup 
+        LogGroup: !Ref BattleshiperPipelineLogGroup 
           
 
 

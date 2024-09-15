@@ -24,6 +24,7 @@ var (
 	DATABASE_ENDPOINT    = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME        = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN  = os.Getenv("DATABASE_SECRET_ARN")
+	DELETION_TIMEOUT     = os.Getenv("DELETION_TIMEOUT")
 	STATIC_BUCKET_NAME   = os.Getenv("STATIC_BUCKET_NAME")
 	CLOUDFRONT_CACHE_ARN = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
@@ -68,11 +69,25 @@ func run() error {
 		{FieldNames: []string{"deleted"}, SortingOrder: 1, Unique: false},
 	})
 
+	deletionTimeout, err := time.ParseDuration(DELETION_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse DELETION_TIMEOUT environment variable")
+	}
+
 	lambda.Start(deleteprojects.HandleDeleteProjects(eventcontext.Context{
 		Database:              databaseHandle,
 		S3Client:              s3Client,
 		CloudformationClient:  cloudformationClient,
 		CloudfrontCacheClient: cloudfrontClient,
+		DeletionConfiguration: &eventcontext.DeletionConfiguration{
+			Timeout: deletionTimeout,
+		},
+		BucketConfiguration: &eventcontext.BucketConfiguration{
+			StaticBucketName: STATIC_BUCKET_NAME,
+		},
+		CloudfrontConfiguration: &eventcontext.CloudfrontConfiguration{
+			CacheArn: CLOUDFRONT_CACHE_ARN,
+		},
 	}))
 
 	return nil

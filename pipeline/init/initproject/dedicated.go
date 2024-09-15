@@ -77,7 +77,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
 	}, eventCtx.DeploymentConfiguration.Timeout)
 	if err != nil {
-		return fmt.Errorf("failed to apply cloudformation stack: %v", err)
+		return fmt.Errorf("stack creation failed: %v", err)
 	}
 
 	return nil

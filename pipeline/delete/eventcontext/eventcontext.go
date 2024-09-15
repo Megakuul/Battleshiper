@@ -1,11 +1,17 @@
 package eventcontext
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+type DeletionConfiguration struct {
+	Timeout time.Duration
+}
 
 type BucketConfiguration struct {
 	StaticBucketName string
@@ -21,6 +27,7 @@ type Context struct {
 	S3Client                *s3.Client
 	CloudformationClient    *cloudformation.Client
 	CloudfrontCacheClient   *cloudfrontkeyvaluestore.Client
+	DeletionConfiguration   *DeletionConfiguration
 	BucketConfiguration     *BucketConfiguration
 	CloudfrontConfiguration *CloudfrontConfiguration
 }

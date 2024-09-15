@@ -58,7 +58,8 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	if err != nil {
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
-				"status": fmt.Errorf("INITIALIZATION FAILED: %v", err),
+				"status":        fmt.Errorf("INITIALIZATION FAILED: %v", err),
+				"pipeline_lock": false,
 			},
 		})
 		if err != nil || result.MatchedCount < 1 {
@@ -69,8 +70,9 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
-			"initialized": true,
-			"status":      "",
+			"initialized":   true,
+			"status":        "",
+			"pipeline_lock": false,
 		},
 	})
 	if err != nil || result.MatchedCount < 1 {

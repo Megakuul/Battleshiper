@@ -104,15 +104,16 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 
-	cursor, err := projectCollection.Find(transportCtx,
+	projectCursor, err := projectCollection.Find(transportCtx,
 		bson.M{"owner_id": userToken.Id},
 	)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
+	defer projectCursor.Close(transportCtx)
 
 	foundProjectDocs := []project.Project{}
-	err = cursor.All(transportCtx, &foundProjectDocs)
+	err = projectCursor.All(transportCtx, &foundProjectDocs)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode projects")
 	}

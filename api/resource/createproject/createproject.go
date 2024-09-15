@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -112,7 +113,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 	count, err := projectCollection.CountDocuments(transportCtx, bson.M{
 		"owner_id": userDoc.Id,
-		"deleted":  false,
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch projects from database")
@@ -122,24 +122,27 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusForbidden, fmt.Errorf("subscription limit reached; no additional projects can be created")
 	}
 
+	createProjectInput.ProjectName = strings.ToLower(createProjectInput.ProjectName)
+
 	// not covered by the regex because it is important that the project name is NOT "" which would be unexpected.
 	// I don't want to rely on a regex that I can't understand when I skim through it.
 	if len(createProjectInput.ProjectName) <= MIN_PROJECT_NAME_CHARACTERS {
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must contain at least %d characters", MIN_PROJECT_NAME_CHARACTERS)
 	}
 
-	reg := regexp.MustCompile("^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$")
+	reg := regexp.MustCompile("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 	if !reg.MatchString(createProjectInput.ProjectName) {
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must match a valid domain fragment format")
 	}
 
 	_, err = projectCollection.InsertOne(transportCtx, project.Project{
-		Name:        createProjectInput.ProjectName,
-		OwnerId:     userDoc.Id,
-		Deleted:     false,
-		Initialized: false,
-		Status:      "",
-		Aliases:     map[string]struct{}{createProjectInput.ProjectName: struct{}{}},
+		Name:         createProjectInput.ProjectName,
+		OwnerId:      userDoc.Id,
+		Deleted:      false,
+		Initialized:  false,
+		Status:       "",
+		Aliases:      map[string]struct{}{createProjectInput.ProjectName: struct{}{}},
+		PipelineLock: true,
 		Repository: project.Repository{
 			Id:     createProjectInput.Repository.Id,
 			URL:    createProjectInput.Repository.URL,

@@ -46,22 +46,13 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
 
 	projectDoc := &project.Project{}
-	err = projectCollection.FindOneAndUpdate(transportCtx, bson.D{
+	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: deployClaims.Project},
 		{Key: "owner_id", Value: deployClaims.UserID},
-	}, bson.M{
-		// Lock the pipeline, this step is used to ensure only one deployment runs at a time.
-		// running multiple deployments at the same time should not cause major issues,
-		// however it can cause weird or unintended behavior for the project.
-		"$set": bson.M{
-			"pipeline_lock": true,
-		},
+		{Key: "deleted", Value: false},
 	}).Decode(&projectDoc)
 	if err != nil {
 		return fmt.Errorf("failed to fetch project from database")
-	}
-	if projectDoc.PipelineLock {
-		return fmt.Errorf("project locked")
 	}
 
 	// Finish build step
@@ -93,6 +84,22 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 	}
 
+	err = projectCollection.FindOneAndUpdate(transportCtx, bson.D{
+		{Key: "name", Value: deployClaims.Project},
+		{Key: "owner_id", Value: deployClaims.UserID},
+		{Key: "deleted", Value: false},
+	}, bson.M{
+		"$set": bson.M{
+			"pipeline_lock": true,
+		},
+	}).Decode(&projectDoc)
+	if err != nil {
+		return fmt.Errorf("failed to fetch project from database")
+	}
+	if projectDoc.PipelineLock {
+		return fmt.Errorf("project locked")
+	}
+
 	// Start actual deployment step
 	deploymentResult := project.DeploymentResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
@@ -104,6 +111,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
 				"status":                 fmt.Errorf("DEPLOYMENT FAILED: %v", err),
+				"pipeline_lock":          false,
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
@@ -117,6 +125,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
 				"status":                 "",
+				"pipeline_lock":          false,
 			},
 		})
 		if err != nil && result.MatchedCount < 1 {
