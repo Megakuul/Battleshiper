@@ -19,19 +19,18 @@ type BucketConfiguration struct {
 }
 
 type ProjectConfiguration struct {
-	EventLogPrefix         string
-	BuildLogPrefix         string
-	DeployLogPrefix        string
-	ServerLogPrefix        string
-	LogRetentionDays       int
-	BuildEventbusName      string
-	BuildEventSource       string
-	BuildEventAction       string
-	BuildJobQueueArn       string
-	BuildJobQueuePolicyArn string
-	BuildJobTimeout        time.Duration
-	BuildJobVCPUS          int
-	BuildJobMemory         int
+	EventLogPrefix    string
+	BuildLogPrefix    string
+	DeployLogPrefix   string
+	ServerLogPrefix   string
+	LogRetentionDays  int
+	BuildEventbusName string
+	BuildEventSource  string
+	BuildEventAction  string
+	BuildJobQueueArn  string
+	BuildJobTimeout   time.Duration
+	BuildJobVCPUS     int
+	BuildJobMemory    int
 }
 
 // Context provides data to event handlers.

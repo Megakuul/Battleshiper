@@ -38,7 +38,6 @@ var (
 	BUILD_EVENT_SOURCE          = os.Getenv("BUILD_EVENT_SOURCE")
 	BUILD_EVENT_ACTION          = os.Getenv("BUILD_EVENT_ACTION")
 	BUILD_QUEUE_ARN             = os.Getenv("BUILD_QUEUE_ARN")
-	BUILD_QUEUE_POLICY_ARN      = os.Getenv("BUILD_QUEUE_POLICY_ARN")
 	BUILD_JOB_TIMEOUT           = os.Getenv("BUILD_JOB_TIMEOUT")
 	BUILD_JOB_VCPUS             = os.Getenv("BUILD_JOB_VCPUS")
 	BUILD_JOB_MEMORY            = os.Getenv("BUILD_JOB_MEMORY")
@@ -124,19 +123,18 @@ func run() error {
 			BuildAssetBucketName: BUILD_ASSET_BUCKET_NAME,
 		},
 		ProjectConfiguration: &eventcontext.ProjectConfiguration{
-			EventLogPrefix:         EVENT_LOG_GROUP_PREFIX,
-			BuildLogPrefix:         BUILD_LOG_GROUP_PREFIX,
-			DeployLogPrefix:        DEPLOY_LOG_GROUP_PREFIX,
-			ServerLogPrefix:        SERVER_LOG_GROUP_PREFIX,
-			LogRetentionDays:       logGroupRetentionDays,
-			BuildEventbusName:      BUILD_EVENTBUS_NAME,
-			BuildEventSource:       BUILD_EVENT_SOURCE,
-			BuildEventAction:       BUILD_EVENT_ACTION,
-			BuildJobQueueArn:       BUILD_QUEUE_ARN,
-			BuildJobQueuePolicyArn: BUILD_QUEUE_POLICY_ARN,
-			BuildJobTimeout:        buildJobTimeout,
-			BuildJobVCPUS:          buildJobVcpus,
-			BuildJobMemory:         buildJobMemory,
+			EventLogPrefix:    EVENT_LOG_GROUP_PREFIX,
+			BuildLogPrefix:    BUILD_LOG_GROUP_PREFIX,
+			DeployLogPrefix:   DEPLOY_LOG_GROUP_PREFIX,
+			ServerLogPrefix:   SERVER_LOG_GROUP_PREFIX,
+			LogRetentionDays:  logGroupRetentionDays,
+			BuildEventbusName: BUILD_EVENTBUS_NAME,
+			BuildEventSource:  BUILD_EVENT_SOURCE,
+			BuildEventAction:  BUILD_EVENT_ACTION,
+			BuildJobQueueArn:  BUILD_QUEUE_ARN,
+			BuildJobTimeout:   buildJobTimeout,
+			BuildJobVCPUS:     buildJobVcpus,
+			BuildJobMemory:    buildJobMemory,
 		},
 	}))
 

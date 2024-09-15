@@ -123,7 +123,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.10.0/24"
-      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, !GetAZs ""]
 
   BattleshiperApiSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -136,7 +136,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.20.0/24"
-      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, !GetAZs ""]
 
   BattleshiperApiSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -149,7 +149,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.30.0/24"
-      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, !GetAZs ""]
 
   BattleshiperApiSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -175,7 +175,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.210.0/24"
-      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, !GetAZs ""]
 
   BattleshiperPipelineSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -188,7 +188,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.220.0/24"
-      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, !GetAZs ""]
       
   BattleshiperPipelineSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -201,7 +201,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.230.0/24"
-      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, !GetAZs ""]
 
   BattleshiperPipelineSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -215,21 +215,21 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.110.0/24"
-      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, !GetAZs ""]
 
   BattleshiperDbSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.120.0/24"
-      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, !GetAZs ""]
 
   BattleshiperDbSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref BattleshiperVPC
       CidrBlock: "10.100.130.0/24"
-      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, !GetAZs ""]
 
   BattleshiperDbReceiverGroup:
     Type: AWS::EC2::SecurityGroup
@@ -248,7 +248,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 27017
           ToPort: 27017
-          DestinationSecurityGroupId: !GetAtt BattleshiperDbReceiverGroup.GroupId
+          SourceSecurityGroupId: !Ref BattleshiperDbReceiverGroup
 
   BattleshiperApiEgressGroup:
     Type: AWS::EC2::SecurityGroup
@@ -469,7 +469,7 @@ Resources:
           USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: "https://${ApplicationDomain}"
+          FRONTEND_REDIRECT_URI: !Sub "https://${ApplicationDomain}"
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -722,10 +722,10 @@ Resources:
   BattleshiperWebFunc:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
+      BuildMethod: makefile
     Properties:
-      CodeUri: web/build/server
-      Handler: index.handler
+      CodeUri: web
+      Handler: build/server/index.handler
       Runtime: nodejs18.x
       Architectures:
         - x86_64
@@ -814,7 +814,7 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: all
+          HeaderBehavior: allViewer
         QueryStringsConfig:
           QueryStringBehavior: all
 
@@ -927,7 +927,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.110.0/24"
-      AvailabilityZone: !Select [0, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [0, !GetAZs ""]
 
   BattleshiperBuildSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -940,7 +940,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.120.0/24"
-      AvailabilityZone: !Select [1, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [1, !GetAZs ""]
 
   BattleshiperBuildSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -953,7 +953,7 @@ Resources:
     Properties:
       VpcId: !Ref BattleshiperBuildVPC
       CidrBlock: "10.120.130.0/24"
-      AvailabilityZone: !Select [2, Fn::GetAZs !Ref "AWS::Region"]
+      AvailabilityZone: !Select [2, !GetAZs ""]
 
   BattleshiperBuildSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -1207,18 +1207,6 @@ Resources:
         - Order: 1
           ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
 
-  BattleshiperPipelineBuildQueueExecPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-build-queue-exec-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "batch:SubmitJob"
-            Resource: !Ref BattleshiperPipelineBuildQueue
-
 
   # ============================================
   # =========== Pipeline API ===================
@@ -1327,7 +1315,6 @@ Resources:
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
           BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
-          BUILD_QUEUE_POLICY_ARN: !Ref BattleshiperPipelineBuildQueueExecPolicy
           BUILD_JOB_TIMEOUT: "600s"
           BUILD_JOB_VCPUS: 1
           BUILD_JOB_MEMORY: 1024
@@ -1506,7 +1493,7 @@ Resources:
           - Effect: Allow
             Action:
               - "lambda:InvokeFunction"
-            Resource: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:battleshiper-project-server-*"
+            Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:battleshiper-project-server-*"
       Roles:
         - !Ref BattleshiperRouterFuncRole
 
@@ -1663,7 +1650,7 @@ Resources:
           } catch (err) {
             // update the uri to /404.html page and add the error as query param
             request.uri = "/404.html";
-            request.querystring = `error=${err.message}`;
+            request.querystring = "error=" + err.message;
             return request;
           }
         }
@@ -1718,7 +1705,7 @@ Resources:
             request.headers["Battleshiper-Project"] = "";
             // update the uri to /404.html page and add the error as query param
             request.uri = "/404.html";
-            request.querystring = `error=${err.message}`;
+            request.querystring = "error=" + err.message;
             return request;
           }
         }
@@ -1771,7 +1758,7 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: all
+          HeaderBehavior: allViewer
         QueryStringsConfig:
           QueryStringBehavior: all
 

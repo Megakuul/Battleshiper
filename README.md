@@ -25,23 +25,29 @@ export DOMAIN="battleshiper.dev"
 export CERT_ARN=$(aws acm request-certificate --region us-east-1 --domain-name $DOMAIN --validation-method DNS --query 'CertificateArn' --output text)
 aws acm describe-certificate --region us-east-1 --certificate-arn $CERT_ARN --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
 ```
-To activate the certificate, you must add the specified DNS records to your domain provider.
 
+Next create a wildcard certificate on your domain, this certificate will be used for the projects hosted on battleshiper:
+```bash
+export WILD_CERT_ARN=$(aws acm request-certificate --region us-east-1 --domain-name "*.$DOMAIN" --validation-method DNS --query 'CertificateArn' --output text)
+aws acm describe-certificate --region us-east-1 --certificate-arn $WILD_CERT_ARN --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
+```
+
+To activate the certificates, you must add the specified DNS records to your domain.
 
 
 ### GitHub Application
 Create the application via the GitHub interface. If you need guidance, refer to their [documentation](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app).
 
 While creating the app, it's important to configure the following parameters:
-- 
-- 
+- Set Callback URL to https://$DOMAIN/api/auth/callback.
+- Enable Webhook and set the URL to https://$DOMAIN/api/pipeline/event.
+- Create a strong Webhook secret and remember it for the next step.
 - 
 
 Finally, create and extract the following credentials:
 - `app_id`
 - `app_secret`
-- `client_id`
-- `client_secret`
+- `webhook_secret`
 
 
 
@@ -50,10 +56,10 @@ To make the credentials accessible to your system, create a secret in AWS Secret
 
 You can use the `aws cli` to do this:
 ```bash
-aws secretsmanager create-secret \
+export GITHUB_CRED_ARN=$(aws secretsmanager create-secret \
     --name battleshiper-github-credentials \
-    --secret-string '{"app_id":"1234","app_secret":"1234","client_id":"1234","client_secret":"1234"}' \
-    --query 'ARN' --output text
+    --secret-string '{"app_id":"1234","app_secret":"1234","webhook_secret":"1234"}' \
+    --query 'ARN' --output text)
 ```
 
 Finally extract the ARN, which will be used later for deployment.
@@ -71,8 +77,16 @@ sam build
 
 Then deploy them to aws with deploy:
 ```bash
-sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCertificateArn=$CERT_ARN GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN
+sam deploy --parameter-overrides ApplicationDomain=$DOMAIN,\
+    ApplicationDomainCertificateArn=$CERT_ARN,\
+    ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN,\
+    GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN,\
+    GithubAdministratorUsername=Megakuul
 ```
+
+Specify your Github username as `GithubAdministratorUsername`. Doing so will grant your account the `ROLE_MANAGER` role during registration.
+This is the highest privilege role, allowing you to assign all other roles to your account.
+
 
 ## Finalize
 ---
@@ -83,6 +97,13 @@ sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCert
 If you want to update the Battleshiper system, you can simply update the sam stack and then redeploy it:
 ```bash
 sam deploy
+
+sam deploy --parameter-overrides \
+    ApplicationDomain=$DOMAIN \ 
+    ApplicationDomainCertificateArn=$CERT_ARN \
+    ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN \
+    GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN \
+    GithubAdministratorUsername=Megakuul
 ```
 
 **IMPORTANT**:
