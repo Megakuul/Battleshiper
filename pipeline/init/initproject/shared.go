@@ -30,7 +30,6 @@ func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontex
 func generateSharedInfrastructure(eventCtx eventcontext.Context, projectName string) project.SharedInfrastructure {
 	infrastructure := project.SharedInfrastructure{}
 
-	infrastructure.ApiRoutePath = projectName
 	infrastructure.StaticBucketPath = fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.StaticBucketName, projectName)
 	infrastructure.BuildAssetBucketPath = fmt.Sprintf("%s/%s", eventCtx.BucketConfiguration.BuildAssetBucketName, projectName)
 	infrastructure.PrerenderPageKeys = map[string]string{}

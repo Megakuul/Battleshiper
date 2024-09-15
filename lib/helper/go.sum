@@ -29,8 +29,8 @@ github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD
 github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
 github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2qeMA=
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
-github.com/megakuul/battleshiper/lib/model v0.2.5 h1:fgP1yYV4gK1LaoHycjDEhaQdCJycJ88qrvHKxSd+mOA=
-github.com/megakuul/battleshiper/lib/model v0.2.5/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
+github.com/megakuul/battleshiper/lib/model v0.2.7 h1:UN8i3t+7XJyfAXnKvU8pFSlpxlTX+pnHejFnmuFen4I=
+github.com/megakuul/battleshiper/lib/model v0.2.7/go.mod h1:N2fHQkJOezOs4B9m0/lMLAdhaaVahf5zmarhfHLzUvQ=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=
 github.com/montanaflynn/stats v0.7.1/go.mod h1:etXPPgVO6n31NxCd9KQUMvCM+ve0ruNzt6R8Bnaayow=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

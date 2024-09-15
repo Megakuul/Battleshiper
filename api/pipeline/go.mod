@@ -6,8 +6,8 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.33
 	github.com/go-playground/webhooks/v6 v6.4.0
-	github.com/megakuul/battleshiper/lib/helper v0.1.10
-	github.com/megakuul/battleshiper/lib/model v0.2.4
+	github.com/megakuul/battleshiper/lib/helper v0.1.12
+	github.com/megakuul/battleshiper/lib/model v0.2.7
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 	go.mongodb.org/mongo-driver v1.16.1
 )

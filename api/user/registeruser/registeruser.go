@@ -45,7 +45,6 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	var userDoc user.User
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
@@ -67,6 +66,14 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 				Repositories:   []user.Repository{},
 			},
 		}
+
+		if routeCtx.UserConfiguration.AdminUsername != "" {
+			if userToken.Username == routeCtx.UserConfiguration.AdminUsername {
+				newDoc.Privileged = true
+				newDoc.Roles = map[rbac.ROLE]struct{}{rbac.ROLE_MANAGER: {}}
+			}
+		}
+
 		_, err := userCollection.InsertOne(transportCtx, newDoc)
 		if err != nil {
 			return http.StatusBadRequest, fmt.Errorf("failed to insert default user record to database")

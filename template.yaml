@@ -14,7 +14,9 @@ Parameters:
   GithubOAuthClientCredentialArn:
     Type: String
     Description: "ARN of the Secret containing Github Application App ID, App Secret Key, Client ID & Client Secret ('app_id', 'app_secret', 'client_id' & 'client_secret')."
-
+  GithubAdministratorUsername:
+    Type: String
+    Description: "Github username of the user which will be given administrator access rights upon registration."
 
 Globals:
   Function:
@@ -526,6 +528,7 @@ Resources:
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          ADMIN_GITHUB_USERNAME: !Ref GithubAdministratorUsername
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -1561,8 +1564,6 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
-      PolicyName:
-      PolicyDocument:
       Roles:
         - !Ref BattleshiperRouterFuncRole
 

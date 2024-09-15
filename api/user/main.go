@@ -23,11 +23,12 @@ import (
 )
 
 var (
-	REGION              = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
+	REGION                = os.Getenv("AWS_REGION")
+	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
+	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
+	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
+	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
+	ADMIN_GITHUB_USERNAME = os.Getenv("ADMIN_GITHUB_USERNAME")
 )
 
 func main() {
@@ -76,6 +77,9 @@ func run() error {
 	httpRouter := router.NewRouter(routecontext.Context{
 		JwtOptions: jwtOptions,
 		Database:   databaseHandle,
+		UserConfiguration: &routecontext.UserConfiguration{
+			AdminUsername: ADMIN_GITHUB_USERNAME,
+		},
 	})
 
 	httpRouter.AddRoute("GET", "/api/user/fetchinfo", fetchinfo.HandleFetchInfo)
