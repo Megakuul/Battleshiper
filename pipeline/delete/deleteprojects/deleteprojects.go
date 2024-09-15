@@ -106,5 +106,11 @@ func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
+	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	_, err := projectCollection.DeleteOne(transportCtx, bson.M{"_id": projectDoc.MongoID})
+	if err != nil {
+		return fmt.Errorf("failed to delete project from database")
+	}
+
 	return nil
 }

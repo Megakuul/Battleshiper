@@ -10,22 +10,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/megakuul/battleshiper/api/resource/routecontext"
+	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/project"
+	"github.com/megakuul/battleshiper/lib/model/rbac"
+	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-const MAX_LOG_EVENTS = 50
+const MAX_LOG_EVENTS = 200
 
 type fetchLogInput struct {
-	ProjectName string `json:"project_name"`
-	LogType     string `json:"log_type"`
-	StartTime   int64  `json:"start_time"`
-	EndTime     int64  `json:"end_time"`
-	Count       int32  `json:"count"`
+	LogType   string `json:"log_type"`
+	StartTime int64  `json:"start_time"`
+	EndTime   int64  `json:"end_time"`
+	Count     int32  `json:"count"`
 }
 
 type eventOutput struct {
@@ -38,7 +37,7 @@ type fetchLogOutput struct {
 	Events  []eventOutput `json:"events"`
 }
 
-// HandleFetchLog performs a lookup for the cloudwatch logs of the associated project function.
+// HandleFetchLog performs a lookup for the cloudwatch logs of the internal functions and returns them.
 func HandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	response, code, err := runHandleFetchLog(request, transportCtx, routeCtx)
 	if err != nil {
@@ -86,35 +85,26 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	userDoc := &user.User{}
+	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+	}
 
-	specifiedProject := &project.Project{}
-	err = projectCollection.FindOne(transportCtx,
-		bson.D{
-			{Key: "owner_id", Value: userToken.Id},
-			{Key: "name", Value: fetchLogInput.ProjectName},
-			{Key: "deleted", Value: false},
-		},
-	).Decode(&specifiedProject)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("project not found")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
+	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_LOGS) {
+		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
 	var logGroup string
 	switch fetchLogInput.LogType {
-	case "server":
-		logGroup = specifiedProject.DedicatedInfrastructure.ServerLogGroup
-	case "event":
-		logGroup = specifiedProject.DedicatedInfrastructure.EventLogGroup
-	case "build":
-		logGroup = specifiedProject.DedicatedInfrastructure.BuildLogGroup
-	case "deploy":
-		logGroup = specifiedProject.DedicatedInfrastructure.DeployLogGroup
+	case "api":
+		logGroup = routeCtx.LogConfiguration.ApiLogGroup
+	case "pipeline":
+		logGroup = routeCtx.LogConfiguration.PipelineLogGroup
 	}
 	if logGroup == "" {
-		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'server', 'event', 'build' or 'deploy'")
+		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'api' or 'pipeline'")
 	}
 
 	logLimit := fetchLogInput.Count
@@ -122,18 +112,18 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		logLimit = MAX_LOG_EVENTS
 	}
 
-	logFilterOutput, err := routeCtx.CloudwatchClient.FilterLogEvents(transportCtx, &cloudwatchlogs.FilterLogEventsInput{
+	filterLogOutput, err := routeCtx.CloudwatchClient.FilterLogEvents(transportCtx, &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName: aws.String(logGroup),
 		StartTime:    aws.Int64(fetchLogInput.StartTime),
 		EndTime:      aws.Int64(fetchLogInput.EndTime),
 		Limit:        aws.Int32(logLimit),
 	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch logs from cloudwatch")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch log data from cloudwatch")
 	}
 
 	logEvents := []eventOutput{}
-	for _, event := range logFilterOutput.Events {
+	for _, event := range filterLogOutput.Events {
 		logEvents = append(logEvents, eventOutput{
 			Timestamp: *event.Timestamp,
 			Message:   *event.Message,

@@ -92,7 +92,6 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -104,7 +103,6 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	cursor, err := projectCollection.Find(transportCtx,
 		bson.M{"$or": bson.A{
 			bson.M{"name": findProjectInput.ProjectName},

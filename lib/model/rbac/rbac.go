@@ -16,6 +16,7 @@ type ACCESS int
 const (
 	READ_USER ACCESS = iota
 	READ_PROJECT
+	READ_LOGS
 	READ_SUBSCRIPTION
 	WRITE_USER
 	WRITE_PROJECT
@@ -32,6 +33,7 @@ var RBAC_MAP = map[ROLE]map[ACCESS]struct{}{
 	MAINTAINER: {
 		READ_USER:     struct{}{},
 		READ_PROJECT:  struct{}{},
+		READ_LOGS:     struct{}{},
 		WRITE_USER:    struct{}{},
 		WRITE_PROJECT: struct{}{},
 	},

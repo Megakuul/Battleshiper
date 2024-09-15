@@ -1,6 +1,8 @@
 module github.com/megakuul/battleshiper/api/admin
 
-go 1.22.4
+go 1.22.5
+
+toolchain go1.23.1
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
@@ -12,12 +14,21 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore v1.6.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.33.7 // indirect
+)
+
+require (
 	github.com/aws/aws-sdk-go-v2 v1.30.5 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.32 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.13 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchevents v1.25.7
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.39.0
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.19 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.8 // indirect
@@ -31,6 +42,7 @@ require (
 	github.com/google/go-github/v63 v63.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/megakuul/battleshiper/api/resource v0.0.0-20240915112828-603ad509548e
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect

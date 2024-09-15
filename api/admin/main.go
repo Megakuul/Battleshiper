@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/megakuul/battleshiper/api/admin/deleteproject"
 	"github.com/megakuul/battleshiper/api/admin/deleteuser"
+	"github.com/megakuul/battleshiper/api/admin/fetchlog"
 	"github.com/megakuul/battleshiper/api/admin/findproject"
 	"github.com/megakuul/battleshiper/api/admin/finduser"
 	"github.com/megakuul/battleshiper/api/admin/listsubscription"
@@ -35,7 +37,8 @@ var (
 	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
 	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
 	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
-	LOG_GROUP_NAME      = os.Getenv("LOG_GROUP_NAME")
+	API_LOG_GROUP       = os.Getenv("API_LOG_GROUP")
+	PIPELINE_LOG_GROUP  = os.Getenv("PIPELINE_LOG_GROUP")
 )
 
 func main() {
@@ -50,6 +53,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
+
+	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
 	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
 	if err != nil {
@@ -89,14 +94,20 @@ func run() error {
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		JwtOptions: jwtOptions,
-		Database:   databaseHandle,
+		JwtOptions:       jwtOptions,
+		Database:         databaseHandle,
+		CloudwatchClient: cloudwatchClient,
+		LogConfiguration: &routecontext.LogConfiguration{
+			ApiLogGroup:      API_LOG_GROUP,
+			PipelineLogGroup: PIPELINE_LOG_GROUP,
+		},
 	})
 
 	httpRouter.AddRoute("GET", "/api/admin/finduser", finduser.HandleFindUser)
 	httpRouter.AddRoute("GET", "/api/admin/findproject", findproject.HandleFindProject)
 	httpRouter.AddRoute("PATCH", "/api/admin/updateuser", updateuser.HandleUpdateUser)
 	httpRouter.AddRoute("PATCH", "/api/admin/updaterole", updaterole.HandleUpdateRole)
+	httpRouter.AddRoute("GET", "/api/admin/fetchlog", fetchlog.HandleFetchLog)
 	httpRouter.AddRoute("GET", "/api/admin/listsubscription", listsubscription.HandleListSubscription)
 	httpRouter.AddRoute("PUT", "/api/admin/upsertsubscription", upsertsubscription.HandleUpsertSubscription)
 	httpRouter.AddRoute("DELETE", "/api/admin/deleteuser", deleteuser.HandleDeleteUser)

@@ -30,7 +30,7 @@ func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx 
 	project := request.Headers["Battleshiper-Project"]
 
 	if strings.HasSuffix(request.RawPath, ".html") && request.RequestContext.HTTP.Method == "GET" {
-		response, code, err := proxyStatic(request, transportCtx, routeCtx)
+		response, code, err := proxyStatic(request, transportCtx, routeCtx, project)
 		if err != nil {
 			return events.APIGatewayV2HTTPResponse{
 				StatusCode: code,
@@ -55,10 +55,10 @@ func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx 
 }
 
 // proxyStatic reads the requested path from the static s3 bucket and returns it as Content-Type text/html.
-func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*events.APIGatewayV2HTTPResponse, int, error) {
+func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context, projectName string) (*events.APIGatewayV2HTTPResponse, int, error) {
 	objectOutput, err := routeCtx.S3Client.GetObject(transportCtx, &s3.GetObjectInput{
 		Bucket: aws.String(routeCtx.StaticBucketName),
-		Key:    aws.String(request.RawPath),
+		Key:    aws.String(fmt.Sprintf("%s%s", projectName, request.RawPath)),
 	})
 	if err != nil {
 		var nsk *s3types.NoSuchKey
