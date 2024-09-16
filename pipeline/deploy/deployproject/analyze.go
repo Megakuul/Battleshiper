@@ -93,7 +93,7 @@ func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, buc
 		for _, obj := range page.Contents {
 			clientSize += *obj.Size
 			if clientSize > maxBytes {
-				return nil, fmt.Errorf("exceeded maximum asset size of %s bytes", maxBytes)
+				return nil, fmt.Errorf("exceeded maximum asset size of %d bytes", maxBytes)
 			}
 
 			clientObjects = append(clientObjects, ObjectDescription{
@@ -126,7 +126,7 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 		for _, obj := range page.Contents {
 			prerenderSize += *obj.Size
 			if prerenderSize > maxBytes {
-				return nil, fmt.Errorf("exceeded maximum asset size of %s bytes", maxBytes)
+				return nil, fmt.Errorf("exceeded maximum asset size of %d bytes", maxBytes)
 			}
 
 			if !strings.HasSuffix(*obj.Key, ".html") {
@@ -152,8 +152,8 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 		Key:    aws.String(serverKey),
 	})
 	if err != nil {
-		var nfe s3types.NotFound
-		if ok := errors.As(err, nfe); ok {
+		nfe := &s3types.NotFound{}
+		if ok := errors.As(err, &nfe); ok {
 			return nil, fmt.Errorf("expected server object at '%s'", serverKey)
 		} else {
 			return nil, fmt.Errorf("failed to fetch object: %v", err)
@@ -161,7 +161,7 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 	}
 
 	if *serverObject.ContentLength > maxBytes {
-		return nil, fmt.Errorf("exceeded maximum asset size of %s bytes", maxBytes)
+		return nil, fmt.Errorf("exceeded maximum asset size of %d bytes", maxBytes)
 	}
 
 	return &ObjectDescription{
@@ -174,8 +174,8 @@ func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, buck
 func extractPageKeys(prerenderObjects []ObjectDescription, projectName string) map[string]string {
 	pageKeys := map[string]string{}
 	for _, object := range prerenderObjects {
-		pageKey := fmt.Sprintf("/%s", object.RelativeKey)
-		pageKeys[strings.TrimSuffix(pageKey, ".html")] = pageKey
+		pageKey := fmt.Sprintf("/%s/%s", projectName, object.RelativeKey)
+		pageKeys[strings.TrimSuffix(pageKey, ".html")] = fmt.Sprintf("/%s", object.RelativeKey)
 	}
 	return pageKeys
 }

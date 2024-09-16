@@ -78,7 +78,6 @@ Resources:
             ApiId: !Ref BattleshiperRouterApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
       LoggingConfig:
@@ -274,6 +273,7 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
 
+
   # ============================================
   # =========== Database =======================
   # ============================================
@@ -284,8 +284,6 @@ Resources:
       Name: "battleshiper-db-cluster-admin-credentials"
       Description: "Secret for battleshiper db administrator credentials."
       GenerateSecretString:
-        SecretStringTemplate: '{"username": "admin"}'
-        GenerateStringKey: "password"
         PasswordLength: 60
         ExcludeCharacters: '"@/\\'
 
@@ -305,7 +303,7 @@ Resources:
     Properties:
       SecretId: !Ref BattleshiperDbApiSecret
       TargetId: !Ref BattleshiperDb
-      TargetType: "AWS::DocDB::DBCluster"
+      TargetType: "AWS::DocDBElastic::Cluster"
 
   BattleshiperDbApiSecretReadPolicy:
     Type: AWS::IAM::Policy
@@ -320,15 +318,16 @@ Resources:
             Resource:
               - !Ref BattleshiperDbApiSecret
       Roles: 
-        - !Ref BattleshiperUserFuncRole
-        - !Ref BattleshiperAdminFuncRole
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
 
   BattleshiperDb:
     Type: AWS::DocDBElastic::Cluster
+    DependsOn: BattleshiperDbAdminSecret
     Properties:
-      AdminUserName: !Sub '{{resolve:secretsmanager:BattleshiperDbAdminSecret:SecretString:username}}'
+      AdminUserName: "badmin"
       # Admin password is set to the secret's ARN.
       # This usage is not documented unfortunaly: https://github.com/aws/aws-cdk/issues/28935.
       AdminUserPassword: !Ref BattleshiperDbAdminSecret
@@ -373,12 +372,33 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !GetAtt BattleshiperApiLogGroup.Arn
       Roles:
-        - !Ref BattleshiperAdminFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
 
-  BattleshiperJwtCredentials:
+  BattleshiperApiNetworkInterfaceFullAccess:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-api-network-interface-full-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+            Resource: "*"
+      Roles:
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+
+
+  BattleshiperApiJwtCredentials:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: "battleshiper-jwt-credentials"
+      Name: "battleshiper-api-jwt-credentials"
       Description: "Battleshiper jwt secret used to sign and verify user tokens."
       GenerateSecretString:
         SecretStringTemplate: '{}'
@@ -386,28 +406,28 @@ Resources:
         PasswordLength: 40
         ExcludeCharacters: '"@/\\'
 
-  BattleshiperJwtCredentialReadPolicy:
+  BattleshiperApiJwtCredentialReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-jwt-credentials-read-access"
+      PolicyName: "battleshiper-api-jwt-credentials-read-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Action:
               - "secretsmanager:GetSecretValue"
-            Resource: !Ref BattleshiperJwtCredentials
+            Resource: !Ref BattleshiperApiJwtCredentials
       Roles:
-        - !Ref BattleshiperAuthFuncRole
-        - !Ref BattleshiperUserFuncRole
-        - !Ref BattleshiperAdminFuncRole
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
 
-  BattleshiperGhClientCredentialReadPolicy:
+  BattleshiperApiGhClientCredentialReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: "battleshiper-gh-client-credentials-read-access"
+      PolicyName: "battleshiper-api-gh-client-credentials-read-access"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -416,14 +436,14 @@ Resources:
               - "secretsmanager:GetSecretValue"
             Resource: !Ref GithubOAuthClientCredentialArn
       Roles:
-        - !Ref BattleshiperAuthFuncRole
-        - !Ref BattleshiperUserFuncRole
-        - !Ref BattleshiperAdminFuncRole
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
 
 
-  BattleshiperAuthFuncRole:
+  BattleshiperApiAuthFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -437,7 +457,7 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperAuthFunc:
+  BattleshiperApiAuthFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
@@ -454,7 +474,7 @@ Resources:
           - !Ref BattleshiperApiSubnet3
         SecurityGroupIds:
           - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperAuthFuncRole.Arn
+      Role: !GetAtt BattleshiperApiAuthFuncRole.Arn
       Events:
         Auth:
           Type: HttpApi
@@ -464,8 +484,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
@@ -477,7 +496,7 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  BattleshiperUserFuncRole:
+  BattleshiperApiUserFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -491,7 +510,7 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperUserFunc:
+  BattleshiperApiUserFunc:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
@@ -513,7 +532,7 @@ Resources:
         SecurityGroupIds:
           - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperUserFuncRole.Arn
+      Role: !GetAtt BattleshiperApiUserFuncRole.Arn
       Events:
         User:
           Type: HttpApi
@@ -523,8 +542,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -533,7 +551,7 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  BattleshiperAdminFuncRole:
+  BattleshiperApiAdminFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -547,7 +565,7 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperAdminFunc:
+  BattleshiperApiAdminFunc:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
@@ -569,7 +587,7 @@ Resources:
         SecurityGroupIds:
           - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperAdminFuncRole.Arn
+      Role: !GetAtt BattleshiperApiAdminFuncRole.Arn
       Events:
         Admin:
           Type: HttpApi
@@ -579,8 +597,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -590,7 +607,7 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  BattleshiperResourceFuncRole:
+  BattleshiperApiResourceFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -604,7 +621,7 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperResourceFunc:
+  BattleshiperApiResourceFunc:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
@@ -626,7 +643,7 @@ Resources:
         SecurityGroupIds:
           - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperResourceFuncRole.Arn
+      Role: !GetAtt BattleshiperApiResourceFuncRole.Arn
       Events:
         Resource:
           Type: HttpApi
@@ -636,8 +653,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperJwtCredentials
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -659,7 +675,7 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  BattleshiperPipelineFuncRole:
+  BattleshiperApiPipelineFuncRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -673,7 +689,7 @@ Resources:
               - "sts:AssumeRole"
       # Policies are defined as separate policy objects and attached to the IAM role.
 
-  BattleshiperPipelineFunc:
+  BattleshiperApiPipelineFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
@@ -691,7 +707,7 @@ Resources:
         SecurityGroupIds:
           - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
-      Role: !GetAtt BattleshiperPipelineFuncRole.Arn
+      Role: !GetAtt BattleshiperApiPipelineFuncRole.Arn
       Events:
         Pipeline:
           Type: HttpApi
@@ -701,7 +717,6 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
@@ -719,13 +734,13 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
-  BattleshiperWebFunc:
+  BattleshiperApiWebFunc:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: makefile
     Properties:
       CodeUri: web
-      Handler: build/server/index.handler
+      Handler: index.handler
       Runtime: nodejs18.x
       Architectures:
         - x86_64
@@ -843,7 +858,7 @@ Resources:
             OriginAccessControlId: !GetAtt BattleshiperCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-api"
-            DomainName: !GetAtt BattleshiperApi.ApiEndpoint
+            DomainName: !Sub "${BattleshiperApi}.execute-api.${AWS::Region}.amazonaws.com"
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
         DefaultCacheBehavior:
@@ -1001,8 +1016,8 @@ Resources:
               - "secretsmanager:GetSecretValue"
             Resource: !Ref BattleshiperPipelineTicketCredentials
       Roles:
-        - !Ref BattleshiperResourceFuncRole
-        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineInitFuncRole
 
@@ -1021,12 +1036,12 @@ Resources:
             Principal:
               Service:
                 - cloudformation.amazonaws.com
-              Action:
-                "sts:AssumeRole"
+            Action:
+              "sts:AssumeRole"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
-        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
         - arn:aws:iam::aws:policy/AWSBatchFullAccess
         - arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess
@@ -1045,7 +1060,7 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
 
   BattleshiperPipelineProjectEventLogExecPolicy:
     Type: AWS::IAM::Policy
@@ -1060,7 +1075,7 @@ Resources:
               - "logs:PutLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
       Roles:
-        - !Ref BattleshiperPipelineFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
 
   BattleshiperPipelineProjectBuildLogReadPolicy:
     Type: AWS::IAM::Policy
@@ -1074,7 +1089,7 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/build/*"
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
 
   BattleshiperPipelineProjectDeployLogReadPolicy:
     Type: AWS::IAM::Policy
@@ -1088,7 +1103,7 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
 
   BattleshiperPipelineProjectDeployLogExecPolicy:
     Type: AWS::IAM::Policy
@@ -1165,8 +1180,8 @@ Resources:
               - "events:PutEvents"
             Resource: !GetAtt BattleshiperPipelineEventBus.Arn
       Roles:
-        - !Ref BattleshiperPipelineFuncRole
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
 
 
   # ============================================
@@ -1181,7 +1196,6 @@ Resources:
       Type: MANAGED
       ComputeResources:
         Type: FARGATE_SPOT
-        AllocationStrategy: SPOT_PRICE_CAPACITY_OPTIMIZED # also called SCROOGE_MCDUCK_OPTIMIZED
         MaxvCpus: 20
         Subnets:
           - !Ref BattleshiperBuildSubnet1
@@ -1194,6 +1208,7 @@ Resources:
 
   BattleshiperPipelineBuildQueue:
     Type: AWS::Batch::JobQueue
+    DependsOn: BattleshiperPipelineBuildComputeEnvironment
     Properties:
       JobQueueName: "battleshiper-pipeline-build-queue"
       State: ENABLED
@@ -1202,7 +1217,9 @@ Resources:
         - Action: CANCEL
           State: RUNNABLE
           MaxTimeSeconds: 600 # the timeout is also set on each job definition (BUILD_JOB_TIMEOUT)
-          Reason: "build job exceeded queue timeout"
+          # it's not specified in the cloudformation docs, but this parameter must exactly match
+          # one of the predefined reasons here: https://docs.aws.amazon.com/batch/latest/userguide/troubleshooting.html#job_stuck_in_runnable
+          Reason: "CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY"
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref BattleshiperPipelineBuildComputeEnvironment
@@ -1231,7 +1248,26 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !GetAtt BattleshiperPipelineLogGroup.Arn
       Roles:
-        - !Ref BattleshiperAdminFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+
+  BattleshiperPipelineNetworkInterfaceFullAccess:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-network-interface-full-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+            Resource: "*"
+      Roles:
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
 
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
@@ -1297,7 +1333,6 @@ Resources:
                 - "battleshiper.init"
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -1395,7 +1430,6 @@ Resources:
                   - "FAILED"
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -1467,7 +1501,6 @@ Resources:
             Schedule: "rate(1 hour)"
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
           DATABASE_NAME: "battleshiper"
           DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
@@ -1509,7 +1542,7 @@ Resources:
               - "logs:FilterLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/server/*"
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
 
 
   # ============================================
@@ -1599,7 +1632,7 @@ Resources:
               - "cloudfront-keyvaluestore:PutKey"
             Resource: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       Roles:
-        - !Ref BattleshiperResourceFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
 
@@ -1694,7 +1727,8 @@ Resources:
             const project = await kvsHandle.get(alias, { format: "string" });
             request.headers["Battleshiper-Project"] = project;
 
-            const prerenderedPage = await kvsHandle.get(request.uri, { format: "string" }).catch(() => null);
+            const prerenderedPageKey = "/" + project + request.uri;
+            const prerenderedPage = await kvsHandle.get(prerenderedPageKey, { format: "string" }).catch(() => null);
             if (prerenderedPage) {
               request.uri = prerenderedPage;
             }
@@ -1787,7 +1821,7 @@ Resources:
             OriginAccessControlId: !GetAtt BattleshiperProjectCDNOriginAccessControl.Id
             S3OriginConfig: {}
           - Id: "battleshiper-project-server"
-            DomainName: !GetAtt BattleshiperRouterApi.ApiEndpoint
+            DomainName: !Sub "${BattleshiperRouterApi}.execute-api.${AWS::Region}.amazonaws.com"
             CustomOriginConfig:
               OriginProtocolPolicy: "https-only"
         DefaultCacheBehavior:
@@ -1845,5 +1879,5 @@ Resources:
 
 Outputs:
   BattleshiperDbAdminSecret:
-    Description: "Secret where the credentials of the database admin are stored"
+    Description: "Secret that stores the password of the database admin 'badmin'."
     Value: !Ref BattleshiperDbAdminSecret

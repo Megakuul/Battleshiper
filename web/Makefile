@@ -1,5 +1,6 @@
-.PHONY: build-BattleshiperWebFunc
+.PHONY: build-BattleshiperApiWebFunc
 
-build-BattleshiperWebFunc:
+build-BattleshiperApiWebFunc:
 	npm ci
 	npm run build
+	cp build/server/index.js "$(ARTIFACTS_DIR)/index.js"

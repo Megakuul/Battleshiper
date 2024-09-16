@@ -29,7 +29,6 @@ func validateStackState(transportCtx context.Context, eventCtx eventcontext.Cont
 	switch stack.StackStatus {
 	case cloudformationtypes.StackStatusCreateComplete:
 	case cloudformationtypes.StackStatusUpdateComplete:
-	case cloudformationtypes.StackStatusRollbackComplete:
 	case cloudformationtypes.StackStatusUpdateRollbackComplete:
 		return nil
 	default:
@@ -138,7 +137,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
 	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
-			tags.Tag{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
+			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
 		},
 		Description: aws.String("role associated with the battleshiper server function"),
 		AssumeRolePolicyDocument: map[string]interface{}{

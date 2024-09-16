@@ -114,7 +114,7 @@ func updateStaticPageKeys(transportCtx context.Context, eventCtx eventcontext.Co
 	}
 
 	deleteStaticPageKeys := []cloudfrontkeyvaluetypes.DeleteKeyRequestListItem{}
-	for key, _ := range oldStaticPages {
+	for key := range oldStaticPages {
 		if _, exists := newStaticPages[key]; !exists {
 			deleteStaticPageKeys = append(deleteStaticPageKeys, cloudfrontkeyvaluetypes.DeleteKeyRequestListItem{
 				Key: aws.String(key),

@@ -77,11 +77,7 @@ sam build
 
 Then deploy them to aws with deploy:
 ```bash
-sam deploy --parameter-overrides ApplicationDomain=$DOMAIN,\
-    ApplicationDomainCertificateArn=$CERT_ARN,\
-    ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN,\
-    GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN,\
-    GithubAdministratorUsername=Megakuul
+sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCertificateArn=$CERT_ARN ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN GithubAdministratorUsername=Megakuul
 ```
 
 Specify your Github username as `GithubAdministratorUsername`. Doing so will grant your account the `ROLE_MANAGER` role during registration.
@@ -96,7 +92,7 @@ This is the highest privilege role, allowing you to assign all other roles to yo
 ---
 If you want to update the Battleshiper system, you can simply update the sam stack and then redeploy it:
 ```bash
-sam deploy
+sam build
 
 sam deploy --parameter-overrides \
     ApplicationDomain=$DOMAIN \ 
