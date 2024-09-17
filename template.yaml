@@ -335,7 +335,7 @@ Resources:
       ClusterName: "battleshiper-db-cluster"
       ShardCapacity: 2
       ShardCount: 1
-      ShardInstanceCount: 3
+      ShardInstanceCount: 1 # TODO: Set to 3 in prod
       SubnetIds: 
         - !Ref BattleshiperDbSubnet1
         - !Ref BattleshiperDbSubnet2
@@ -373,26 +373,6 @@ Resources:
             Resource: !GetAtt BattleshiperApiLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
-
-  BattleshiperApiNetworkInterfaceFullAccess:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-api-network-interface-full-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - ec2:CreateNetworkInterface
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DeleteNetworkInterface
-            Resource: "*"
-      Roles:
-        - !Ref BattleshiperApiAuthFuncRole
-        - !Ref BattleshiperApiUserFuncRole
-        - !Ref BattleshiperApiAdminFuncRole
-        - !Ref BattleshiperApiResourceFuncRole
-        - !Ref BattleshiperApiPipelineFuncRole
 
 
   BattleshiperApiJwtCredentials:
@@ -455,6 +435,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiAuthFunc:
@@ -508,6 +490,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiUserFunc:
@@ -563,6 +547,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiAdminFunc:
@@ -619,6 +605,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiResourceFunc:
@@ -687,6 +675,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiPipelineFunc:
@@ -1250,24 +1240,6 @@ Resources:
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
 
-  BattleshiperPipelineNetworkInterfaceFullAccess:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-pipeline-network-interface-full-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - ec2:CreateNetworkInterface
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DeleteNetworkInterface
-            Resource: "*"
-      Roles:
-        - !Ref BattleshiperPipelineInitFuncRole
-        - !Ref BattleshiperPipelineDeployFuncRole
-        - !Ref BattleshiperPipelineDeleteFuncRole
-
 
   BattleshiperPipelineInitFuncRole:
     Type: AWS::IAM::Role
@@ -1295,6 +1267,8 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # further policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineInitFunc:
@@ -1387,6 +1361,8 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineDeployFunc:
@@ -1424,7 +1400,8 @@ Resources:
               source:
                 - "aws.batch"
               detail:
-                jobQueue: !Ref BattleshiperPipelineBuildQueue
+                jobQueue: 
+                  - !Ref BattleshiperPipelineBuildQueue
                 status:
                   - "SUCCEEDED"
                   - "FAILED"
@@ -1469,6 +1446,8 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineDeleteFunc:
@@ -1881,3 +1860,9 @@ Outputs:
   BattleshiperDbAdminSecret:
     Description: "Secret that stores the password of the database admin 'badmin'."
     Value: !Ref BattleshiperDbAdminSecret
+  BattleshiperCDNHost:
+    Description: "Hostname of the battleshiper-cdn."
+    Value: !GetAtt BattleshiperCDN.DomainName
+  BattleshiperProjectCDNHost:
+    Description: "Hostname of the battleshiper-project-cdn."
+    Value: !GetAtt BattleshiperProjectCDN.DomainName

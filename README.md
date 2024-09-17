@@ -87,6 +87,18 @@ This is the highest privilege role, allowing you to assign all other roles to yo
 ## Finalize
 ---
 
+To finalize the deployment, first you need to add two dns records to your provider:
+
+1. For the base domain, set the CNAME to the battleshiper cdn hostname found in the sam output:
+```bash
+CNAME $DOMAIN <BATTLESHIPER-CDN-HOST>
+```
+
+2. For the wildcard domain, set the CNAME to the battleshiper project cdn hostname found in the sam output:
+```bash
+CNAME *.$DOMAIN <BATTLESHIPER-PROJECT-CDN-HOST>
+```
+
 
 ## Update
 ---
@@ -94,12 +106,7 @@ If you want to update the Battleshiper system, you can simply update the sam sta
 ```bash
 sam build
 
-sam deploy --parameter-overrides \
-    ApplicationDomain=$DOMAIN \ 
-    ApplicationDomainCertificateArn=$CERT_ARN \
-    ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN \
-    GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN \
-    GithubAdministratorUsername=Megakuul
+sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCertificateArn=$CERT_ARN ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN GithubAdministratorUsername=Megakuul
 ```
 
 **IMPORTANT**:
@@ -116,3 +123,6 @@ After all project stacks are cleaned up, you can delete the internal Battleshipe
 ```bash
 sam delete --stack-name battleshiper
 ```
+
+**IMPORTANT**:
+If deletion fails due to dependencies on VPC components, make sure to delete all lambda network interfaces (ENIs). Since ENIs are managed by lambda, not cloudformation, there can be a slight delay in their removal, as noted [here](https://stackoverflow.com/questions/41299662/aws-lambda-created-eni-not-deleting-while-deletion-of-stack), which may cause issues.
