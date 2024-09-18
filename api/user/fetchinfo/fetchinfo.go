@@ -97,7 +97,7 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
@@ -106,7 +106,7 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+	// MIG: Possible with query item and primary key
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(subscriptionDoc)
 	if err == mongo.ErrNoDocuments {

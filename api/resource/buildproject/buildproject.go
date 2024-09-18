@@ -80,14 +80,14 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with query item and primary key + condition for owner_id (or later check in application code for owner)
 	projectDoc := &project.Project{}
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: buildProjectInput.ProjectName},
@@ -112,6 +112,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 	if err = initiateProjectBuild(transportCtx, routeCtx, execId, userDoc, projectDoc); err != nil {
 		eventResult.Successful = false
 		eventResult.Timepoint = time.Now().Unix()
+		// MIG: Possible with query item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_event_result": eventResult,
@@ -125,6 +126,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 	} else {
 		eventResult.Successful = true
 		eventResult.Timepoint = time.Now().Unix()
+		// MIG: Possible with query item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_event_result": eventResult,

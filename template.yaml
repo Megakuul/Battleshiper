@@ -278,6 +278,8 @@ Resources:
   # =========== Database =======================
   # ============================================
 
+
+
   BattleshiperDbAdminSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -318,10 +320,14 @@ Resources:
             Resource:
               - !Ref BattleshiperDbApiSecret
       Roles: 
+        - !Ref BattleshiperApiAuthFuncRole
         - !Ref BattleshiperApiUserFuncRole
         - !Ref BattleshiperApiAdminFuncRole
         - !Ref BattleshiperApiResourceFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
   BattleshiperDb:
     Type: AWS::DocDBElastic::Cluster
@@ -455,6 +461,7 @@ Resources:
           - !Ref BattleshiperApiSubnet2
           - !Ref BattleshiperApiSubnet3
         SecurityGroupIds:
+          - !Ref BattleshiperDbReceiverGroup
           - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiAuthFuncRole.Arn
       Events:
@@ -819,7 +826,9 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: allViewer
+          HeaderBehavior: allExcept
+          Headers:
+            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host (api gateway expects this)
         QueryStringsConfig:
           QueryStringBehavior: all
 
@@ -1771,7 +1780,9 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: allViewer
+          HeaderBehavior: allExcept
+          Headers:
+            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host (api gateway expects this)
         QueryStringsConfig:
           QueryStringBehavior: all
 

@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -50,9 +49,8 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
-	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": userToken}, bson.M{
+	// MIG: Possible with update item and primary key
+	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": userToken.Id}, bson.M{
 		"$set": bson.M{
 			"refresh_token": "",
 		},

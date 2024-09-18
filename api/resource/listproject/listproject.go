@@ -102,8 +102,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
+	// MIG: Possible with query item and owner_id gsi
 	projectCursor, err := projectCollection.Find(transportCtx,
 		bson.M{"owner_id": userToken.Id},
 	)

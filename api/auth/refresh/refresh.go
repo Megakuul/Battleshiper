@@ -49,8 +49,7 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	var userDoc user.User
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {

@@ -31,8 +31,7 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 		})
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with update item and primary key
 	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": userId}, bson.M{
 		"$push": bson.M{
 			"github_data.repositories": bson.M{

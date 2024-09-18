@@ -13,8 +13,7 @@ import (
 func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
 	projectDoc.SharedInfrastructure = generateSharedInfrastructure(eventCtx, projectDoc.Name)
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
+	// MIG: Possible with update item and primary key
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
 			"shared_infrastructure": projectDoc.SharedInfrastructure,

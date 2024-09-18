@@ -12,7 +12,6 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
 type deleteProjectInput struct {
@@ -72,7 +71,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with update item and primary key + condition for owner_id and deleted || first fetch then update
 	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
 		{Key: "name", Value: deleteProjectInput.ProjectName},
 		{Key: "owner_id", Value: userToken.Id},

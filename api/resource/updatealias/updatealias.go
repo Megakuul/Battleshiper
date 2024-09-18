@@ -83,15 +83,15 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
 	projectDoc := &project.Project{}
+	// MIG: Possible with query item and primary key + condition on owner_id + deleted
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: updateAliasInput.ProjectName},
 		{Key: "owner_id", Value: userDoc.Id},
@@ -107,7 +107,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusBadRequest, err
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+	// MIG: Possible with query item and primary key
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
@@ -124,6 +124,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusInternalServerError, err
 	}
 
+	// MIG: Possible with update item and primary key
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
 			"aliases": updateAliasInput.Aliases,

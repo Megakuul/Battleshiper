@@ -86,9 +86,8 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	specifiedProject := &project.Project{}
+	// MIG: Possible with query item and primary key + condition on owner_id and deleted
 	err = projectCollection.FindOne(transportCtx,
 		bson.D{
 			{Key: "owner_id", Value: userToken.Id},

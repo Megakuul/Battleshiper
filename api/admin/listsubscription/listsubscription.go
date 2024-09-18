@@ -90,8 +90,7 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key (restructure)
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -102,8 +101,7 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
+	// MIG: Possible via scan on subscription table (restructure)
 	cursor, err := subscriptionCollection.Find(transportCtx, bson.D{})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")

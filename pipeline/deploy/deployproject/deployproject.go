@@ -43,9 +43,8 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	projectDoc := &project.Project{}
+	// MIG: Possible with query item and primary key + condition on owner_id + deleted
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: deployClaims.Project},
 		{Key: "owner_id", Value: deployClaims.UserID},
@@ -62,6 +61,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	}
 	if strings.ToUpper(deployRequest.Status) != "SUCCEEDED" {
 		buildResult.Successful = false
+		// MIG: Possible with update item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_build_result": buildResult,
@@ -74,6 +74,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return nil
 	} else {
 		buildResult.Successful = true
+		// MIG: Possible with update item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_build_result": buildResult,
@@ -84,6 +85,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 	}
 
+	// MIG: Possible with update item and primary key + condition owner_id + deleted
 	err = projectCollection.FindOneAndUpdate(transportCtx, bson.D{
 		{Key: "name", Value: deployClaims.Project},
 		{Key: "owner_id", Value: deployClaims.UserID},
@@ -107,6 +109,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	if err := deployProject(transportCtx, eventCtx, projectDoc, deployClaims.UserID, deployRequest.Parameters.ExecutionIdentifier); err != nil {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = false
+		// MIG: Possible with update item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
@@ -121,6 +124,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	} else {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = true
+		// MIG: Possible with update item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"last_deployment_result": deploymentResult,
@@ -150,9 +154,8 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	cloudLogger.WriteLog("START DEPLOYMENT %s", execId)
 	cloudLogger.WriteLog("loading user subscription...")
 
-	subscriptionCollection := eventCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
 	subscriptionDoc := &subscription.Subscription{}
+	// MIG: Possible with query item and primary key
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{
 		"id": userId,
 	}).Decode(&subscriptionDoc)
@@ -223,7 +226,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	if err := cloudLogger.PushLogs(); err != nil {
 		return err
 	}
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with update item and primary key
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
 			"shared_infrastructure.prerender_page_keys": buildInformation.PageKeys,

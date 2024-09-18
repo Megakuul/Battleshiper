@@ -57,6 +57,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
 
+	// MIG: Possible with update item
 	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": githubUser.ID}, bson.M{
 		"$set": bson.M{
 			"refresh_token": token.RefreshToken,

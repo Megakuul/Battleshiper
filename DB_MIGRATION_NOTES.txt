@@ -1,0 +1,7 @@
+Required partition keys:
+
+- user.id (main)
+- user.installation_id (gsi)
+- project.name (main)
+- project.owner_id (gsi)
+- subscription.id (main)

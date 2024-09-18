@@ -77,8 +77,7 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -94,6 +93,7 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		updateSpec["subscription_id"] = updateUserInput.Updates.SubscriptionId
 	}
 
+	// MIG: Possible with update item and primary key
 	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateUserInput.UserId}, bson.M{
 		"$set": updateSpec,
 	})

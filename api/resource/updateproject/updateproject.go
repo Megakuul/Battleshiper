@@ -82,8 +82,7 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -108,8 +107,7 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		}
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
+	// MIG: Possible with put item and primary key + condition owner_id + deleted
 	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
 		{Key: "name", Value: updateProjectInput.ProjectName},
 		{Key: "owner_id", Value: userDoc.Id},

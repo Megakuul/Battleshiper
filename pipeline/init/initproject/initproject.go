@@ -43,9 +43,8 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
 	projectDoc := &project.Project{}
+	// MIG: Possible with query item and primary key + condition on owner_id
 	err = projectCollection.FindOne(transportCtx, bson.D{
 		{Key: "name", Value: initClaims.Project},
 		{Key: "owner_id", Value: initClaims.UserID},
@@ -56,6 +55,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 
 	err = initProject(transportCtx, eventCtx, projectDoc)
 	if err != nil {
+		// MIG: Possible with update item and primary key
 		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 			"$set": bson.M{
 				"status":        fmt.Errorf("INITIALIZATION FAILED: %v", err),
@@ -68,6 +68,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return nil
 	}
 
+	// MIG: Possible with update item and primary key
 	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 		"$set": bson.M{
 			"initialized":   true,

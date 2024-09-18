@@ -30,7 +30,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	}
 	branch := strings.TrimPrefix(event.Ref, "refs/heads/")
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and gsi on installation_id ONLY IF FLATTENED (cannot be in github_data)
 	userDoc := &user.User{}
 	err := userCollection.FindOne(transportCtx, bson.M{"github_data.installation_id": event.Installation.ID}).Decode(&userDoc)
 	if err == mongo.ErrNoDocuments {
@@ -39,7 +39,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		return http.StatusInternalServerError, fmt.Errorf("failed to fetch user from database")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+	// MIG: Possible with query item and primary key
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
@@ -48,8 +48,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		return http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-	// operation uses the defined compound index for {"repository.id", "owner_id", "repository.branch"}
+	// MIG: Possible with query item from owner_id gsi + two unindexed conditions (repository.id and repository.branch)
 	projectCursor, err := projectCollection.Find(transportCtx,
 		bson.D{
 			{Key: "repository.id", Value: event.Repository.ID},
@@ -79,6 +78,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		if err = initiateProjectBuild(transportCtx, routeCtx, execId, userDoc, &projectDoc); err != nil {
 			eventResult.Successful = false
 			eventResult.Timepoint = time.Now().Unix()
+			// MIG: Possible with update item and primary key
 			result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 				"$set": bson.M{
 					"last_event_result": eventResult,
@@ -92,6 +92,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		} else {
 			eventResult.Successful = true
 			eventResult.Timepoint = time.Now().Unix()
+			// MIG: Possible with update item and primary key
 			result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 				"$set": bson.M{
 					"last_event_result": eventResult,

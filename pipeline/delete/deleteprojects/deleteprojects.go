@@ -23,7 +23,7 @@ func HandleDeleteProjects(eventCtx eventcontext.Context) func(context.Context) e
 }
 
 func runHandleDeleteProjects(transportCtx context.Context, eventCtx eventcontext.Context) error {
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with scan and filter to deleted
 	projectCursor, err := projectCollection.Find(transportCtx, bson.D{
 		{Key: "deleted", Value: true},
 	})
@@ -64,6 +64,7 @@ func runHandleDeleteProjects(transportCtx context.Context, eventCtx eventcontext
 			if err := deleteProject(transportCtx, eventCtx, projectDoc); err != nil {
 				deletionErrorsChan <- fmt.Errorf("[%s]: %v", projectDoc.Name, err)
 
+				// MIG: Possible with query item and primary key
 				result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
 					"$set": bson.M{
 						"status": "DELETION FAILED: Contact an Administrator",
@@ -106,7 +107,7 @@ func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with delete item and primary key
 	_, err := projectCollection.DeleteOne(transportCtx, bson.M{"_id": projectDoc.MongoID})
 	if err != nil {
 		return fmt.Errorf("failed to delete project from database")

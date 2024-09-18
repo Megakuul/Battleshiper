@@ -17,8 +17,7 @@ import (
 )
 
 type findUserInput struct {
-	UserId         string `json:"user_id"`
-	SubscriptionId string `json:"subscription_id"`
+	UserId string `json:"user_id"`
 }
 
 type userOutput struct {
@@ -30,8 +29,8 @@ type userOutput struct {
 }
 
 type findUserOutput struct {
-	Message string       `json:"message"`
-	Users   []userOutput `json:"users"`
+	Message string     `json:"message"`
+	User    userOutput `json:"user"`
 }
 
 // HandleFindUser performs a lookup for the specified users and returns them as json object.
@@ -82,8 +81,7 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -94,35 +92,16 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	cursor, err := userCollection.Find(transportCtx,
-		bson.M{"$or": bson.A{
-			bson.M{"id": findUserInput.UserId},
-			bson.M{"subscription_id": findUserInput.SubscriptionId},
-		}},
+	// MIG: Possible with query item and primary key (restructure)
+	foundUser, err := userCollection.FindOne(transportCtx,
+		bson.M{"id": findUserInput.UserId},
 	)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
 	}
 
-	foundUserDocs := []user.User{}
-	err = cursor.All(transportCtx, &foundUserDocs)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode users")
-	}
-
-	foundUserOutput := []userOutput{}
-	for _, user := range foundUserDocs {
-		foundUserOutput = append(foundUserOutput, userOutput{
-			Id:             user.Id,
-			Privileged:     user.Privileged,
-			Provider:       user.Provider,
-			Roles:          user.Roles,
-			SubscriptionId: user.SubscriptionId,
-		})
-	}
-
 	return &findUserOutput{
 		Message: "users fetched",
-		Users:   foundUserOutput,
+		User:    foundUser,
 	}, http.StatusOK, nil
 }

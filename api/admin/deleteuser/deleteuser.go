@@ -12,7 +12,6 @@ import (
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -73,8 +72,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -85,6 +83,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
+	// MIG: Possible with query item and primary key
 	deletionUserDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": deleteUserInput.UserId}).Decode(&deletionUserDoc)
 	if err != nil {
@@ -95,8 +94,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusBadRequest, fmt.Errorf("user has elevated permissions and cannot be deleted. remove privileges first")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
+	// MIG: Possible with query item and primary key
 	_, err = projectCollection.UpdateMany(transportCtx, bson.M{"owner_id": deletionUserDoc.Id}, bson.M{
 		"$set": bson.M{
 			"deleted": true,
@@ -106,6 +104,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to mark projects as deleted on database")
 	}
 
+	// MIG: Possible with delete item and primary key
 	_, err = userCollection.DeleteOne(transportCtx, bson.M{"id": deleteUserInput.UserId})
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to delete user from database")

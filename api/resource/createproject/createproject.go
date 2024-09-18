@@ -94,14 +94,14 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+	// MIG: Possible with query item and primary key
 	subscriptionDoc := &subscription.Subscription{}
 	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
@@ -110,7 +110,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with query item and owner_gsi (+ Select: types.SelectCount)
 	count, err := projectCollection.CountDocuments(transportCtx, bson.M{
 		"owner_id": userDoc.Id,
 	})
@@ -135,6 +135,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must match a valid domain fragment format")
 	}
 
+	// MIG: Possible with put item and primary key
 	_, err = projectCollection.InsertOne(transportCtx, project.Project{
 		Name:         createProjectInput.ProjectName,
 		OwnerId:      userDoc.Id,

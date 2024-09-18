@@ -23,8 +23,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 		})
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
+	// MIG: Possible with update item and primary key
 	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": userId}, bson.M{
 		"$set": bson.M{
 			"github_data": user.GithubData{

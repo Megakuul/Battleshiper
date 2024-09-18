@@ -14,9 +14,9 @@ import (
 // CheckBuildSubscriptionLimit atomically updates the users limit_counter and checks if more pipeline_builds can be performed.
 // if an error occurs or the user has no pipeline_builds left an err is returned.
 func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.Database, userDoc *user.User) error {
-	subscriptionCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
 	subscriptionDoc := &subscription.Subscription{}
+	// MIG: Possible with query item and primary key
 	err := subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
 		return fmt.Errorf("user does not have a valid subscription associated")
@@ -24,8 +24,7 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.D
 		return fmt.Errorf("failed to fetch subscription from database")
 	}
 
-	userCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
+	// MIG: Possible with query item and primary key and then extracting the logic + doing another update item request
 	updatedUserDoc := &user.User{}
 	err = userCollection.FindOneAndUpdate(transportCtx, bson.M{"id": userDoc.Id}, bson.M{
 		"$set": bson.M{
@@ -63,8 +62,8 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.D
 // CheckDeploySubscriptionLimit atomically updates the users limit_counter and checks if more pipeline_deployments can be performed.
 // if an error occurs or the user has no pipeline_deployments left an err is returned.
 func CheckDeploySubscriptionLimit(transportCtx context.Context, database *mongo.Database, userDoc *user.User) error {
-	subscriptionCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
 
+	// MIG: Possible with query item and primary key
 	subscriptionDoc := &subscription.Subscription{}
 	err := subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
 	if err == mongo.ErrNoDocuments {
@@ -73,8 +72,7 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, database *mongo.
 		return fmt.Errorf("failed to fetch subscription from database")
 	}
 
-	userCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
+	// MIG: Possible with query item and primary key and then extracting the logic + doing another update item request
 	updatedUserDoc := &user.User{}
 	err = userCollection.FindOneAndUpdate(transportCtx, bson.M{"id": userDoc.Id}, bson.M{
 		"$set": bson.M{

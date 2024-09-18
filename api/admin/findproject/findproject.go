@@ -91,7 +91,7 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
+	// MIG: Possible with query item and primary key
 	userDoc := &user.User{}
 	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
 	if err != nil {
@@ -102,7 +102,7 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
+	// MIG: Possible with query item and primary key || if owner specified, with owner_id gsi
 	cursor, err := projectCollection.Find(transportCtx,
 		bson.M{"$or": bson.A{
 			bson.M{"name": findProjectInput.ProjectName},
