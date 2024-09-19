@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/oauth2"
 )
@@ -54,8 +53,6 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	if err != nil {
 		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
-
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
 
 	// MIG: Possible with update item
 	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": githubUser.ID}, bson.M{
