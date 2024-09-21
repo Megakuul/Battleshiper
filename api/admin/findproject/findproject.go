@@ -7,11 +7,13 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -91,9 +93,14 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query item and primary key
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
 	}
@@ -102,21 +109,33 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	// MIG: Possible with query item and primary key || if owner specified, with owner_id gsi
-	cursor, err := projectCollection.Find(transportCtx,
-		bson.M{"$or": bson.A{
-			bson.M{"name": findProjectInput.ProjectName},
-			bson.M{"owner_id": findProjectInput.OwnerId},
-		}},
-	)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
-	}
-
-	foundProjectDocs := []project.Project{}
-	err = cursor.All(transportCtx, &foundProjectDocs)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode projects")
+	var foundProjectDocs []project.Project
+	if findProjectInput.OwnerId != "" {
+		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
+			Table: routeCtx.ProjectTable,
+			Index: project.GSI_OWNER_ID,
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.OwnerId},
+			},
+			ConditionExpr: "owner_id = :owner_id",
+		})
+		if err != nil {
+			return nil, http.StatusBadRequest, fmt.Errorf("failed load projects on database")
+		}
+	} else if findProjectInput.ProjectName != "" {
+		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
+			Table: routeCtx.ProjectTable,
+			Index: "",
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":name": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.ProjectName},
+			},
+			ConditionExpr: "name = :name",
+		})
+		if err != nil {
+			return nil, http.StatusBadRequest, fmt.Errorf("failed load projects on database")
+		}
+	} else {
+		return nil, http.StatusBadRequest, fmt.Errorf("specify at least one query option")
 	}
 
 	foundProjectOutput := []projectOutput{}

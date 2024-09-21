@@ -3,6 +3,8 @@ package user
 
 import "github.com/megakuul/battleshiper/lib/model/rbac"
 
+const GSI_INSTALLATION_ID = "gsi_installation_id"
+
 type ExecutionLimitCounter struct {
 	PipelineBuilds                int64 `dynamodbav:"pipeline_builds"`
 	PipelineBuildsExpiration      int64 `dynamodbav:"pipeline_builds_exp"`
@@ -17,7 +19,6 @@ type Repository struct {
 }
 
 type User struct {
-	MongoID        interface{}            `dynamodbav:"_id"`
 	Id             string                 `dynamodbav:"id"`
 	Privileged     bool                   `dynamodbav:"privileged"`
 	Provider       string                 `dynamodbav:"provider"`

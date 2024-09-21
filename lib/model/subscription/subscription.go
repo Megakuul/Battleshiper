@@ -20,7 +20,6 @@ type CDNSpecs struct {
 }
 
 type Subscription struct {
-	MongoID       interface{}   `dynamodbav:"_id"`
 	Id            string        `dynamodbav:"id"`
 	Name          string        `dynamodbav:"name"`
 	PipelineSpecs PipelineSpecs `dynamodbav:"pipeline_specs"`

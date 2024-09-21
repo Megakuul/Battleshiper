@@ -1,6 +1,8 @@
 // Contains database types for the project collection.
 package project
 
+const GSI_OWNER_ID = "gsi_owner_id"
+
 type EventResult struct {
 	ExecutionIdentifier string `dynamodbav:"execution_identifier"`
 	Timepoint           int64  `dynamodbav:"timepoint"`
@@ -45,12 +47,11 @@ type CDNInfrastructure struct {
 }
 
 type Project struct {
-	MongoID     interface{} `dynamodbav:"_id"`
-	Name        string      `dynamodbav:"name"`
-	OwnerId     string      `dynamodbav:"owner_id"`
-	Deleted     bool        `dynamodbav:"deleted"`
-	Initialized bool        `dynamodbav:"initialized"`
-	Status      string      `dynamodbav:"status"`
+	Name        string `dynamodbav:"name"`
+	OwnerId     string `dynamodbav:"owner_id"`
+	Deleted     bool   `dynamodbav:"deleted"`
+	Initialized bool   `dynamodbav:"initialized"`
+	Status      string `dynamodbav:"status"`
 
 	Repository           Repository          `dynamodbav:"repository"`
 	Aliases              map[string]struct{} `dynamodbav:"aliases"`

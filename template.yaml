@@ -101,7 +101,7 @@ Resources:
         - AttributeName: "installation_id"
           AttributeType: "S"
       GlobalSecondaryIndexes:
-        - IndexName: installation_id_gsi
+        - IndexName: gsi_installation_id
           KeySchema:
             - AttributeName: "installation_id"
               KeyType: "HASH"
@@ -130,7 +130,7 @@ Resources:
         - AttributeName: "owner_id"
           AttributeType: "S"
       GlobalSecondaryIndexes:
-        - IndexName: owner_id_gsi
+        - IndexName: gsi_owner_id
           KeySchema:
             - AttributeName: "owner_id"
               KeyType: "HASH"
@@ -388,10 +388,10 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           API_LOG_GROUP: !Ref BattleshiperApiLogGroup
           PIPELINE_LOG_GROUP: !Ref BattleshiperPipelineLogGroup
       Policies:
