@@ -41,6 +41,7 @@ type SharedInfrastructure struct {
 	PrerenderPageKeys    map[string]string `dynamodbav:"prerender_page_keys"`
 }
 
+// structure is not implemented and will be used for dedicated cdn feature in the future.
 type CDNInfrastructure struct {
 	Enabled   bool   `dynamodbav:"enabled"`
 	StackName string `dynamodbav:"stack_name"`
