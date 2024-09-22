@@ -117,6 +117,50 @@ Resources:
         MaxReadRequestUnits: 100
         MaxWriteRequestUnits: 100
 
+  BattleshiperUserTableReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-users-table-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:BatchGetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:DescribeTable
+            Resource: !GetAtt BattleshiperUserTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+
+  BattleshiperUserTableWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-users-table-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+            Resource: !GetAtt BattleshiperUserTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+
+
   BattleshiperProjectTable:
     Type: AWS::DynamoDB::Table
     # Change this to Retain if you want to keep the user data after deleting the stack.
@@ -146,6 +190,52 @@ Resources:
         MaxReadRequestUnits: 100
         MaxWriteRequestUnits: 100
 
+  BattleshiperProjectTableReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-projects-table-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:BatchGetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:DescribeTable
+            Resource: !GetAtt BattleshiperProjectTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
+  BattleshiperProjectTableWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-projects-table-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+            Resource: !GetAtt BattleshiperProjectTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
+
+
   BattleshiperSubscriptionTable:
     Type: AWS::DynamoDB::Table
     # Change this to Retain if you want to keep the user data after deleting the stack.
@@ -162,6 +252,47 @@ Resources:
       OnDemandThroughput:
         MaxReadRequestUnits: 100
         MaxWriteRequestUnits: 100
+
+  BattleshiperSubscriptionTableReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-subscriptions-table-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:BatchGetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:DescribeTable
+            Resource: !GetAtt BattleshiperSubscriptionTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+
+  BattleshiperSubscriptionTableWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-subscriptions-table-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+            Resource: !GetAtt BattleshiperSubscriptionTable.Arn
+      Roles:
+        - !Ref BattleshiperApiAdminFuncRole
 
   # ============================================
   # =========== API ============================
@@ -284,13 +415,6 @@ Resources:
           FRONTEND_REDIRECT_URI: !Sub "https://${ApplicationDomain}"
           USERTABLE: !Ref BattleshiperUserTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -313,8 +437,6 @@ Resources:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
-    DependsOn: 
-      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -338,13 +460,6 @@ Resources:
           USERTABLE: !Ref BattleshiperUserTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           ADMIN_GITHUB_USERNAME: !Ref GithubAdministratorUsername
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -367,8 +482,6 @@ Resources:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
-    DependsOn: 
-      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -399,19 +512,6 @@ Resources:
           DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
           DELETE_EVENT_ACTION: "battleshiper.delete"
           DELETE_EVENT_TICKET_TTL: 800
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -434,8 +534,6 @@ Resources:
     Type: AWS::Serverless::Function
     # Function must depend on policies attached to the role
     # as described in docs: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html 
-    DependsOn: 
-      - BattleshiperDbApiSecretReadPolicy
     Metadata:
       BuildMethod: go1.x
     Properties:
@@ -477,15 +575,6 @@ Resources:
           DELETE_EVENT_ACTION: "battleshiper.delete"
           DELETE_EVENT_TICKET_TTL: 800
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -538,15 +627,6 @@ Resources:
           DEPLOY_EVENT_SOURCE: "aws.batch"
           DEPLOY_EVENT_ACTION: "Batch Job State Change"
           DEPLOY_EVENT_TICKET_TTL: 1000
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -558,7 +638,7 @@ Resources:
     Properties:
       CodeUri: web
       Handler: index.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Architectures:
         - x86_64
       Events:
@@ -1146,15 +1226,6 @@ Resources:
           BUILD_JOB_TIMEOUT: "600s"
           BUILD_JOB_VCPUS: 1
           BUILD_JOB_MEMORY: 1024
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
 
@@ -1233,15 +1304,6 @@ Resources:
           SERVER_RUNTIME: "nodejs20.x" # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
           SERVER_MEMORY: 128
           SERVER_TIMEOUT: 3 # ideally this should be lower then the timeout of the core router function
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
 
@@ -1304,11 +1366,6 @@ Resources:
           DELETION_TIMEOUT: "400s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
-        - DynamoDBWritePolicy:
-            TableName: !Ref BattleshiperProjectTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
           
@@ -1527,7 +1584,7 @@ Resources:
             const alias = host.slice(0, -domainSuffix.length);
             
             const project = await kvsHandle.get(alias, { format: "string" });
-            request.headers["Battleshiper-Project"] = project;
+            request.headers["battleshiper-project"] = project;
 
             const prerenderedPageKey = "/" + project + request.uri;
             const prerenderedPage = await kvsHandle.get(prerenderedPageKey, { format: "string" }).catch(() => null);
@@ -1538,7 +1595,7 @@ Resources:
             return request;
           } catch (err) {
             // ensure request is not further mutated and handled as static page request to /404.html
-            request.headers["Battleshiper-Project"] = "";
+            request.headers["battleshiper-project"] = "";
             // update the uri to /404.html page and add the error as query param
             request.uri = "/404.html";
             request.querystring = "error=" + err.message;
@@ -1682,9 +1739,6 @@ Resources:
 
 
 Outputs:
-  BattleshiperDbAdminSecret:
-    Description: "Secret that stores the password of the database admin 'badmin'."
-    Value: !Ref BattleshiperDbAdminSecret
   BattleshiperCDNHost:
     Description: "Hostname of the battleshiper-cdn."
     Value: !GetAtt BattleshiperCDN.DomainName

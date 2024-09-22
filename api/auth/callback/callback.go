@@ -101,5 +101,5 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Expires:  token.Expiry,
 	}
 
-	return fmt.Sprintf("%s, %s", accessTokenCookie, userTokenCookie), http.StatusFound, nil
+	return fmt.Sprintf("%s, %s", accessTokenCookie.String(), userTokenCookie.String()), http.StatusFound, nil
 }

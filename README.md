@@ -45,8 +45,8 @@ While creating the app, it's important to configure the following parameters:
 - 
 
 Finally, create and extract the following credentials:
-- `app_id`
-- `app_secret`
+- `client_id`
+- `client_secret`
 - `webhook_secret`
 
 
@@ -58,7 +58,7 @@ You can use the `aws cli` to do this:
 ```bash
 export GITHUB_CRED_ARN=$(aws secretsmanager create-secret \
     --name battleshiper-github-credentials \
-    --secret-string '{"app_id":"1234","app_secret":"1234","webhook_secret":"1234"}' \
+    --secret-string '{"client_id":"1234","client_secret":"1234","webhook_secret":"1234"}' \
     --query 'ARN' --output text)
 ```
 
@@ -106,7 +106,7 @@ If you want to update the Battleshiper system, you can simply update the sam sta
 ```bash
 sam build
 
-sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCertificateArn=$CERT_ARN ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN GithubAdministratorUsername=Megakuul
+sam deploy
 ```
 
 **IMPORTANT**:
