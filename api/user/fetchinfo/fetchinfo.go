@@ -16,6 +16,7 @@ import (
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
+	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
@@ -125,7 +126,7 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		}, http.StatusOK, nil
 	}
 
-	subscriptionDoc, err := database.GetSingle[subscriptionOutput](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: routeCtx.SubscriptionTable,
 		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{

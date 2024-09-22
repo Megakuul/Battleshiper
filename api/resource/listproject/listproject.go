@@ -111,6 +111,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
 		ConditionExpr: "owner_id = :owner_id",
+		Limit:         -1,
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")

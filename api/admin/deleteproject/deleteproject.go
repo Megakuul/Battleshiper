@@ -65,7 +65,6 @@ func HandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx co
 }
 
 func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*deleteProjectOutput, int, error) {
-
 	var deleteProjectInput deleteProjectInput
 	err := json.Unmarshal([]byte(request.Body), &deleteProjectInput)
 	if err != nil {
@@ -123,7 +122,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
 	}
 
-	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, userToken.Id, projectDoc.Name)
+	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, projectDoc.OwnerId, projectDoc.Name)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}

@@ -103,7 +103,7 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: routeCtx.UserTable,
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: updateUserInput.UserId},
 		},
 		AttributeNames: map[string]string{
 			"#subscription_id": "subscription_id",

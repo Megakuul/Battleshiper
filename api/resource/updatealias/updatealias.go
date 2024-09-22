@@ -103,12 +103,12 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: routeCtx.ProjectTable,
-		Index: project.GSI_OWNER_ID,
+		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 			":name":     &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: "owner_id = :owner_id AND name = :name",
+		ConditionExpr: "name = :name AND owner_id = :owner_id",
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -126,7 +126,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		Table: routeCtx.SubscriptionTable,
 		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.SubscriptionId},
 		},
 		ConditionExpr: "id = :id",
 	})

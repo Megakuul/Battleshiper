@@ -69,7 +69,7 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		// if the user is not registered, deleting the refresh token is simply skipped (no error is emitted).
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); !ok {
-			return "", http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+			return "", http.StatusInternalServerError, fmt.Errorf("failed to update user on database")
 		}
 	}
 

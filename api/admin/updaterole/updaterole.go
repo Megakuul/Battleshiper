@@ -115,6 +115,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 			":roles":      roles,
 			":privileged": &dynamodbtypes.AttributeValueMemberBOOL{Value: rbac.IsPrivileged(updateRoleInput.Roles)},
 		},
+		UpdateExpr: "SET #roles = :roles, #privileged = :privileged",
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

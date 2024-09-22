@@ -116,7 +116,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		Table: routeCtx.SubscriptionTable,
 		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.SubscriptionId},
 		},
 		ConditionExpr: "id = :id",
 	})
