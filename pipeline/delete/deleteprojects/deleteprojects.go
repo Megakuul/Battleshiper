@@ -2,18 +2,24 @@ package deleteprojects
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"sync"
 
+	"github.com/aws/aws-lambda-go/events"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
+	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
+	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/delete/eventcontext"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
-func HandleDeleteProjects(eventCtx eventcontext.Context) func(context.Context) error {
-	return func(ctx context.Context) error {
-		err := runHandleDeleteProjects(ctx, eventCtx)
+func HandleDeleteProjects(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
+	return func(ctx context.Context, event events.CloudWatchEvent) error {
+		err := runHandleDeleteProjects(event, ctx, eventCtx)
 		if err != nil {
 			log.Printf("ERROR DELETEPROJECTS: %v\n", err)
 			return err
@@ -22,79 +28,68 @@ func HandleDeleteProjects(eventCtx eventcontext.Context) func(context.Context) e
 	}
 }
 
-func runHandleDeleteProjects(transportCtx context.Context, eventCtx eventcontext.Context) error {
-	// MIG: Possible with scan and filter to deleted
-	projectCursor, err := projectCollection.Find(transportCtx, bson.D{
-		{Key: "deleted", Value: true},
+func runHandleDeleteProjects(request events.CloudWatchEvent, transportCtx context.Context, eventCtx eventcontext.Context) error {
+	deleteRequest := &event.DeleteRequest{}
+	if err := json.Unmarshal(request.Detail, &deleteRequest); err != nil {
+		return fmt.Errorf("failed to deserialize deploy request")
+	}
+
+	deleteClaims, err := pipeline.ParseTicket(eventCtx.TicketOptions, deleteRequest.DeleteTicket)
+	if err != nil {
+		return fmt.Errorf("failed to parse ticket: %v", err)
+	}
+
+	if deleteClaims.Action != request.DetailType {
+		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
+	}
+
+	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
+		Table: eventCtx.ProjectTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.Project},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.UserID},
+			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
+		},
+		ConditionExpr: "name = :name AND owner_id = :owner_id AND deleted = :deleted",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to fetch projects from database")
-	}
-	defer projectCursor.Close(transportCtx)
-
-	var (
-		deletionErrors     = []error{}
-		deletionErrorsLock sync.Mutex
-		deletionErrorsChan = make(chan error, 10)
-		deletionWaitGroup  sync.WaitGroup
-	)
-
-	go func() {
-		for err := range deletionErrorsChan {
-			deletionErrorsLock.Lock()
-			deletionErrors = append(deletionErrors, err)
-			deletionErrorsLock.Unlock()
+		// if the project is not existent, the deletion is considered successful.
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil
 		}
-	}()
-
-	for projectCursor.Next(transportCtx) {
-		projectDoc := &project.Project{}
-		if err := projectCursor.Decode(&projectDoc); err != nil {
-			deletionErrorsChan <- fmt.Errorf("[undefined]: %v", err)
-			continue
-		}
-		if projectDoc.PipelineLock {
-			deletionErrorsChan <- fmt.Errorf("[%s]: project pipeline is locked", projectDoc.Name)
-			continue
-		}
-
-		deletionWaitGroup.Add(1)
-		go func() {
-			defer deletionWaitGroup.Done()
-			if err := deleteProject(transportCtx, eventCtx, projectDoc); err != nil {
-				deletionErrorsChan <- fmt.Errorf("[%s]: %v", projectDoc.Name, err)
-
-				// MIG: Possible with query item and primary key
-				result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-					"$set": bson.M{
-						"status": "DELETION FAILED: Contact an Administrator",
-					},
-				})
-				if err != nil && result.MatchedCount < 1 {
-					deletionErrorsChan <- fmt.Errorf("[%s]: failed to update project status", projectDoc.Name)
-				}
-			}
-		}()
+		return fmt.Errorf("failed to load project from database")
 	}
-	if projectCursor.Err() != nil {
-		deletionErrorsChan <- fmt.Errorf("[undefined]: %s", projectCursor.Err())
-	}
-	deletionWaitGroup.Wait()
-	close(deletionErrorsChan)
 
-	deletionErrorsLock.Lock()
-	defer deletionErrorsLock.Unlock()
-	if len(deletionErrors) > 0 {
-		deletionErrorMessage := "at least one error occured while deleting projects:\n"
-		for _, delErr := range deletionErrors {
-			deletionErrorMessage += fmt.Sprintf(" - %v\n", delErr)
+	if err := deleteProject(transportCtx, eventCtx, projectDoc); err != nil {
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			},
+			AttributeNames: map[string]string{
+				"#status": "status",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":status": &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DELETION FAILED: %v", err)},
+			},
+			UpdateExpr: "SET #status = :status",
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
-		return fmt.Errorf("%s", deletionErrorMessage)
+		return err
 	}
+
 	return nil
 }
 
 func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
+	if projectDoc.PipelineLock {
+		return fmt.Errorf("project pipeline is locked")
+	}
+
 	if err := deleteStaticAssets(transportCtx, eventCtx, projectDoc); err != nil {
 		return err
 	}
@@ -107,10 +102,13 @@ func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
-	// MIG: Possible with delete item and primary key
-	_, err := projectCollection.DeleteOne(transportCtx, bson.M{"_id": projectDoc.MongoID})
-	if err != nil {
-		return fmt.Errorf("failed to delete project from database")
+	if err := database.DeleteSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.DeleteSingleInput{
+		Table: eventCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+		},
+	}); err != nil {
+		return fmt.Errorf("failed to delete project from database: %v", err)
 	}
 
 	return nil

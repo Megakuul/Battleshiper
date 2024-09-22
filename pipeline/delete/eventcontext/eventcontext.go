@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 )
 
 type DeletionConfiguration struct {
@@ -25,6 +26,7 @@ type CloudfrontConfiguration struct {
 type Context struct {
 	DynamoClient            *dynamodb.Client
 	ProjectTable            string
+	TicketOptions           *pipeline.TicketOptions
 	S3Client                *s3.Client
 	CloudformationClient    *cloudformation.Client
 	CloudfrontCacheClient   *cloudfrontkeyvaluestore.Client

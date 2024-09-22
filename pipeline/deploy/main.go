@@ -22,6 +22,7 @@ import (
 
 var (
 	REGION                = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT     = os.Getenv("BOOTSTRAP_TIMEOUT")
 	USERTABLE             = os.Getenv("USERTABLE")
 	PROJECTTABLE          = os.Getenv("PROJECTTABLE")
 	SUBSCRIPTIONTABLE     = os.Getenv("SUBSCRIPTIONTABLE")
@@ -42,7 +43,14 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
@@ -57,7 +65,7 @@ func run() error {
 
 	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", "", 0)
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, "", "", 0)
 	if err != nil {
 		return err
 	}

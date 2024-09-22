@@ -8,13 +8,18 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	eventtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
+	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -97,10 +102,10 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+	projectDoc, err := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: routeCtx.ProjectTable,
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#deleted": "deleted",
@@ -116,6 +121,30 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
+	}
+
+	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, userToken.Id, projectDoc.Name)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
+	}
+	deleteRequest := &event.DeleteRequest{
+		DeleteTicket: deleteTicket,
+	}
+	deleteRequestRaw, err := json.Marshal(deleteRequest)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize deletion request")
+	}
+	eventEntry := eventtypes.PutEventsRequestEntry{
+		Source:       aws.String(routeCtx.DeleteEventOptions.Source),
+		DetailType:   aws.String(routeCtx.DeleteEventOptions.Action),
+		Detail:       aws.String(string(deleteRequestRaw)),
+		EventBusName: aws.String(routeCtx.DeleteEventOptions.EventBus),
+	}
+	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
+		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
+	})
+	if err != nil || res.FailedEntryCount > 0 {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit deletion event")
 	}
 
 	return &deleteProjectOutput{

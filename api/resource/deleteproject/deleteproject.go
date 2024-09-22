@@ -8,13 +8,18 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	eventtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
+	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
@@ -75,16 +80,16 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table:      routeCtx.ProjectTable,
-		PrimaryKey: map[string]dynamodbtypes.AttributeValue{},
+	projectDoc, err := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
+		},
 		AttributeNames: map[string]string{
-			"#name":     "name",
 			"#owner_id": "owner_id",
 			"#deleted":  "deleted",
 		},
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
@@ -97,6 +102,30 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
+	}
+
+	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, userToken.Id, projectDoc.Name)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
+	}
+	deleteRequest := &event.DeleteRequest{
+		DeleteTicket: deleteTicket,
+	}
+	deleteRequestRaw, err := json.Marshal(deleteRequest)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize deletion request")
+	}
+	eventEntry := eventtypes.PutEventsRequestEntry{
+		Source:       aws.String(routeCtx.DeleteEventOptions.Source),
+		DetailType:   aws.String(routeCtx.DeleteEventOptions.Action),
+		Detail:       aws.String(string(deleteRequestRaw)),
+		EventBusName: aws.String(routeCtx.DeleteEventOptions.EventBus),
+	}
+	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
+		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
+	})
+	if err != nil || res.FailedEntryCount > 0 {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit deletion event")
 	}
 
 	return &deleteProjectOutput{

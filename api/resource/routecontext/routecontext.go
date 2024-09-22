@@ -21,6 +21,7 @@ type Context struct {
 	InitEventOptions      *pipeline.EventOptions
 	BuildEventOptions     *pipeline.EventOptions
 	DeployTicketOptions   *pipeline.TicketOptions
+	DeleteEventOptions    *pipeline.EventOptions
 	CloudfrontCacheClient *cloudfrontkeyvaluestore.Client
 	CloudfrontCacheArn    string
 }

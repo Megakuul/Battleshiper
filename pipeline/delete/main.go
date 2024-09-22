@@ -13,16 +13,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/pipeline/delete/deleteprojects"
 	"github.com/megakuul/battleshiper/pipeline/delete/eventcontext"
 )
 
 var (
-	REGION               = os.Getenv("AWS_REGION")
-	PROJECTTABLE         = os.Getenv("PROJECTTABLE")
-	DELETION_TIMEOUT     = os.Getenv("DELETION_TIMEOUT")
-	STATIC_BUCKET_NAME   = os.Getenv("STATIC_BUCKET_NAME")
-	CLOUDFRONT_CACHE_ARN = os.Getenv("CLOUDFRONT_CACHE_ARN")
+	REGION                = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT     = os.Getenv("BOOTSTRAP_TIMEOUT")
+	PROJECTTABLE          = os.Getenv("PROJECTTABLE")
+	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
+	DELETION_TIMEOUT      = os.Getenv("DELETION_TIMEOUT")
+	STATIC_BUCKET_NAME    = os.Getenv("STATIC_BUCKET_NAME")
+	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
 func main() {
@@ -33,7 +36,14 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
@@ -46,6 +56,11 @@ func run() error {
 
 	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, "", "", 0)
+	if err != nil {
+		return err
+	}
+
 	deletionTimeout, err := time.ParseDuration(DELETION_TIMEOUT)
 	if err != nil {
 		return fmt.Errorf("failed to parse DELETION_TIMEOUT environment variable")
@@ -54,6 +69,7 @@ func run() error {
 	lambda.Start(deleteprojects.HandleDeleteProjects(eventcontext.Context{
 		DynamoClient:          dynamoClient,
 		ProjectTable:          PROJECTTABLE,
+		TicketOptions:         ticketOptions,
 		S3Client:              s3Client,
 		CloudformationClient:  cloudformationClient,
 		CloudfrontCacheClient: cloudfrontClient,

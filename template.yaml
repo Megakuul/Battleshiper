@@ -276,6 +276,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
@@ -332,6 +333,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USERTABLE: !Ref BattleshiperUserTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
@@ -385,12 +387,18 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           API_LOG_GROUP: !Ref BattleshiperApiLogGroup
           PIPELINE_LOG_GROUP: !Ref BattleshiperPipelineLogGroup
+          DELETE_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          DELETE_EVENT_ACTION: "battleshiper.delete"
+          DELETE_EVENT_TICKET_TTL: 800
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref BattleshiperUserTable
@@ -446,6 +454,7 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           USERTABLE: !Ref BattleshiperUserTable
@@ -454,7 +463,7 @@ Resources:
           INIT_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
           INIT_EVENT_ACTION: "battleshiper.init"
-          INIT_EVENT_TICKET_TTL: 360
+          INIT_EVENT_TICKET_TTL: 800
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
@@ -462,7 +471,11 @@ Resources:
           # https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
           DEPLOY_EVENT_SOURCE: "aws.batch"
           DEPLOY_EVENT_ACTION: "Batch Job State Change"
-          DEPLOY_EVENT_TICKET_TTL: 1000
+          DEPLOY_EVENT_TICKET_TTL: 1400
+          DELETE_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          DELETE_EVENT_ACTION: "battleshiper.delete"
+          DELETE_EVENT_TICKET_TTL: 800
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       Policies:
         - DynamoDBReadPolicy:
@@ -511,10 +524,11 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
-          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          BOOTSTRAP_TIMEOUT: "1500ms"
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
@@ -822,9 +836,11 @@ Resources:
             Resource: !Ref BattleshiperPipelineTicketCredentials
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
-        - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
 
   # ============================================
@@ -1102,9 +1118,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-init-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 360
-              MaximumRetryAttempts: 5
             Pattern:
               source:
                 - "ch.megakuul.battleshiper"
@@ -1112,6 +1125,7 @@ Resources:
                 - "battleshiper.init"
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
@@ -1195,9 +1209,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-deploy-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 120
-              MaximumRetryAttempts: 5
             Pattern:
               # Pattern accepts incomming batch events from the build queue
               # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
@@ -1211,10 +1222,11 @@ Resources:
                   - "FAILED"
       Environment:
         Variables:
-          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          BOOTSTRAP_TIMEOUT: "1500ms"
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
@@ -1259,8 +1271,6 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineDeleteFunc:
@@ -1273,20 +1283,25 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      Timeout: 240
+      Timeout: 600
       Role: !GetAtt BattleshiperPipelineDeleteFuncRole.Arn
       Events:
-        BuildEvent:
-          Type: Schedule
+        DeleteEvent:
+          Type: EventBridgeRule
           Properties:
-            Name: "battleshiper-pipeline-delete-rule"
-            Enabled: true
-            Description: "schedules resource deletion of all projects marked as 'deleted'"
-            Schedule: "rate(1 hour)"
+            RuleName: "battleshiper-pipeline-delete-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
+            Pattern:
+              source:
+                - "ch.megakuul.battleshiper"
+              detail-type:
+                - "battleshiper.delete"
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           PROJECTTABLE: !Ref BattleshiperProjectTable
-          DELETION_TIMEOUT: "240s"
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DELETION_TIMEOUT: "400s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       Policies:

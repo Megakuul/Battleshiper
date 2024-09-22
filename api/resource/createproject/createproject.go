@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	eventtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
@@ -195,7 +195,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
-
 	initRequest := &event.InitRequest{
 		InitTicket: initTicket,
 	}
@@ -203,15 +202,14 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize init request")
 	}
-
-	eventEntry := types.PutEventsRequestEntry{
+	eventEntry := eventtypes.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.InitEventOptions.Source),
 		DetailType:   aws.String(routeCtx.InitEventOptions.Action),
 		Detail:       aws.String(string(initRequestRaw)),
 		EventBusName: aws.String(routeCtx.InitEventOptions.EventBus),
 	}
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
-		Entries: []types.PutEventsRequestEntry{eventEntry},
+		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
 	})
 	if err != nil || res.FailedEntryCount > 0 {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")

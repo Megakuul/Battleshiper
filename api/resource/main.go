@@ -31,6 +31,7 @@ import (
 
 var (
 	REGION                  = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT       = os.Getenv("BOOTSTRAP_TIMEOUT")
 	USERTABLE               = os.Getenv("USERTABLE")
 	PROJECTTABLE            = os.Getenv("PROJECTTABLE")
 	SUBSCRIPTIONTABLE       = os.Getenv("SUBSCRIPTIONTABLE")
@@ -46,6 +47,10 @@ var (
 	DEPLOY_EVENT_SOURCE     = os.Getenv("DEPLOY_EVENT_SOURCE")
 	DEPLOY_EVENT_ACTION     = os.Getenv("DEPLOY_EVENT_ACTION")
 	DEPLOY_EVENT_TICKET_TTL = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
+	DELETE_EVENTBUS_NAME    = os.Getenv("DELETE_EVENTBUS_NAME")
+	DELETE_EVENT_SOURCE     = os.Getenv("DELETE_EVENT_SOURCE")
+	DELETE_EVENT_ACTION     = os.Getenv("DELETE_EVENT_ACTION")
+	DELETE_EVENT_TICKET_TTL = os.Getenv("DELETE_EVENT_TICKET_TTL")
 	CLOUDFRONT_CACHE_ARN    = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
@@ -57,7 +62,14 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
@@ -70,7 +82,7 @@ func run() error {
 
 	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
-	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, bootstrapContext, JWT_CREDENTIAL_ARN, 0)
 	if err != nil {
 		return err
 	}
@@ -80,7 +92,7 @@ func run() error {
 		return fmt.Errorf("failed to parse INIT_EVENT_TICKET_TTL environment variable")
 	}
 	initTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
@@ -93,10 +105,21 @@ func run() error {
 		return fmt.Errorf("failed to parse DEPLOY_EVENT_TICKET_TTL environment variable")
 	}
 	deployTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
+
+	deleteTicketTTL, err := strconv.Atoi(DELETE_EVENT_TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse DELETE_EVENT_TICKET_TTL environment variable")
+	}
+	deleteTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, time.Duration(deleteTicketTTL)*time.Second)
+	if err != nil {
+		return err
+	}
+	deleteEventOptions := pipeline.CreateEventOptions(DELETE_EVENTBUS_NAME, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, deleteTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
 		DynamoClient:          dynamoClient,
@@ -109,6 +132,7 @@ func run() error {
 		InitEventOptions:      initEventOptions,
 		BuildEventOptions:     buildEventOptions,
 		DeployTicketOptions:   deployTicketOptions,
+		DeleteEventOptions:    deleteEventOptions,
 		CloudfrontCacheClient: cloudfrontClient,
 		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
 	})

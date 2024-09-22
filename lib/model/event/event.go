@@ -16,14 +16,16 @@ type BuildRequest struct {
 
 // the deploy request is not created manually, but emitted by aws.batch
 // https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
-
 type DeployParameters struct {
 	DeployTicket        string `json:"deploy_ticket"`
 	ExecutionIdentifier string `json:"execution_identifier"`
 }
-
 type DeployRequest struct {
 	Parameters   DeployParameters `json:"parameters"`
 	Status       string           `json:"status"`
 	StatusReason string           `json:"statusReason"`
+}
+
+type DeleteRequest struct {
+	DeleteTicket string `json:"delete_ticket"`
 }

@@ -24,6 +24,7 @@ import (
 
 var (
 	REGION                       = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT            = os.Getenv("BOOTSTRAP_TIMEOUT")
 	USERTABLE                    = os.Getenv("USERTABLE")
 	PROJECTTABLE                 = os.Getenv("PROJECTTABLE")
 	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
@@ -41,7 +42,14 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return err
 	}
@@ -52,12 +60,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to parse USER_TOKEN_TTL environment variable")
 	}
-	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, time.Duration(userTokenTTL)*time.Second)
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, bootstrapContext, JWT_CREDENTIAL_ARN, time.Duration(userTokenTTL)*time.Second)
 	if err != nil {
 		return err
 	}
 
-	authOptions, err := auth.CreateOAuthOptions(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN, github.Endpoint, REDIRECT_URI, []string{"read:user"})
+	authOptions, err := auth.CreateOAuthOptions(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN, github.Endpoint, REDIRECT_URI, []string{"read:user"})
 	if err != nil {
 		return err
 	}
