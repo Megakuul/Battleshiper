@@ -3,6 +3,7 @@ package createproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -12,13 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	eventtypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -94,31 +96,52 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
-	}
-
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusForbidden, fmt.Errorf("user does not have a valid subscription associated")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
-	}
-
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-	count, err := projectCollection.CountDocuments(transportCtx, bson.M{
-		"owner_id": userDoc.Id,
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch projects from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	if count >= subscriptionDoc.ProjectSpecs.ProjectCount {
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusBadRequest, fmt.Errorf("user does not have a valid subscription associated")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load subscription from database")
+	}
+
+	projectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
+		Table: routeCtx.ProjectTable,
+		Index: project.GSI_OWNER_ID,
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+		},
+		ConditionExpr: "owner_id = :owner_id",
+		Limit:         -1,
+	})
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to count projects on database")
+	}
+
+	if len(projectDocs) >= int(subscriptionDoc.ProjectSpecs.ProjectCount) {
 		return nil, http.StatusForbidden, fmt.Errorf("subscription limit reached; no additional projects can be created")
 	}
 
@@ -135,26 +158,31 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusBadRequest, fmt.Errorf("project name must match a valid domain fragment format")
 	}
 
-	_, err = projectCollection.InsertOne(transportCtx, project.Project{
-		Name:         createProjectInput.ProjectName,
-		OwnerId:      userDoc.Id,
-		Deleted:      false,
-		Initialized:  false,
-		Status:       "",
-		Aliases:      map[string]struct{}{createProjectInput.ProjectName: struct{}{}},
-		PipelineLock: true,
-		Repository: project.Repository{
-			Id:     createProjectInput.Repository.Id,
-			URL:    createProjectInput.Repository.URL,
-			Branch: createProjectInput.Repository.Branch,
+	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[project.Project]{
+		Table: routeCtx.ProjectTable,
+		Item: project.Project{
+			Name:         createProjectInput.ProjectName,
+			OwnerId:      userDoc.Id,
+			Deleted:      false,
+			Initialized:  false,
+			Status:       "",
+			Aliases:      map[string]struct{}{createProjectInput.ProjectName: {}},
+			PipelineLock: true,
+			Repository: project.Repository{
+				Id:     createProjectInput.Repository.Id,
+				URL:    createProjectInput.Repository.URL,
+				Branch: createProjectInput.Repository.Branch,
+			},
+			BuildImage:      createProjectInput.BuildImage,
+			BuildCommand:    createProjectInput.BuildCommand,
+			OutputDirectory: createProjectInput.OutputDirectory,
 		},
-		BuildImage:      createProjectInput.BuildImage,
-		BuildCommand:    createProjectInput.BuildCommand,
-		OutputDirectory: createProjectInput.OutputDirectory,
+		ProtectionAttributeName: "name",
 	})
 	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return nil, http.StatusConflict, fmt.Errorf("project name is already registered")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusBadRequest, fmt.Errorf("project name is already registered")
 		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to insert project to database")
 	}
@@ -167,7 +195,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
-
 	initRequest := &event.InitRequest{
 		InitTicket: initTicket,
 	}
@@ -175,15 +202,14 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize init request")
 	}
-
-	eventEntry := types.PutEventsRequestEntry{
+	eventEntry := eventtypes.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.InitEventOptions.Source),
 		DetailType:   aws.String(routeCtx.InitEventOptions.Action),
 		Detail:       aws.String(string(initRequestRaw)),
 		EventBusName: aws.String(routeCtx.InitEventOptions.EventBus),
 	}
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
-		Entries: []types.PutEventsRequestEntry{eventEntry},
+		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
 	})
 	if err != nil || res.FailedEntryCount > 0 {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")

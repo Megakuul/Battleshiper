@@ -7,19 +7,21 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
 	"github.com/awslabs/goformation/v7/cloudformation/batch"
 	"github.com/awslabs/goformation/v7/cloudformation/events"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/logs"
 	"github.com/awslabs/goformation/v7/cloudformation/tags"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
+	"github.com/megakuul/battleshiper/pipeline/init/eventcontext"
 )
 
 // createStack builds and deploys the initial project stack.
@@ -51,14 +53,25 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		return fmt.Errorf("failed to create cloudformation stack: %v", err)
 	}
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
+	dedicatedInfrastructureAttributes, err := attributevalue.Marshal(&projectDoc.DedicatedInfrastructure)
+	if err != nil {
+		return fmt.Errorf("failed to serialize dedicated infrastructure")
+	}
 
-	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-		"$set": bson.M{
-			"dedicated_infrastructure": projectDoc.DedicatedInfrastructure.StackName,
+	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: eventCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
+		AttributeNames: map[string]string{
+			"#dedicated_infrastructure": "dedicated_infrastructure",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":dedicated_infrastructure": dedicatedInfrastructureAttributes,
+		},
+		UpdateExpr: "SET #dedicated_infrastructure = :dedicated_infrastructure",
 	})
-	if err != nil || result.MatchedCount < 1 {
+	if err != nil {
 		_, err := eventCtx.CloudformationClient.DeleteStack(transportCtx, &cloudformation.DeleteStackInput{
 			StackName:    aws.String(projectDoc.DedicatedInfrastructure.StackName),
 			DeletionMode: types.DeletionModeStandard,

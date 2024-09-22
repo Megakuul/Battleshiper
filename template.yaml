@@ -85,264 +85,83 @@ Resources:
 
 
   # ============================================
-  # =========== Core Network ===================
-  # ============================================
-
-  BattleshiperVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: "10.100.0.0/16"
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-
-  BattleshiperVPCInternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  BattleshiperVPCGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref BattleshiperVPCInternetGateway
-      VpcId: !Ref BattleshiperVPC
-
-
-  BattleshiperApiSubnetRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-
-  BattleshiperApiSubnetInternetRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref BattleshiperVPCInternetGateway
-  
-  BattleshiperApiSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.10.0/24"
-      AvailabilityZone: !Select [0, !GetAZs ""]
-
-  BattleshiperApiSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperApiSubnet1
-      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
-
-  BattleshiperApiSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.20.0/24"
-      AvailabilityZone: !Select [1, !GetAZs ""]
-
-  BattleshiperApiSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperApiSubnet2
-      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
-
-  BattleshiperApiSubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.30.0/24"
-      AvailabilityZone: !Select [2, !GetAZs ""]
-
-  BattleshiperApiSubnet3RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperApiSubnet3
-      RouteTableId: !Ref BattleshiperApiSubnetRouteTable
-
-
-  BattleshiperPipelineSubnetRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-
-  BattleshiperPipelineSubnetInternetRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref BattleshiperVPCInternetGateway
-
-  BattleshiperPipelineSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.210.0/24"
-      AvailabilityZone: !Select [0, !GetAZs ""]
-
-  BattleshiperPipelineSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperPipelineSubnet1
-      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
-
-  BattleshiperPipelineSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.220.0/24"
-      AvailabilityZone: !Select [1, !GetAZs ""]
-      
-  BattleshiperPipelineSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperPipelineSubnet2
-      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
-
-  BattleshiperPipelineSubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.230.0/24"
-      AvailabilityZone: !Select [2, !GetAZs ""]
-
-  BattleshiperPipelineSubnet3RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref BattleshiperPipelineSubnet3
-      RouteTableId: !Ref BattleshiperPipelineSubnetRouteTable
-
-
-  BattleshiperDbSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.110.0/24"
-      AvailabilityZone: !Select [0, !GetAZs ""]
-
-  BattleshiperDbSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.120.0/24"
-      AvailabilityZone: !Select [1, !GetAZs ""]
-
-  BattleshiperDbSubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref BattleshiperVPC
-      CidrBlock: "10.100.130.0/24"
-      AvailabilityZone: !Select [2, !GetAZs ""]
-
-  BattleshiperDbReceiverGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "battleshiper-db-receiver"
-      GroupDescription: "Allows access to DocumentDB with group battleshiper-db-access"
-      VpcId: !Ref BattleshiperVPC
-
-  BattleshiperDbAccessGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "battleshiper-db-access"
-      GroupDescription: "Allows DocumentDB access from battleshiper-db-receiver"
-      VpcId: !Ref BattleshiperVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref BattleshiperDbReceiverGroup
-
-  BattleshiperApiEgressGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "battleshiper-api-egress"
-      GroupDescription: "Allows HTTPS egress traffic"
-      VpcId: !Ref BattleshiperVPC
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-
-  BattleshiperPipelineEgressGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "battleshiper-pipeline-egress"
-      GroupDescription: "Allows HTTPS egress traffic"
-      VpcId: !Ref BattleshiperVPC
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-
-
-  # ============================================
   # =========== Database =======================
   # ============================================
 
-  BattleshiperDbAdminSecret:
-    Type: AWS::SecretsManager::Secret
+  BattleshiperUserTable:
+    Type: AWS::DynamoDB::Table
+    # Change this to Retain if you want to keep the user data after deleting the stack.
+    DeletionPolicy: Delete
     Properties:
-      Name: "battleshiper-db-cluster-admin-credentials"
-      Description: "Secret for battleshiper db administrator credentials."
-      GenerateSecretString:
-        PasswordLength: 60
-        ExcludeCharacters: '"@/\\'
+      TableName: battleshiper-users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+        - AttributeName: "installation_id"
+          AttributeType: "N"
+      GlobalSecondaryIndexes:
+        - IndexName: gsi_installation_id
+          KeySchema:
+            - AttributeName: "installation_id"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+          OnDemandThroughput:
+            MaxReadRequestUnits: 100
+            MaxWriteRequestUnits: 100
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      OnDemandThroughput:
+        MaxReadRequestUnits: 100
+        MaxWriteRequestUnits: 100
 
-  BattleshiperDbApiSecret:
-    Type: AWS::SecretsManager::Secret
+  BattleshiperProjectTable:
+    Type: AWS::DynamoDB::Table
+    # Change this to Retain if you want to keep the user data after deleting the stack.
+    DeletionPolicy: Delete
     Properties:
-      Name: "battleshiper-db-cluster-api-credentials"
-      Description: "Secret for battleshiper api access credentials."
-      GenerateSecretString:
-        SecretStringTemplate: '{"username": "api"}'
-        GenerateStringKey: "password"
-        PasswordLength: 40
-        ExcludeCharacters: '"@/\\'
+      TableName: battleshiper-projects
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "name"
+          AttributeType: "S"
+        - AttributeName: "owner_id"
+          AttributeType: "S"
+      GlobalSecondaryIndexes:
+        - IndexName: gsi_owner_id
+          KeySchema:
+            - AttributeName: "owner_id"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+          OnDemandThroughput:
+            MaxReadRequestUnits: 100
+            MaxWriteRequestUnits: 100
+      KeySchema:
+        - AttributeName: "name"
+          KeyType: "HASH"
+      OnDemandThroughput:
+        MaxReadRequestUnits: 100
+        MaxWriteRequestUnits: 100
 
-  BattleshiperDbApiSecretAttachment:
-    Type: AWS::SecretsManager::SecretTargetAttachment
+  BattleshiperSubscriptionTable:
+    Type: AWS::DynamoDB::Table
+    # Change this to Retain if you want to keep the user data after deleting the stack.
+    DeletionPolicy: Delete
     Properties:
-      SecretId: !Ref BattleshiperDbApiSecret
-      TargetId: !Ref BattleshiperDb
-      TargetType: "AWS::DocDBElastic::Cluster"
-
-  BattleshiperDbApiSecretReadPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: "battleshiper-db-cluster-api-credentials-read-access"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "secretsmanager:GetSecretValue"
-            Resource:
-              - !Ref BattleshiperDbApiSecret
-      Roles: 
-        - !Ref BattleshiperApiUserFuncRole
-        - !Ref BattleshiperApiAdminFuncRole
-        - !Ref BattleshiperApiResourceFuncRole
-        - !Ref BattleshiperApiPipelineFuncRole
-
-  BattleshiperDb:
-    Type: AWS::DocDBElastic::Cluster
-    DependsOn: BattleshiperDbAdminSecret
-    Properties:
-      AdminUserName: "badmin"
-      # Admin password is set to the secret's ARN.
-      # This usage is not documented unfortunaly: https://github.com/aws/aws-cdk/issues/28935.
-      AdminUserPassword: !Ref BattleshiperDbAdminSecret
-      AuthType: "SECRET_ARN"
-      ClusterName: "battleshiper-db-cluster"
-      ShardCapacity: 2
-      ShardCount: 1
-      ShardInstanceCount: 1 # TODO: Set to 3 in prod
-      SubnetIds: 
-        - !Ref BattleshiperDbSubnet1
-        - !Ref BattleshiperDbSubnet2
-        - !Ref BattleshiperDbSubnet3
-      VpcSecurityGroupIds:
-        - !Ref BattleshiperDbAccessGroup
-
+      TableName: battleshiper-subscriptions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      OnDemandThroughput:
+        MaxReadRequestUnits: 100
+        MaxWriteRequestUnits: 100
 
   # ============================================
   # =========== API ============================
@@ -435,8 +254,6 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiAuthFunc:
@@ -449,13 +266,6 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiAuthFuncRole.Arn
       Events:
         Auth:
@@ -466,14 +276,21 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
           FRONTEND_REDIRECT_URI: !Sub "https://${ApplicationDomain}"
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          USERTABLE: !Ref BattleshiperUserTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -490,8 +307,6 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiUserFunc:
@@ -508,14 +323,6 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiUserFuncRole.Arn
       Events:
         User:
@@ -526,11 +333,18 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          USERTABLE: !Ref BattleshiperUserTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           ADMIN_GITHUB_USERNAME: !Ref GithubAdministratorUsername
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -547,8 +361,6 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiAdminFunc:
@@ -565,14 +377,6 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiAdminFuncRole.Arn
       Events:
         Admin:
@@ -583,12 +387,31 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
+          USERTABLE: !Ref BattleshiperUserTable
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           API_LOG_GROUP: !Ref BattleshiperApiLogGroup
           PIPELINE_LOG_GROUP: !Ref BattleshiperPipelineLogGroup
+          DELETE_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          DELETE_EVENT_ACTION: "battleshiper.delete"
+          DELETE_EVENT_TICKET_TTL: 800
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -605,8 +428,6 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiResourceFunc:
@@ -623,14 +444,6 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiResourceFuncRole.Arn
       Events:
         Resource:
@@ -641,15 +454,16 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          USERTABLE: !Ref BattleshiperUserTable
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           INIT_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
           INIT_EVENT_ACTION: "battleshiper.init"
-          INIT_EVENT_TICKET_TTL: 360
+          INIT_EVENT_TICKET_TTL: 800
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
           BUILD_EVENT_ACTION: "battleshiper.build"
@@ -657,8 +471,21 @@ Resources:
           # https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
           DEPLOY_EVENT_SOURCE: "aws.batch"
           DEPLOY_EVENT_ACTION: "Batch Job State Change"
-          DEPLOY_EVENT_TICKET_TTL: 1000
+          DEPLOY_EVENT_TICKET_TTL: 1400
+          DELETE_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
+          DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
+          DELETE_EVENT_ACTION: "battleshiper.delete"
+          DELETE_EVENT_TICKET_TTL: 800
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -675,8 +502,6 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiPipelineFunc:
@@ -689,14 +514,6 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperApiSubnet1
-          - !Ref BattleshiperApiSubnet2
-          - !Ref BattleshiperApiSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperApiEgressGroup
       Role: !GetAtt BattleshiperApiPipelineFuncRole.Arn
       Events:
         Pipeline:
@@ -707,10 +524,11 @@ Resources:
             ApiId: !Ref BattleshiperApi
       Environment:
         Variables:
+          BOOTSTRAP_TIMEOUT: "1500ms"
+          USERTABLE: !Ref BattleshiperUserTable
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           BUILD_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           BUILD_EVENT_SOURCE: "ch.megakuul.battleshiper"
@@ -720,6 +538,15 @@ Resources:
           DEPLOY_EVENT_SOURCE: "aws.batch"
           DEPLOY_EVENT_ACTION: "Batch Job State Change"
           DEPLOY_EVENT_TICKET_TTL: 1000
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
@@ -819,7 +646,9 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: allViewer
+          HeaderBehavior: allExcept
+          Headers:
+            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host (api gateway expects this)
         QueryStringsConfig:
           QueryStringBehavior: all
 
@@ -1007,9 +836,11 @@ Resources:
             Resource: !Ref BattleshiperPipelineTicketCredentials
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
-        - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
 
   # ============================================
@@ -1267,8 +1098,6 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # further policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineInitFunc:
@@ -1282,14 +1111,6 @@ Resources:
       Timeout: 600
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
       Role: !GetAtt BattleshiperPipelineInitFuncRole.Arn
       Events:
         BuildEvent:
@@ -1297,9 +1118,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-init-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 360
-              MaximumRetryAttempts: 5
             Pattern:
               source:
                 - "ch.megakuul.battleshiper"
@@ -1307,9 +1125,10 @@ Resources:
                 - "battleshiper.init"
       Environment:
         Variables:
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          BOOTSTRAP_TIMEOUT: "1500ms"
+          USERTABLE: !Ref BattleshiperUserTable
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
           DEPLOYMENT_TIMEOUT: "400s"
@@ -1327,6 +1146,15 @@ Resources:
           BUILD_JOB_TIMEOUT: "600s"
           BUILD_JOB_VCPUS: 1
           BUILD_JOB_MEMORY: 1024
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
 
@@ -1361,8 +1189,6 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineDeployFunc:
@@ -1376,14 +1202,6 @@ Resources:
       Timeout: 600
       Architectures:
         - x86_64
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
       Role: !GetAtt BattleshiperPipelineDeployFuncRole.Arn
       Events:
         DeployEvent:
@@ -1391,9 +1209,6 @@ Resources:
           Properties:
             RuleName: "battleshiper-pipeline-deploy-rule"
             EventBusName: !Ref BattleshiperPipelineEventBus
-            RetryPolicy:
-              MaximumEventAgeInSeconds: 120
-              MaximumRetryAttempts: 5
             Pattern:
               # Pattern accepts incomming batch events from the build queue
               # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
@@ -1407,9 +1222,10 @@ Resources:
                   - "FAILED"
       Environment:
         Variables:
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
+          BOOTSTRAP_TIMEOUT: "1500ms"
+          USERTABLE: !Ref BattleshiperUserTable
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_TIMEOUT: "400s"
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
@@ -1417,6 +1233,15 @@ Resources:
           SERVER_RUNTIME: "nodejs20.x" # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
           SERVER_MEMORY: 128
           SERVER_TIMEOUT: 3 # ideally this should be lower then the timeout of the core router function
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperUserTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
 
@@ -1446,8 +1271,6 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperPipelineDeleteFunc:
@@ -1460,32 +1283,32 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - x86_64
-      Timeout: 240
-      VpcConfig:
-        SubnetIds:
-          - !Ref BattleshiperPipelineSubnet1
-          - !Ref BattleshiperPipelineSubnet2
-          - !Ref BattleshiperPipelineSubnet3
-        SecurityGroupIds:
-          - !Ref BattleshiperDbReceiverGroup
-          - !Ref BattleshiperPipelineEgressGroup
+      Timeout: 600
       Role: !GetAtt BattleshiperPipelineDeleteFuncRole.Arn
       Events:
-        BuildEvent:
-          Type: Schedule
+        DeleteEvent:
+          Type: EventBridgeRule
           Properties:
-            Name: "battleshiper-pipeline-delete-rule"
-            Enabled: true
-            Description: "schedules resource deletion of all projects marked as 'deleted'"
-            Schedule: "rate(1 hour)"
+            RuleName: "battleshiper-pipeline-delete-rule"
+            EventBusName: !Ref BattleshiperPipelineEventBus
+            Pattern:
+              source:
+                - "ch.megakuul.battleshiper"
+              detail-type:
+                - "battleshiper.delete"
       Environment:
         Variables:
-          DATABASE_ENDPOINT: !GetAtt BattleshiperDb.ClusterEndpoint
-          DATABASE_NAME: "battleshiper"
-          DATABASE_SECRET_ARN: !Ref BattleshiperDbApiSecret
-          DELETION_TIMEOUT: "120s"
+          BOOTSTRAP_TIMEOUT: "1500ms"
+          PROJECTTABLE: !Ref BattleshiperProjectTable
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          DELETION_TIMEOUT: "400s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BattleshiperProjectTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref BattleshiperProjectTable
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
           
@@ -1771,7 +1594,9 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: allViewer
+          HeaderBehavior: allExcept
+          Headers:
+            - host # exclude host implicitly tells cloudfront to replace it with the api gateway origin host (api gateway expects this)
         QueryStringsConfig:
           QueryStringBehavior: all
 

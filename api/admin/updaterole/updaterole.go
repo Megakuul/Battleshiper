@@ -3,15 +3,19 @@ package updaterole
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -73,31 +77,51 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_ROLE) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateRoleInput.UserId},
-		bson.M{
-			"$set": bson.M{
-				"roles":      updateRoleInput.Roles,
-				"privileged": rbac.IsPrivileged(updateRoleInput.Roles),
-			},
-		},
-	)
+	roles, err := attributevalue.Marshal(&updateRoleInput.Roles)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize roles")
 	}
-	if result.MatchedCount < 1 {
-		return nil, http.StatusNotFound, fmt.Errorf("user not found")
+
+	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: updateRoleInput.UserId},
+		},
+		AttributeNames: map[string]string{
+			"#roles":      "roles",
+			"#privileged": "privileged",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":roles":      roles,
+			":privileged": &dynamodbtypes.AttributeValueMemberBOOL{Value: rbac.IsPrivileged(updateRoleInput.Roles)},
+		},
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user to update was not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	return &updateRoleOutput{

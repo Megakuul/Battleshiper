@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/buildproject"
 	"github.com/megakuul/battleshiper/api/resource/createproject"
@@ -25,20 +25,17 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/updatealias"
 	"github.com/megakuul/battleshiper/api/resource/updateproject"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
 
 var (
 	REGION                  = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT       = os.Getenv("BOOTSTRAP_TIMEOUT")
+	USERTABLE               = os.Getenv("USERTABLE")
+	PROJECTTABLE            = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE       = os.Getenv("SUBSCRIPTIONTABLE")
 	JWT_CREDENTIAL_ARN      = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT       = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME           = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN     = os.Getenv("DATABASE_SECRET_ARN")
 	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
 	INIT_EVENTBUS_NAME      = os.Getenv("INIT_EVENTBUS_NAME")
 	INIT_EVENT_SOURCE       = os.Getenv("INIT_EVENT_SOURCE")
@@ -50,6 +47,10 @@ var (
 	DEPLOY_EVENT_SOURCE     = os.Getenv("DEPLOY_EVENT_SOURCE")
 	DEPLOY_EVENT_ACTION     = os.Getenv("DEPLOY_EVENT_ACTION")
 	DEPLOY_EVENT_TICKET_TTL = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
+	DELETE_EVENTBUS_NAME    = os.Getenv("DELETE_EVENTBUS_NAME")
+	DELETE_EVENT_SOURCE     = os.Getenv("DELETE_EVENT_SOURCE")
+	DELETE_EVENT_ACTION     = os.Getenv("DELETE_EVENT_ACTION")
+	DELETE_EVENT_TICKET_TTL = os.Getenv("DELETE_EVENT_TICKET_TTL")
 	CLOUDFRONT_CACHE_ARN    = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
@@ -61,7 +62,14 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
@@ -72,38 +80,9 @@ func run() error {
 
 	cloudfrontClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
-	if err != nil {
-		return err
-	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
-	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
-		{FieldNames: []string{"deleted"}, SortingOrder: 1, Unique: false},
-	})
-
-	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, bootstrapContext, JWT_CREDENTIAL_ARN, 0)
 	if err != nil {
 		return err
 	}
@@ -113,7 +92,7 @@ func run() error {
 		return fmt.Errorf("failed to parse INIT_EVENT_TICKET_TTL environment variable")
 	}
 	initTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, INIT_EVENT_SOURCE, INIT_EVENT_ACTION, time.Duration(initTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
@@ -126,19 +105,34 @@ func run() error {
 		return fmt.Errorf("failed to parse DEPLOY_EVENT_TICKET_TTL environment variable")
 	}
 	deployTicketOptions, err := pipeline.CreateTicketOptions(
-		awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, DEPLOY_EVENT_SOURCE, DEPLOY_EVENT_ACTION, time.Duration(deployTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
 
+	deleteTicketTTL, err := strconv.Atoi(DELETE_EVENT_TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse DELETE_EVENT_TICKET_TTL environment variable")
+	}
+	deleteTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, time.Duration(deleteTicketTTL)*time.Second)
+	if err != nil {
+		return err
+	}
+	deleteEventOptions := pipeline.CreateEventOptions(DELETE_EVENTBUS_NAME, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, deleteTicketOptions)
+
 	httpRouter := router.NewRouter(routecontext.Context{
+		DynamoClient:          dynamoClient,
+		UserTable:             USERTABLE,
+		ProjectTable:          PROJECTTABLE,
+		SubscriptionTable:     SUBSCRIPTIONTABLE,
 		CloudwatchClient:      cloudwatchClient,
 		JwtOptions:            jwtOptions,
-		Database:              databaseHandle,
 		EventClient:           eventClient,
 		InitEventOptions:      initEventOptions,
 		BuildEventOptions:     buildEventOptions,
 		DeployTicketOptions:   deployTicketOptions,
+		DeleteEventOptions:    deleteEventOptions,
 		CloudfrontCacheClient: cloudfrontClient,
 		CloudfrontCacheArn:    CLOUDFRONT_CACHE_ARN,
 	})

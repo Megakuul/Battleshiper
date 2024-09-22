@@ -3,54 +3,84 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// CheckBuildSubscriptionLimit atomically updates the users limit_counter and checks if more pipeline_builds can be performed.
-// if an error occurs or the user has no pipeline_builds left an err is returned.
-func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.Database, userDoc *user.User) error {
-	subscriptionCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+type CheckBuildSubscriptionLimitInput struct {
+	UserTable         string
+	SubscriptionTable string
+	UserDoc           user.User
+}
 
-	subscriptionDoc := &subscription.Subscription{}
-	err := subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return fmt.Errorf("user does not have a valid subscription associated")
-	} else if err != nil {
-		return fmt.Errorf("failed to fetch subscription from database")
+// CheckBuildSubscriptionLimit updates the users limit_counter and checks if more pipeline_builds can be performed.
+// If the limit_counter values have expired, the pipeline_builds are reset and the expiration time is set to the next day.
+func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dynamodb.Client, input *CheckBuildSubscriptionLimitInput) error {
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
+		Table: input.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to fetch subscription: %v", err)
 	}
 
-	userCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	updatedUserDoc := &user.User{}
-	err = userCollection.FindOneAndUpdate(transportCtx, bson.M{"id": userDoc.Id}, bson.M{
-		"$set": bson.M{
-			"limit_counter": bson.M{
-				"pipeline_builds": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.pipeline_builds_exp", time.Now().Unix()}},
-						"then": 0,
-						"else": bson.M{"$add": bson.A{"$limit_counter.pipeline_builds", 1}},
-					},
-				},
-				"pipeline_builds_exp": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.pipeline_builds_exp", time.Now().Unix()}},
-						"then": time.Now().Add(24 * time.Hour).Unix(),
-						"else": "$limit_counter.pipeline_builds_exp",
-					},
-				},
-			},
+	// Update pipeline_builds if the current counter has expired.
+	_, err = database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
+		Table: input.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
-	}).Decode(updatedUserDoc)
-	if err == mongo.ErrNoDocuments {
-		return fmt.Errorf("failed to update user limit counter: user not found")
-	} else if err != nil {
-		return fmt.Errorf("failed to update user limit counter on database")
+		Upsert:    false,
+		ReturnOld: false,
+		AttributeNames: map[string]string{
+			"#limit_counter":       "limit_counter",
+			"#pipeline_builds":     "pipeline_builds",
+			"#pipeline_builds_exp": "pipeline_builds_exp",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":pipeline_builds": &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+			":current_timestamp": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(
+				int(time.Now().Unix()),
+			)},
+			":next_timestamp": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(
+				int(time.Now().Add(24 * time.Hour).Unix()),
+			)},
+		},
+		ConditionExpr: "#limit_counter.#pipeline_builds_exp < :current_timestamp",
+		UpdateExpr:    "SET #limit_counter.#pipeline_builds = :pipeline_builds, #limit_counter.#pipeline_builds_exp = :next_timestamp",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reset limit_counter: %v", err)
+	}
+
+	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
+		Table: input.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+		},
+		Upsert:    false,
+		ReturnOld: false,
+		AttributeNames: map[string]string{
+			"#limit_counter":   "limit_counter",
+			"#pipeline_builds": "pipeline_builds",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":increment": &dynamodbtypes.AttributeValueMemberN{Value: "1"},
+		},
+		UpdateExpr: "ADD #limit_counter.#pipeline_builds :increment",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update limit_counter: %v", err)
 	}
 
 	if updatedUserDoc.LimitCounter.PipelineBuilds > subscriptionDoc.PipelineSpecs.DailyBuilds {
@@ -60,46 +90,74 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, database *mongo.D
 	return nil
 }
 
-// CheckDeploySubscriptionLimit atomically updates the users limit_counter and checks if more pipeline_deployments can be performed.
-// if an error occurs or the user has no pipeline_deployments left an err is returned.
-func CheckDeploySubscriptionLimit(transportCtx context.Context, database *mongo.Database, userDoc *user.User) error {
-	subscriptionCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
+type CheckDeploySubscriptionLimitInput struct {
+	UserTable         string
+	SubscriptionTable string
+	UserDoc           user.User
+}
 
-	subscriptionDoc := &subscription.Subscription{}
-	err := subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return fmt.Errorf("user does not have a valid subscription associated")
-	} else if err != nil {
-		return fmt.Errorf("failed to fetch subscription from database")
+// CheckDeploySubscriptionLimit updates the users limit_counter and checks if more pipeline_deployments can be performed.
+// If the limit_counter values have expired, the pipeline_deployments are reset and the expiration time is set to the next day.
+func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dynamodb.Client, input *CheckBuildSubscriptionLimitInput) error {
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
+		Table: input.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to fetch subscription: %v", err)
 	}
 
-	userCollection := database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	updatedUserDoc := &user.User{}
-	err = userCollection.FindOneAndUpdate(transportCtx, bson.M{"id": userDoc.Id}, bson.M{
-		"$set": bson.M{
-			"limit_counter": bson.M{
-				"pipeline_deployments": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.pipeline_deployments_exp", time.Now().Unix()}},
-						"then": 0,
-						"else": bson.M{"$add": bson.A{"$limit_counter.pipeline_deployments", 1}},
-					},
-				},
-				"pipeline_deployments_exp": bson.M{
-					"$cond": bson.M{
-						"if":   bson.M{"$lte": bson.A{"$limit_counter.pipeline_deployments_exp", time.Now().Unix()}},
-						"then": time.Now().Add(24 * time.Hour).Unix(),
-						"else": "$limit_counter.pipeline_deployments_exp",
-					},
-				},
-			},
+	// Update pipeline_deployments if the current counter has expired.
+	_, err = database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
+		Table: input.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
-	}).Decode(updatedUserDoc)
-	if err == mongo.ErrNoDocuments {
-		return fmt.Errorf("failed to update user limit counter: user not found")
-	} else if err != nil {
-		return fmt.Errorf("failed to update user limit counter on database")
+		Upsert:    false,
+		ReturnOld: false,
+		AttributeNames: map[string]string{
+			"#limit_counter":            "limit_counter",
+			"#pipeline_deployments":     "pipeline_deployments",
+			"#pipeline_deployments_exp": "pipeline_deployments_exp",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":pipeline_deployments": &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+			":current_timestamp": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(
+				int(time.Now().Unix()),
+			)},
+			":next_timestamp": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(
+				int(time.Now().Add(24 * time.Hour).Unix()),
+			)},
+		},
+		ConditionExpr: "#limit_counter.#pipeline_deployments_exp < :current_timestamp",
+		UpdateExpr:    "SET #limit_counter.#pipeline_deployments = :pipeline_deployments, #limit_counter.#pipeline_deployments_exp = :next_timestamp",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reset limit_counter: %v", err)
+	}
+
+	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
+		Table: input.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+		},
+		Upsert:    false,
+		ReturnOld: false,
+		AttributeNames: map[string]string{
+			"#limit_counter":        "limit_counter",
+			"#pipeline_deployments": "pipeline_deployments",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":increment": &dynamodbtypes.AttributeValueMemberN{Value: "1"},
+		},
+		UpdateExpr: "ADD #limit_counter.#pipeline_deployments :increment",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update limit_counter: %v", err)
 	}
 
 	if updatedUserDoc.LimitCounter.PipelineDeployments > subscriptionDoc.PipelineSpecs.DailyDeployments {

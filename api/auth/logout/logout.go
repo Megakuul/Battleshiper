@@ -2,15 +2,17 @@ package logout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os/user"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/model/user"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 )
 
 // HandleLogout logs the user out and revokes the used tokens.
@@ -50,15 +52,25 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
-	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": userToken}, bson.M{
-		"$set": bson.M{
-			"refresh_token": "",
+	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
+		AttributeNames: map[string]string{
+			"#refresh_token": "refresh_token",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":refresh_token": &dynamodbtypes.AttributeValueMemberS{Value: ""},
+		},
+		UpdateExpr: "SET #refresh_token = :refresh_token",
 	})
 	if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("failed to remove refresh_token")
+		// if the user is not registered, deleting the refresh token is simply skipped (no error is emitted).
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); !ok {
+			return "", http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		}
 	}
 
 	return clearCookieHeader, http.StatusOK, nil

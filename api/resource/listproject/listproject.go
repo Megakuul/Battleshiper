@@ -7,11 +7,13 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
@@ -102,20 +104,16 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	projectCursor, err := projectCollection.Find(transportCtx,
-		bson.M{"owner_id": userToken.Id},
-	)
+	foundProjectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
+		Table: routeCtx.ProjectTable,
+		Index: project.GSI_OWNER_ID,
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "owner_id = :owner_id",
+	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
-	}
-	defer projectCursor.Close(transportCtx)
-
-	foundProjectDocs := []project.Project{}
-	err = projectCursor.All(transportCtx, &foundProjectDocs)
-	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch and decode projects")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")
 	}
 
 	foundProjectOutput := []projectOutput{}

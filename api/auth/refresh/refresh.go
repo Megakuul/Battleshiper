@@ -2,18 +2,19 @@ package refresh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/user"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
 )
 
@@ -42,6 +43,21 @@ func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.
 	}, nil
 }
 
+func runHandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
+
+	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
+	if err == nil {
+		return refreshByUserToken(transportCtx, routeCtx, userTokenCookie.Value)
+	}
+
+	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
+	if err == nil {
+		return refreshByAccessToken(transportCtx, routeCtx, accessTokenCookie.Value)
+	}
+
+	return "", http.StatusUnauthorized, fmt.Errorf("no valid user_token or access_token was present")
+}
+
 func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Context, userTokenRaw string) (string, int, error) {
 
 	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenRaw)
@@ -49,14 +65,20 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
-	var userDoc user.User
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		return "", http.StatusUnauthorized, fmt.Errorf("user does not exist")
-	} else if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("failed to read user record from database")
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return "", http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return "", http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
@@ -130,20 +152,5 @@ func refreshByAccessToken(transportCtx context.Context, routeCtx routecontext.Co
 		Expires:  time.Now().Add(routeCtx.JwtOptions.TTL),
 	}
 
-	return fmt.Sprintf("%s", userTokenCookie), http.StatusOK, nil
-}
-
-func runHandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
-
-	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
-	if err == nil {
-		return refreshByUserToken(transportCtx, routeCtx, userTokenCookie.Value)
-	}
-
-	accessTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("access_token")
-	if err == nil {
-		return refreshByAccessToken(transportCtx, routeCtx, accessTokenCookie.Value)
-	}
-
-	return "", http.StatusUnauthorized, fmt.Errorf("no valid user_token or access_token was present")
+	return userTokenCookie.String(), http.StatusOK, nil
 }

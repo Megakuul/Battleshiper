@@ -11,19 +11,18 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
-	"github.com/megakuul/battleshiper/pipeline/deploy/initproject"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/megakuul/battleshiper/pipeline/init/eventcontext"
+	"github.com/megakuul/battleshiper/pipeline/init/initproject"
 )
 
 var (
 	REGION                      = os.Getenv("AWS_REGION")
-	DATABASE_ENDPOINT           = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME               = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN         = os.Getenv("DATABASE_SECRET_ARN")
+	BOOTSTRAP_TIMEOUT           = os.Getenv("BOOTSTRAP_TIMEOUT")
+	USERTABLE                   = os.Getenv("USERTABLE")
+	PROJECTTABLE                = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE           = os.Getenv("SUBSCRIPTIONTABLE")
 	TICKET_CREDENTIAL_ARN       = os.Getenv("TICKET_CREDENTIAL_ARN")
 	DEPLOYMENT_SERVICE_ROLE_ARN = os.Getenv("DEPLOYMENT_SERVICE_ROLE_ARN")
 	DEPLOYMENT_TIMEOUT          = os.Getenv("DEPLOYMENT_TIMEOUT")
@@ -51,34 +50,21 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
 	cloudformationClient := cloudformation.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
-	if err != nil {
-		return err
-	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
-	})
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
 	deploymentTimeout, err := time.ParseDuration(DEPLOYMENT_TIMEOUT)
 	if err != nil {
@@ -105,13 +91,16 @@ func run() error {
 		return fmt.Errorf("failed to parse BUILD_JOB_MEMORY environment variable")
 	}
 
-	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, context.TODO(), TICKET_CREDENTIAL_ARN, "", "", 0)
+	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, "", "", 0)
 	if err != nil {
 		return err
 	}
 
 	lambda.Start(initproject.HandleInitProject(eventcontext.Context{
-		Database:             databaseHandle,
+		DynamoClient:         dynamoClient,
+		UserTable:            USERTABLE,
+		ProjectTable:         PROJECTTABLE,
+		SubscriptionTable:    SUBSCRIPTIONTABLE,
 		TicketOptions:        ticketOptions,
 		CloudformationClient: cloudformationClient,
 		DeploymentConfiguration: &eventcontext.DeploymentConfiguration{

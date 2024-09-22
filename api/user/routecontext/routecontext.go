@@ -1,8 +1,8 @@
 package routecontext
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserConfiguration struct {
@@ -11,7 +11,9 @@ type UserConfiguration struct {
 
 // Context provides data to route handlers.
 type Context struct {
+	DynamoClient      *dynamodb.Client
+	UserTable         string
+	SubscriptionTable string
 	JwtOptions        *auth.JwtOptions
-	Database          *mongo.Database
 	UserConfiguration *UserConfiguration
 }

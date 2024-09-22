@@ -3,18 +3,23 @@ package deployproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
+	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func HandleDeployProject(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
@@ -43,16 +48,38 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}
 
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-
-	projectDoc := &project.Project{}
-	err = projectCollection.FindOne(transportCtx, bson.D{
-		{Key: "name", Value: deployClaims.Project},
-		{Key: "owner_id", Value: deployClaims.UserID},
-		{Key: "deleted", Value: false},
-	}).Decode(&projectDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
+		Table: eventCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to fetch project from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return fmt.Errorf("user not found")
+		}
+		return fmt.Errorf("failed to load user record from database")
+	}
+
+	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
+		Table: eventCtx.ProjectTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.Project},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
+			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+		},
+		ConditionExpr: "name = :name AND owner_id = :owner_id AND deleted = :deleted",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return fmt.Errorf("project not found")
+		}
+		return fmt.Errorf("failed to load project from database")
 	}
 
 	// Finish build step
@@ -62,39 +89,79 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	}
 	if strings.ToUpper(deployRequest.Status) != "SUCCEEDED" {
 		buildResult.Successful = false
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_build_result": buildResult,
-				"status":            fmt.Errorf("BUILD FAILED: %v", err),
+
+		buildResultAttributes, err := attributevalue.Marshal(&buildResult)
+		if err != nil {
+			return fmt.Errorf("failed to serialize buildresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_build_result": "last_build_result",
+				"#status":            "status",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_build_result": buildResultAttributes,
+				":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("BUILD FAILED: %v", err)},
+			},
+			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project (last_build_result)")
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
 		return nil
 	} else {
 		buildResult.Successful = true
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_build_result": buildResult,
+
+		buildResultAttributes, err := attributevalue.Marshal(&buildResult)
+		if err != nil {
+			return fmt.Errorf("failed to serialize buildresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_build_result": "last_build_result",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_build_result": buildResultAttributes,
+			},
+			UpdateExpr: "SET #last_build_result = :last_build_result",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project (last_build_result)")
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
 	}
 
-	err = projectCollection.FindOneAndUpdate(transportCtx, bson.D{
-		{Key: "name", Value: deployClaims.Project},
-		{Key: "owner_id", Value: deployClaims.UserID},
-		{Key: "deleted", Value: false},
-	}, bson.M{
-		"$set": bson.M{
-			"pipeline_lock": true,
+	projectDoc, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: eventCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
-	}).Decode(&projectDoc)
+		AttributeNames: map[string]string{
+			"#deleted":       "deleted",
+			"#pipeline_lock": "pipeline_lock",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":deleted":       &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
+		},
+		ConditionExpr: "#deleted = :deleted",
+		UpdateExpr:    "SET #pipeline_lock = :pipeline_lock",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to fetch project from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return fmt.Errorf("project not found")
+		}
+		return fmt.Errorf("failed to lock project on database")
 	}
 	if projectDoc.PipelineLock {
 		return fmt.Errorf("project locked")
@@ -104,39 +171,71 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	deploymentResult := project.DeploymentResult{
 		ExecutionIdentifier: deployRequest.Parameters.ExecutionIdentifier,
 	}
-	if err := deployProject(transportCtx, eventCtx, projectDoc, deployClaims.UserID, deployRequest.Parameters.ExecutionIdentifier); err != nil {
+	if err := deployProject(transportCtx, eventCtx, projectDoc, userDoc.SubscriptionId, deployRequest.Parameters.ExecutionIdentifier); err != nil {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = false
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_deployment_result": deploymentResult,
-				"status":                 fmt.Errorf("DEPLOYMENT FAILED: %v", err),
-				"pipeline_lock":          false,
+
+		deploymentResultAttributes, err := attributevalue.Marshal(&deploymentResult)
+		if err != nil {
+			return fmt.Errorf("failed to serialize deployresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_deployment_result": "last_deployment_result",
+				"#status":                 "status",
+				"#pipeline_lock":          "pipeline_lock",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_deployment_result": deploymentResultAttributes,
+				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DEPLOYMENT FAILED: %v", err)},
+				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			},
+			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project (last_deployment_result)")
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
 		return nil
 	} else {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = true
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_deployment_result": deploymentResult,
-				"status":                 "",
-				"pipeline_lock":          false,
+
+		deploymentResultAttributes, err := attributevalue.Marshal(&deploymentResult)
+		if err != nil {
+			return fmt.Errorf("failed to serialize deployresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_deployment_result": "last_deployment_result",
+				"#status":                 "status",
+				"#pipeline_lock":          "pipeline_lock",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_deployment_result": deploymentResultAttributes,
+				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: ""},
+				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			},
+			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project (last_deployment_result)")
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
 	}
 
 	return nil
 }
 
-func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, userId string, execId string) error {
+func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, subscriptionId string, execId string) error {
 	cloudLogger, err := pipeline.NewCloudLogger(
 		transportCtx,
 		eventCtx.CloudwatchClient,
@@ -150,12 +249,14 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	cloudLogger.WriteLog("START DEPLOYMENT %s", execId)
 	cloudLogger.WriteLog("loading user subscription...")
 
-	subscriptionCollection := eventCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{
-		"id": userId,
-	}).Decode(&subscriptionDoc)
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
+		Table: eventCtx.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: subscriptionId},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
 		cloudLogger.WriteLog("failed to fetch subscription from database")
 		if err := cloudLogger.PushLogs(); err != nil {
@@ -223,13 +324,27 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	if err := cloudLogger.PushLogs(); err != nil {
 		return err
 	}
-	projectCollection := eventCtx.Database.Collection(project.PROJECT_COLLECTION)
-	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-		"$set": bson.M{
-			"shared_infrastructure.prerender_page_keys": buildInformation.PageKeys,
+
+	pageKeyAttributes, err := attributevalue.Marshal(&buildInformation.PageKeys)
+	if err != nil {
+		return fmt.Errorf("failed to serialize page key attributes")
+	}
+
+	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: eventCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
+		AttributeNames: map[string]string{
+			"#shared_infrastructure": "shared_infrastructure",
+			"#prerender_page_keys":   "prerender_page_keys",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":prerender_page_keys": pageKeyAttributes,
+		},
+		UpdateExpr: "SET #shared_infrastructure.#prerender_page_keys = :prerender_page_keys",
 	})
-	if err != nil || result.MatchedCount < 1 {
+	if err != nil {
 		cloudLogger.WriteLog("failed to update page keys on database")
 		if err := cloudLogger.PushLogs(); err != nil {
 			return err

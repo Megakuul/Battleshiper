@@ -3,20 +3,22 @@ package updatealias
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	cloudfrontkeyvaluetypes "github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore/types"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -83,37 +85,57 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	projectCollection := routeCtx.Database.Collection(project.PROJECT_COLLECTION)
-	projectDoc := &project.Project{}
-	err = projectCollection.FindOne(transportCtx, bson.D{
-		{Key: "name", Value: updateAliasInput.ProjectName},
-		{Key: "owner_id", Value: userDoc.Id},
-		{Key: "deleted", Value: false},
-	}).Decode(&projectDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
+	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.ProjectTable,
+		Index: project.GSI_OWNER_ID,
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
+		},
+		ConditionExpr: "owner_id = :owner_id AND name = :name",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
 	if err := validateAliases(projectDoc.Name, updateAliasInput.Aliases); err != nil {
 		return nil, http.StatusBadRequest, err
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(&subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusForbidden, fmt.Errorf("user does not have a valid subscription associated")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription from database")
+	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusBadRequest, fmt.Errorf("user does not have a valid subscription associated")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load subscription from database")
 	}
 
 	if len(updateAliasInput.Aliases) > int(subscriptionDoc.ProjectSpecs.AliasCount) {
@@ -124,13 +146,30 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusInternalServerError, err
 	}
 
-	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-		"$set": bson.M{
-			"aliases": updateAliasInput.Aliases,
+	aliasAttributes, err := attributevalue.Marshal(&updateAliasInput.Aliases)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize alias attributes")
+	}
+
+	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
+		AttributeNames: map[string]string{
+			"#aliases": "aliases",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":aliases": aliasAttributes,
+		},
+		UpdateExpr: "#aliases = :aliases",
 	})
-	if err != nil || result.MatchedCount < 1 {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
 	return &updateAliasOutput{

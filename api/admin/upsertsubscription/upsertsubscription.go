@@ -3,16 +3,18 @@ package upsertsubscription
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
@@ -96,46 +98,51 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	userCollection := routeCtx.Database.Collection(user.USER_COLLECTION)
-
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_SUBSCRIPTION) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	subscriptionCollection := routeCtx.Database.Collection(subscription.SUBSCRIPTION_COLLECTION)
-
-	_, err = subscriptionCollection.UpdateOne(transportCtx, bson.M{"id": upsertSubscriptionInput.Id},
-		bson.M{
-			"$set": subscription.Subscription{
-				Id:   upsertSubscriptionInput.Id,
-				Name: upsertSubscriptionInput.Name,
-				PipelineSpecs: subscription.PipelineSpecs{
-					DailyBuilds:      upsertSubscriptionInput.PipelineSpecs.DailyBuilds,
-					DailyDeployments: upsertSubscriptionInput.PipelineSpecs.DailyDeployments,
-				},
-				ProjectSpecs: subscription.ProjectSpecs{
-					ProjectCount:     upsertSubscriptionInput.ProjectSpecs.ProjectCount,
-					AliasCount:       upsertSubscriptionInput.ProjectSpecs.AliasCount,
-					ServerStorage:    upsertSubscriptionInput.ProjectSpecs.ServerStorage,
-					ClientStorage:    upsertSubscriptionInput.ProjectSpecs.ClientStorage,
-					PrerenderStorage: upsertSubscriptionInput.ProjectSpecs.PrerenderStorage,
-					PrerenderRoutes:  upsertSubscriptionInput.ProjectSpecs.PrerenderRoutes,
-				},
-				CDNSpecs: subscription.CDNSpecs{
-					InstanceCount: upsertSubscriptionInput.CDNSpecs.InstanceCount,
-				},
+	// MIG: Possible with update item and primary key
+	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[subscription.Subscription]{
+		Table: routeCtx.SubscriptionTable,
+		Item: subscription.Subscription{
+			Id:   upsertSubscriptionInput.Id,
+			Name: upsertSubscriptionInput.Name,
+			PipelineSpecs: subscription.PipelineSpecs{
+				DailyBuilds:      upsertSubscriptionInput.PipelineSpecs.DailyBuilds,
+				DailyDeployments: upsertSubscriptionInput.PipelineSpecs.DailyDeployments,
+			},
+			ProjectSpecs: subscription.ProjectSpecs{
+				ProjectCount:     upsertSubscriptionInput.ProjectSpecs.ProjectCount,
+				AliasCount:       upsertSubscriptionInput.ProjectSpecs.AliasCount,
+				ServerStorage:    upsertSubscriptionInput.ProjectSpecs.ServerStorage,
+				ClientStorage:    upsertSubscriptionInput.ProjectSpecs.ClientStorage,
+				PrerenderStorage: upsertSubscriptionInput.ProjectSpecs.PrerenderStorage,
+				PrerenderRoutes:  upsertSubscriptionInput.ProjectSpecs.PrerenderRoutes,
+			},
+			CDNSpecs: subscription.CDNSpecs{
+				InstanceCount: upsertSubscriptionInput.CDNSpecs.InstanceCount,
 			},
 		},
-		options.Update().SetUpsert(true),
-	)
+	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update subscription: %v", err)
 	}
 
 	return &upsertSubscriptionOutput{

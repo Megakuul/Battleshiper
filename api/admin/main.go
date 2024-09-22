@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/helper/database"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
+	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/router"
 
 	"github.com/megakuul/battleshiper/api/admin/deleteproject"
@@ -32,13 +31,19 @@ import (
 )
 
 var (
-	REGION              = os.Getenv("AWS_REGION")
-	JWT_CREDENTIAL_ARN  = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT   = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME       = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN = os.Getenv("DATABASE_SECRET_ARN")
-	API_LOG_GROUP       = os.Getenv("API_LOG_GROUP")
-	PIPELINE_LOG_GROUP  = os.Getenv("PIPELINE_LOG_GROUP")
+	REGION                  = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT       = os.Getenv("BOOTSTRAP_TIMEOUT")
+	USERTABLE               = os.Getenv("USERTABLE")
+	PROJECTTABLE            = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE       = os.Getenv("SUBSCRIPTIONTABLE")
+	JWT_CREDENTIAL_ARN      = os.Getenv("JWT_CREDENTIAL_ARN")
+	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
+	API_LOG_GROUP           = os.Getenv("API_LOG_GROUP")
+	PIPELINE_LOG_GROUP      = os.Getenv("PIPELINE_LOG_GROUP")
+	DELETE_EVENTBUS_NAME    = os.Getenv("DELETE_EVENTBUS_NAME")
+	DELETE_EVENT_SOURCE     = os.Getenv("DELETE_EVENT_SOURCE")
+	DELETE_EVENT_ACTION     = os.Getenv("DELETE_EVENT_ACTION")
+	DELETE_EVENT_TICKET_TTL = os.Getenv("DELETE_EVENT_TICKET_TTL")
 )
 
 func main() {
@@ -49,54 +54,49 @@ func main() {
 }
 
 func run() error {
-	awsConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(REGION))
+	bootstrapTimeout, err := time.ParseDuration(BOOTSTRAP_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse BOOTSTRAP_TIMEOUT environment variable")
+	}
+	bootstrapContext, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	defer cancel()
+
+	awsConfig, err := config.LoadDefaultConfig(bootstrapContext, config.WithRegion(REGION))
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
 	cloudwatchClient := cloudwatchlogs.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
+	eventClient := eventbridge.NewFromConfig(awsConfig)
+
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
+
+	jwtOptions, err := auth.CreateJwtOptions(awsConfig, bootstrapContext, JWT_CREDENTIAL_ARN, 0)
 	if err != nil {
 		return err
 	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
+
+	deleteTicketTTL, err := strconv.Atoi(DELETE_EVENT_TICKET_TTL)
+	if err != nil {
+		return fmt.Errorf("failed to parse DELETE_EVENT_TICKET_TTL environment variable")
+	}
+	deleteTicketOptions, err := pipeline.CreateTicketOptions(
+		awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, time.Duration(deleteTicketTTL)*time.Second)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
-
-	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"subscription_id"}, SortingOrder: 1, Unique: false},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: false},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
-	})
-
-	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
-	if err != nil {
-		return err
-	}
+	deleteEventOptions := pipeline.CreateEventOptions(DELETE_EVENTBUS_NAME, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, deleteTicketOptions)
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		JwtOptions:       jwtOptions,
-		Database:         databaseHandle,
-		CloudwatchClient: cloudwatchClient,
+		DynamoClient:       dynamoClient,
+		UserTable:          USERTABLE,
+		ProjectTable:       PROJECTTABLE,
+		SubscriptionTable:  SUBSCRIPTIONTABLE,
+		JwtOptions:         jwtOptions,
+		EventClient:        eventClient,
+		DeleteEventOptions: deleteEventOptions,
+		CloudwatchClient:   cloudwatchClient,
 		LogConfiguration: &routecontext.LogConfiguration{
 			ApiLogGroup:      API_LOG_GROUP,
 			PipelineLogGroup: PIPELINE_LOG_GROUP,

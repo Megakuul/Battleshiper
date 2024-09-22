@@ -1,27 +1,27 @@
 // contains list with all roles used over the application.
 package rbac
 
-type ROLE int
+type ROLE string
 
 const (
-	USER ROLE = iota
-	SUPPORT
-	MAINTAINER
-	SUBSCRIPTION_MANAGER
-	ROLE_MANAGER
+	USER                 ROLE = "USER"
+	SUPPORT              ROLE = "SUPPORT"
+	MAINTAINER           ROLE = "MAINTAINER"
+	SUBSCRIPTION_MANAGER ROLE = "SUBSCRIPTION_MANAGER"
+	ROLE_MANAGER         ROLE = "ROLE_MANAGER"
 )
 
-type ACCESS int
+type ACCESS string
 
 const (
-	READ_USER ACCESS = iota
-	READ_PROJECT
-	READ_LOGS
-	READ_SUBSCRIPTION
-	WRITE_USER
-	WRITE_PROJECT
-	WRITE_SUBSCRIPTION
-	WRITE_ROLE
+	READ_USER          ACCESS = "READ_USER"
+	READ_PROJECT       ACCESS = "READ_PROJECT"
+	READ_LOGS          ACCESS = "READ_LOGS"
+	READ_SUBSCRIPTION  ACCESS = "READ_SUBSCRIPTION"
+	WRITE_USER         ACCESS = "WRITE_USER"
+	WRITE_PROJECT      ACCESS = "WRITE_PROJECT"
+	WRITE_SUBSCRIPTION ACCESS = "WRITE_SUBSCRIPTION"
+	WRITE_ROLE         ACCESS = "WRITE_ROLE"
 )
 
 var RBAC_MAP = map[ROLE]map[ACCESS]struct{}{
@@ -59,7 +59,7 @@ func CheckPermission(roles map[ROLE]struct{}, access ACCESS) bool {
 // IsPrivileged checks if the user is privileged (has elevated permissions).
 func IsPrivileged(roles map[ROLE]struct{}) bool {
 	for role := range roles {
-		if role > USER {
+		if role != "" && role != USER {
 			return true
 		}
 	}
