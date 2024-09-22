@@ -2,16 +2,19 @@ package callback
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/model/user"
 	"golang.org/x/oauth2"
 )
 
@@ -54,14 +57,25 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
 
-	// MIG: Possible with update item
-	_, err = userCollection.UpdateOne(transportCtx, bson.M{"id": githubUser.ID}, bson.M{
-		"$set": bson.M{
-			"refresh_token": token.RefreshToken,
+	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: strconv.Itoa(int(*githubUser.ID))},
 		},
+		AttributeNames: map[string]string{
+			"#refresh_token": "refresh_token",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":refresh_token": &dynamodbtypes.AttributeValueMemberS{Value: token.RefreshToken},
+		},
+		UpdateExpr: "SET #refresh_token = :refresh_token",
 	})
 	if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("failed to update user refresh_token")
+		// if the user is not registered, setting the refresh token is simply skipped (no error is emitted).
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); !ok {
+			return "", http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		}
 	}
 
 	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)

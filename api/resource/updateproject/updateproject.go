@@ -3,15 +3,19 @@ package updateproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -82,46 +86,96 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query item and primary key
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	updateSpec := bson.M{}
+	updateSpec := map[string]dynamodbtypes.AttributeValue{}
 	if updateProjectInput.BuildImage != "" {
-		updateSpec["build_image"] = updateProjectInput.BuildImage
+		updateSpec["build_image"] = &dynamodbtypes.AttributeValueMemberS{
+			Value: updateProjectInput.BuildImage,
+		}
 	}
 	if updateProjectInput.BuildCommand != "" {
-		updateSpec["build_command"] = updateProjectInput.BuildCommand
+		updateSpec["build_command"] = &dynamodbtypes.AttributeValueMemberS{
+			Value: updateProjectInput.BuildCommand,
+		}
 	}
 	if updateProjectInput.OutputDirectory != "" {
-		updateSpec["output_directory"] = updateProjectInput.OutputDirectory
+		updateSpec["output_directory"] = &dynamodbtypes.AttributeValueMemberS{
+			Value: updateProjectInput.OutputDirectory,
+		}
 	}
 	if updateProjectInput.Repository.Id != 0 {
-		updateSpec["repository"] = project.Repository{
+		repositoryAttributes, err := attributevalue.Marshal(&project.Repository{
 			Id:     updateProjectInput.Repository.Id,
 			URL:    updateProjectInput.Repository.URL,
 			Branch: updateProjectInput.Repository.Branch,
+		})
+		if err != nil {
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize repository")
 		}
+		updateSpec["repository"] = repositoryAttributes
 	}
 
-	// MIG: Possible with put item and primary key + condition owner_id + deleted
-	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
-		{Key: "name", Value: updateProjectInput.ProjectName},
-		{Key: "owner_id", Value: userDoc.Id},
-		{Key: "deleted", Value: false},
-	}, bson.M{
-		"$set": updateSpec,
+	updateAttributeNames, updateAttributeValues, updateExpression := constructFromSpec(updateSpec)
+
+	updateAttributeNames["#owner_id"] = "owner_id"
+	updateAttributeNames["#deleted"] = "deleted"
+	updateAttributeValues[":owner_id"] = &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id}
+	updateAttributeValues[":deleted"] = &dynamodbtypes.AttributeValueMemberBOOL{Value: false}
+
+	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: updateProjectInput.ProjectName},
+		},
+		AttributeNames:  updateAttributeNames,
+		AttributeValues: updateAttributeValues,
+		ConditionExpr:   "#owner_id = :owner_id AND #deleted = :deleted",
+		UpdateExpr:      updateExpression,
 	})
-	if result.MatchedCount < 1 {
-		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
 	return &updateProjectOutput{
 		Message: "project updated",
 	}, http.StatusOK, nil
+}
+
+// constructFromSpec converts a updateSpec map into attributeNames, attributeValues and a updateExpression.
+func constructFromSpec(updateSpec map[string]dynamodbtypes.AttributeValue) (map[string]string, map[string]dynamodbtypes.AttributeValue, string) {
+	var (
+		attributeNames   = map[string]string{}
+		attributeValues  = map[string]dynamodbtypes.AttributeValue{}
+		updateExpression = ""
+	)
+	for key, value := range updateSpec {
+		attributeNames[fmt.Sprintf("#%s", key)] = key
+		attributeValues[fmt.Sprintf(":%s", key)] = value
+		if updateExpression == "" {
+			updateExpression = "SET "
+		} else {
+			updateExpression += ","
+		}
+		updateExpression += fmt.Sprintf("#%s = :%s", key, key)
+	}
+	return attributeNames, attributeValues, updateExpression
 }

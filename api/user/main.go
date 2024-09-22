@@ -5,16 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/helper/database"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 
 	"github.com/megakuul/battleshiper/api/user/fetchinfo"
@@ -24,10 +20,9 @@ import (
 
 var (
 	REGION                = os.Getenv("AWS_REGION")
+	USERTABLE             = os.Getenv("USERTABLE")
+	SUBSCRIPTIONTABLE     = os.Getenv("SUBSCRIPTIONTABLE")
 	JWT_CREDENTIAL_ARN    = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT     = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME         = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN   = os.Getenv("DATABASE_SECRET_ARN")
 	ADMIN_GITHUB_USERNAME = os.Getenv("ADMIN_GITHUB_USERNAME")
 )
 
@@ -44,30 +39,7 @@ func run() error {
 		return fmt.Errorf("failed to load aws config: %v", err)
 	}
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
-	if err != nil {
-		return err
-	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
-
-	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
 	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
 	if err != nil {
@@ -75,8 +47,10 @@ func run() error {
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
-		JwtOptions: jwtOptions,
-		Database:   databaseHandle,
+		DynamoClient:      dynamoClient,
+		UserTable:         USERTABLE,
+		SubscriptionTable: SUBSCRIPTIONTABLE,
+		JwtOptions:        jwtOptions,
 		UserConfiguration: &routecontext.UserConfiguration{
 			AdminUsername: ADMIN_GITHUB_USERNAME,
 		},

@@ -3,6 +3,7 @@ package fetchlog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -96,7 +97,11 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_LOGS) {

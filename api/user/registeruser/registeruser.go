@@ -6,12 +6,11 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -44,44 +43,38 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 		return http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query / put item and primary key (restructure)
-	var userDoc user.User
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		newDoc := user.User{
-			Id:             userToken.Id,
-			Privileged:     false,
-			Provider:       "github",
-			Roles:          map[rbac.ROLE]struct{}{rbac.USER: {}},
-			RefreshToken:   "",
-			SubscriptionId: "",
-			LimitCounter: user.ExecutionLimitCounter{
-				PipelineBuildsExpiration:      0,
-				PipelineBuilds:                0,
-				PipelineDeploymentsExpiration: 0,
-				PipelineDeployments:           0,
-			},
-			GithubData: user.GithubData{
-				InstallationId: 0,
-				Repositories:   []user.Repository{},
-			},
-		}
-
-		if routeCtx.UserConfiguration.AdminUsername != "" {
-			if userToken.Username == routeCtx.UserConfiguration.AdminUsername {
-				newDoc.Privileged = true
-				newDoc.Roles = map[rbac.ROLE]struct{}{rbac.ROLE_MANAGER: {}}
-			}
-		}
-
-		_, err := userCollection.InsertOne(transportCtx, newDoc)
-		if err != nil {
-			return http.StatusBadRequest, fmt.Errorf("failed to insert default user record to database")
-		}
-	} else if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("failed to read user records from database")
+	newDoc := user.User{
+		Id:             userToken.Id,
+		Privileged:     false,
+		Provider:       "github",
+		Roles:          map[rbac.ROLE]struct{}{rbac.USER: {}},
+		RefreshToken:   "",
+		SubscriptionId: "",
+		LimitCounter: user.ExecutionLimitCounter{
+			PipelineBuildsExpiration:      0,
+			PipelineBuilds:                0,
+			PipelineDeploymentsExpiration: 0,
+			PipelineDeployments:           0,
+		},
+		InstallationId: 0,
+		Repositories:   []user.Repository{},
 	}
 
-	// Operation is idempotent; returns OK whether the document already existed or was freshly inserted.
+	if routeCtx.UserConfiguration.AdminUsername != "" {
+		if userToken.Username == routeCtx.UserConfiguration.AdminUsername {
+			newDoc.Privileged = true
+			newDoc.Roles = map[rbac.ROLE]struct{}{rbac.ROLE_MANAGER: {}}
+		}
+	}
+
+	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[user.User]{
+		Table:                   routeCtx.UserTable,
+		Item:                    newDoc,
+		ProtectionAttributeName: "id",
+	})
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("failed to add user: %v", err)
+	}
+
 	return http.StatusOK, nil
 }

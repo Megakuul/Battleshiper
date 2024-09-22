@@ -3,6 +3,7 @@ package listsubscription
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -101,7 +102,11 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_SUBSCRIPTION) {
@@ -113,7 +118,7 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		Limit: -1,
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to fetch subscription: %v", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscriptions: %v", err)
 	}
 
 	foundSubscriptionOutput := []subscriptionOutput{}

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -38,11 +37,7 @@ func PutSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Clien
 		ReturnValues:        dynamodbtypes.ReturnValueNone,
 	})
 	if err != nil {
-		var cErr *dynamodbtypes.ConditionalCheckFailedException
-		if ok := errors.As(err, &cErr); ok {
-			return fmt.Errorf("item does already exist")
-		}
-		return fmt.Errorf("cannot fetch from database")
+		return err
 	}
 
 	return nil

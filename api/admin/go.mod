@@ -7,17 +7,24 @@ toolchain go1.23.1
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.33
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.5
 	github.com/megakuul/battleshiper/lib/helper v0.1.12
 	github.com/megakuul/battleshiper/lib/model v0.2.7
 	github.com/megakuul/battleshiper/lib/router v0.1.0
-	go.mongodb.org/mongo-driver v1.16.1
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.23.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.9.19 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
+	golang.org/x/text v0.18.0 // indirect
 )
 
 require (

@@ -3,6 +3,7 @@ package deleteuser
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -84,7 +85,11 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_USER) || !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_PROJECT) {
@@ -100,7 +105,11 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user to be deleted was not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if deletionUserDoc.Privileged {
@@ -117,7 +126,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		Limit:         1,
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed load projects on database")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")
 	}
 
 	if len(deletionUserProjectDocs) > 0 {
@@ -131,7 +140,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		},
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to delete user from database")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to delete user from database")
 	}
 
 	return &deleteUserOutput{

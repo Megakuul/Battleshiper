@@ -3,18 +3,19 @@ package fetchinfo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
@@ -97,19 +98,23 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query item and primary key
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusUnauthorized, fmt.Errorf("user does not exist")
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user record from database")
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	// MIG: Possible with query item and primary key
-	subscriptionDoc := &subscription.Subscription{}
-	err = subscriptionCollection.FindOne(transportCtx, bson.M{"id": userDoc.SubscriptionId}).Decode(subscriptionDoc)
-	if err == mongo.ErrNoDocuments {
+	if userDoc.SubscriptionId == "" {
 		return &fetchInfoOutput{
 			Id:           userToken.Id,
 			Name:         userToken.Username,
@@ -118,8 +123,22 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 			AvatarURL:    userToken.AvatarURL,
 			Subscription: nil,
 		}, http.StatusOK, nil
-	} else if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to read user subscription from database")
+	}
+
+	subscriptionDoc, err := database.GetSingle[subscriptionOutput](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.SubscriptionTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.SubscriptionId},
+		},
+		ConditionExpr: "id = :id",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("subscription not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	return &fetchInfoOutput{

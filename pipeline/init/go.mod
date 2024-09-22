@@ -1,4 +1,4 @@
-module github.com/megakuul/battleshiper/pipeline/deploy
+module github.com/megakuul/battleshiper/pipeline/init
 
 go 1.23.0
 

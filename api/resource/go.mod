@@ -5,16 +5,21 @@ go 1.22.5
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.33
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.5
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.35.0
 	github.com/megakuul/battleshiper/lib/helper v0.1.12
 	github.com/megakuul/battleshiper/lib/model v0.2.7
 	github.com/megakuul/battleshiper/lib/router v0.1.0
-	go.mongodb.org/mongo-driver v1.16.1
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.23.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.9.19 // indirect
 	github.com/go-playground/webhooks/v6 v6.4.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	go.mongodb.org/mongo-driver v1.16.1 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 )
 

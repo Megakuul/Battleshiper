@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -22,6 +23,8 @@ type CloudfrontConfiguration struct {
 
 // Context provides data to event handlers.
 type Context struct {
+	DynamoClient            *dynamodb.Client
+	ProjectTable            string
 	S3Client                *s3.Client
 	CloudformationClient    *cloudformation.Client
 	CloudfrontCacheClient   *cloudfrontkeyvaluestore.Client

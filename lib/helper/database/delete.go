@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -21,7 +20,7 @@ func DeleteSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Cl
 		Key:       input.PrimaryKey,
 	})
 	if err != nil {
-		return fmt.Errorf("cannot fetch from database")
+		return err
 	}
 
 	return nil

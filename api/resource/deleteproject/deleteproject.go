@@ -3,15 +3,19 @@ package deleteproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
+	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
 type deleteProjectInput struct {
@@ -71,20 +75,28 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with update item and primary key + condition for owner_id and deleted || first fetch then update
-	result, err := projectCollection.UpdateOne(transportCtx, bson.D{
-		{Key: "name", Value: deleteProjectInput.ProjectName},
-		{Key: "owner_id", Value: userToken.Id},
-		{Key: "deleted", Value: false},
-	}, bson.M{
-		"$set": bson.M{
-			"deleted": true,
+	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table:      routeCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{},
+		AttributeNames: map[string]string{
+			"#name":     "name",
+			"#owner_id": "owner_id",
+			"#deleted":  "deleted",
 		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
+		},
+		ConditionExpr: "#owner_id = :owner_id",
+		UpdateExpr:    "SET #deleted = :deleted",
 	})
 	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
-	} else if result.MatchedCount < 1 {
-		return nil, http.StatusNotFound, fmt.Errorf("project '%s' not found", deleteProjectInput.ProjectName)
 	}
 
 	return &deleteProjectOutput{

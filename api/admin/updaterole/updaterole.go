@@ -3,6 +3,7 @@ package updaterole
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -85,6 +86,10 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -110,10 +115,13 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 			":roles":      roles,
 			":privileged": &dynamodbtypes.AttributeValueMemberBOOL{Value: rbac.IsPrivileged(updateRoleInput.Roles)},
 		},
-		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update user on database: %v", err)
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user to update was not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	return &updateRoleOutput{

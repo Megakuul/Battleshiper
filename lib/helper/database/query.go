@@ -28,7 +28,7 @@ func GetSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Clien
 		Limit:                     aws.Int32(1),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("cannot fetch from database")
+		return nil, err
 	}
 
 	var outputStructureList []T
@@ -64,7 +64,7 @@ func GetMany[T any](transportCtx context.Context, dynamoClient *dynamodb.Client,
 		Limit:                     aws.Int32(input.Limit),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("cannot fetch from database")
+		return nil, err
 	}
 
 	var outputStructureList []T

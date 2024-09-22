@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/buildproject"
 	"github.com/megakuul/battleshiper/api/resource/createproject"
@@ -25,20 +25,16 @@ import (
 	"github.com/megakuul/battleshiper/api/resource/updatealias"
 	"github.com/megakuul/battleshiper/api/resource/updateproject"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
 
 var (
 	REGION                  = os.Getenv("AWS_REGION")
+	USERTABLE               = os.Getenv("USERTABLE")
+	PROJECTTABLE            = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE       = os.Getenv("SUBSCRIPTIONTABLE")
 	JWT_CREDENTIAL_ARN      = os.Getenv("JWT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT       = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME           = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN     = os.Getenv("DATABASE_SECRET_ARN")
 	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
 	INIT_EVENTBUS_NAME      = os.Getenv("INIT_EVENTBUS_NAME")
 	INIT_EVENT_SOURCE       = os.Getenv("INIT_EVENT_SOURCE")
@@ -72,36 +68,7 @@ func run() error {
 
 	cloudfrontClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
-	if err != nil {
-		return err
-	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
-
-	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"name"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"owner_id"}, SortingOrder: 1, Unique: false},
-		{FieldNames: []string{"deleted"}, SortingOrder: 1, Unique: false},
-	})
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
 	jwtOptions, err := auth.CreateJwtOptions(awsConfig, context.TODO(), JWT_CREDENTIAL_ARN, 0)
 	if err != nil {
@@ -132,9 +99,12 @@ func run() error {
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
+		DynamoClient:          dynamoClient,
+		UserTable:             USERTABLE,
+		ProjectTable:          PROJECTTABLE,
+		SubscriptionTable:     SUBSCRIPTIONTABLE,
 		CloudwatchClient:      cloudwatchClient,
 		JwtOptions:            jwtOptions,
-		Database:              databaseHandle,
 		EventClient:           eventClient,
 		InitEventOptions:      initEventOptions,
 		BuildEventOptions:     buildEventOptions,

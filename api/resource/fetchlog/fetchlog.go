@@ -3,18 +3,20 @@ package fetchlog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
@@ -86,19 +88,22 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	specifiedProject := &project.Project{}
-	// MIG: Possible with query item and primary key + condition on owner_id and deleted
-	err = projectCollection.FindOne(transportCtx,
-		bson.D{
-			{Key: "owner_id", Value: userToken.Id},
-			{Key: "name", Value: fetchLogInput.ProjectName},
-			{Key: "deleted", Value: false},
+	specifiedProject, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.ProjectTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: fetchLogInput.ProjectName},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-	).Decode(&specifiedProject)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("project not found")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
+		ConditionExpr: "name = :name AND owner_id = :owner_id AND deleted = :deleted",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed load project from database")
 	}
 
 	var logGroup string

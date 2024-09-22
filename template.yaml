@@ -99,7 +99,7 @@ Resources:
         - AttributeName: "id"
           AttributeType: "S"
         - AttributeName: "installation_id"
-          AttributeType: "S"
+          AttributeType: "N"
       GlobalSecondaryIndexes:
         - IndexName: gsi_installation_id
           KeySchema:
@@ -334,7 +334,6 @@ Resources:
         Variables:
           JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
           USERTABLE: !Ref BattleshiperUserTable
-          PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           ADMIN_GITHUB_USERNAME: !Ref GithubAdministratorUsername
       Policies:
@@ -342,8 +341,6 @@ Resources:
             TableName: !Ref BattleshiperUserTable
         - DynamoDBWritePolicy:
             TableName: !Ref BattleshiperUserTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref BattleshiperProjectTable
         - DynamoDBReadPolicy:
             TableName: !Ref BattleshiperSubscriptionTable
       LoggingConfig:
@@ -1115,10 +1112,10 @@ Resources:
                 - "battleshiper.init"
       Environment:
         Variables:
-          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           DEPLOYMENT_SERVICE_ROLE_ARN: !GetAtt BattleshiperPipelineCloudformationServiceRole.Arn
           DEPLOYMENT_TIMEOUT: "400s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
@@ -1288,10 +1285,8 @@ Resources:
             Schedule: "rate(1 hour)"
       Environment:
         Variables:
-          USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
-          SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
-          DELETION_TIMEOUT: "120s"
+          DELETION_TIMEOUT: "240s"
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
       Policies:

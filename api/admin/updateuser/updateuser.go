@@ -3,15 +3,18 @@ package updateuser
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.mongodb.org/mongo-driver/bson"
+
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
@@ -21,8 +24,8 @@ type updateInput struct {
 }
 
 type updateUserInput struct {
-	UserId  string      `json:"user_id"`
-	Updates updateInput `json:"updates"`
+	UserId string      `json:"user_id"`
+	Update updateInput `json:"update"`
 }
 
 type updateUserOutput struct {
@@ -77,34 +80,48 @@ func runHandleUpdateUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query item and primary key
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.WRITE_USER) {
 		return nil, http.StatusForbidden, fmt.Errorf("user does not have sufficient permissions for this action")
 	}
 
-	updateSpec := bson.M{}
-	if updateUserInput.Updates.SubscriptionId != "" {
-		updateSpec["subscription_id"] = updateUserInput.Updates.SubscriptionId
-	}
-
-	// MIG: Possible with update item and primary key
-	result, err := userCollection.UpdateOne(transportCtx, bson.M{"id": updateUserInput.UserId}, bson.M{
-		"$set": updateSpec,
+	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: routeCtx.UserTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+		},
+		AttributeNames: map[string]string{
+			"#subscription_id": "subscription_id",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":subscription_id": &dynamodbtypes.AttributeValueMemberS{Value: updateUserInput.Update.SubscriptionId},
+		},
+		UpdateExpr: "SET #subscription_id = :subscription_id",
 	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch data from database")
-	}
-	if result.MatchedCount < 1 {
-		return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user to update was not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	return &updateUserOutput{
-		Message: "users updated",
+		Message: "user updated",
 	}, http.StatusOK, nil
 }

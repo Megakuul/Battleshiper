@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 )
 
@@ -34,6 +35,10 @@ type ProjectConfiguration struct {
 
 // Context provides data to event handlers.
 type Context struct {
+	DynamoClient            *dynamodb.Client
+	UserTable               string
+	ProjectTable            string
+	SubscriptionTable       string
 	TicketOptions           *pipeline.TicketOptions
 	CloudformationClient    *cloudformation.Client
 	DeploymentConfiguration *DeploymentConfiguration

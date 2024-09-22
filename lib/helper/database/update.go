@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -51,11 +50,7 @@ func UpdateSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Cl
 		ReturnValues:              returnValue,
 	})
 	if err != nil {
-		var cErr *dynamodbtypes.ConditionalCheckFailedException
-		if ok := errors.As(err, &cErr); ok {
-			return nil, fmt.Errorf("item not found")
-		}
-		return nil, fmt.Errorf("cannot fetch from database")
+		return nil, err
 	}
 
 	var outputStructure T

@@ -3,21 +3,23 @@ package buildproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	eventbridgetypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
 
 	"github.com/megakuul/battleshiper/lib/helper/auth"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
@@ -80,23 +82,40 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
-	// MIG: Possible with query item and primary key
-	userDoc := &user.User{}
-	err = userCollection.FindOne(transportCtx, bson.M{"id": userToken.Id}).Decode(&userDoc)
+	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.UserTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+		},
+		ConditionExpr: "id = :id",
+	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	// MIG: Possible with query item and primary key + condition for owner_id (or later check in application code for owner)
-	projectDoc := &project.Project{}
-	err = projectCollection.FindOne(transportCtx, bson.D{
-		{Key: "name", Value: buildProjectInput.ProjectName},
-		{Key: "owner_id", Value: userDoc.Id},
-	}).Decode(&projectDoc)
-	if err == mongo.ErrNoDocuments {
-		return nil, http.StatusNotFound, fmt.Errorf("project does not exist")
-	} else if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project on database")
+	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
+		Table: routeCtx.ProjectTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name": &dynamodbtypes.AttributeValueMemberS{Value: buildProjectInput.ProjectName},
+		},
+		ConditionExpr: "name = :name",
+	})
+	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("project not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
+	}
+
+	if projectDoc.OwnerId != userDoc.Id {
+		return nil, http.StatusForbidden, fmt.Errorf("you are not the owner of this project")
 	}
 	if !projectDoc.Initialized {
 		return nil, http.StatusBadRequest, fmt.Errorf("project is not initialized")
@@ -112,28 +131,55 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 	if err = initiateProjectBuild(transportCtx, routeCtx, execId, userDoc, projectDoc); err != nil {
 		eventResult.Successful = false
 		eventResult.Timepoint = time.Now().Unix()
-		// MIG: Possible with query item and primary key
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_event_result": eventResult,
-				"status":            fmt.Errorf("EVENT FAILED: %v", err),
+
+		eventResultAttributes, err := attributevalue.Marshal(&eventResult)
+		if err != nil {
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: routeCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_event_result": "last_event_result",
+				"#status":            "status",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_event_result": eventResultAttributes,
+				":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("EVENT FAILED: %v", err)},
+			},
+			UpdateExpr: "SET #last_event_result = :last_event_result, #status = :status",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project")
+		if err != nil {
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
 		}
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to initiate project build: %v", err)
 	} else {
 		eventResult.Successful = true
 		eventResult.Timepoint = time.Now().Unix()
-		// MIG: Possible with query item and primary key
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"last_event_result": eventResult,
+
+		eventResultAttributes, err := attributevalue.Marshal(&eventResult)
+		if err != nil {
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
+		}
+
+		_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: routeCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#last_event_result": "last_event_result",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":last_event_result": eventResultAttributes,
+			},
+			UpdateExpr: "SET #last_event_result = :last_event_result",
 		})
-		if err != nil && result.MatchedCount < 1 {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project")
+		if err != nil {
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
 		}
 	}
 
@@ -173,7 +219,11 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 }
 
 func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execId string, userDoc *user.User, projectDoc *project.Project) error {
-	err := pipeline.CheckBuildSubscriptionLimit(transportCtx, routeCtx.Database, userDoc)
+	err := pipeline.CheckBuildSubscriptionLimit(transportCtx, routeCtx.DynamoClient, &pipeline.CheckBuildSubscriptionLimitInput{
+		UserTable:         routeCtx.UserTable,
+		SubscriptionTable: routeCtx.SubscriptionTable,
+		UserDoc:           *userDoc,
+	})
 	if err != nil {
 		return err
 	}

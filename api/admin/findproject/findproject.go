@@ -3,6 +3,7 @@ package findproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -102,7 +103,11 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		ConditionExpr: "id = :id",
 	})
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to load user record from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return nil, http.StatusNotFound, fmt.Errorf("user not found")
+		}
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	if !rbac.CheckPermission(userDoc.Roles, rbac.READ_PROJECT) {
@@ -118,9 +123,10 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.OwnerId},
 			},
 			ConditionExpr: "owner_id = :owner_id",
+			Limit:         -1,
 		})
 		if err != nil {
-			return nil, http.StatusBadRequest, fmt.Errorf("failed load projects on database")
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
 		}
 	} else if findProjectInput.ProjectName != "" {
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
@@ -130,9 +136,10 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				":name": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.ProjectName},
 			},
 			ConditionExpr: "name = :name",
+			Limit:         -1,
 		})
 		if err != nil {
-			return nil, http.StatusBadRequest, fmt.Errorf("failed load projects on database")
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
 		}
 	} else {
 		return nil, http.StatusBadRequest, fmt.Errorf("specify at least one query option")

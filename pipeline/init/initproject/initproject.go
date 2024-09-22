@@ -3,15 +3,17 @@ package initproject
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/aws/aws-lambda-go/events"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
 	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/megakuul/battleshiper/pipeline/init/eventcontext"
 )
 
 func HandleInitProject(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
@@ -43,41 +45,65 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		return fmt.Errorf("action mismatch: provided ticket was not issued for the specified action")
 	}
 
-	projectDoc := &project.Project{}
-	// MIG: Possible with query item and primary key + condition on owner_id
-	err = projectCollection.FindOne(transportCtx, bson.D{
-		{Key: "name", Value: initClaims.Project},
-		{Key: "owner_id", Value: initClaims.UserID},
-	}).Decode(&projectDoc)
+	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
+		Table: eventCtx.ProjectTable,
+		Index: "",
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":name":     &dynamodbtypes.AttributeValueMemberS{Value: initClaims.Project},
+			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: initClaims.UserID},
+		},
+		ConditionExpr: "name = :name AND owner_id = :owner_id",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to fetch project from database")
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return fmt.Errorf("project not found")
+		}
+		return fmt.Errorf("failed to load project from database")
 	}
 
 	err = initProject(transportCtx, eventCtx, projectDoc)
 	if err != nil {
-		// MIG: Possible with update item and primary key
-		result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-			"$set": bson.M{
-				"status":        fmt.Errorf("INITIALIZATION FAILED: %v", err),
-				"pipeline_lock": false,
+		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+			Table: eventCtx.ProjectTable,
+			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
+			AttributeNames: map[string]string{
+				"#status":        "status",
+				"#pipeline_lock": "pipeline_lock",
+			},
+			AttributeValues: map[string]dynamodbtypes.AttributeValue{
+				":status":        &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("INITIALIZATION FAILED: %v", err)},
+				":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			},
+			UpdateExpr: "SET #pipeline_lock = :pipeline_lock, #status = :status",
 		})
-		if err != nil || result.MatchedCount < 1 {
-			return fmt.Errorf("failed to update project on database")
+		if err != nil {
+			return fmt.Errorf("failed to update project: %v", err)
 		}
 		return nil
 	}
 
-	// MIG: Possible with update item and primary key
-	result, err := projectCollection.UpdateByID(transportCtx, projectDoc.MongoID, bson.M{
-		"$set": bson.M{
-			"initialized":   true,
-			"status":        "",
-			"pipeline_lock": false,
+	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		Table: eventCtx.ProjectTable,
+		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
+			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
+		AttributeNames: map[string]string{
+			"#initialized":   "initialized",
+			"#status":        "status",
+			"#pipeline_lock": "pipeline_lock",
+		},
+		AttributeValues: map[string]dynamodbtypes.AttributeValue{
+			":initialized":   &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
+			":status":        &dynamodbtypes.AttributeValueMemberS{Value: ""},
+			":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+		},
+		UpdateExpr: "SET #initialized = :initialized, #pipeline_lock = :pipeline_lock, #status = :status",
 	})
-	if err != nil || result.MatchedCount < 1 {
-		return fmt.Errorf("failed to update project on database")
+	if err != nil {
+		return fmt.Errorf("failed to update project: %v", err)
 	}
 	return nil
 }

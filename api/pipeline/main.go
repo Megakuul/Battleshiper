@@ -11,26 +11,22 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/megakuul/battleshiper/api/pipeline/event"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
-	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
-	"github.com/megakuul/battleshiper/lib/model/project"
-	"github.com/megakuul/battleshiper/lib/model/subscription"
-	"github.com/megakuul/battleshiper/lib/model/user"
 	"github.com/megakuul/battleshiper/lib/router"
 )
 
 var (
 	REGION                       = os.Getenv("AWS_REGION")
+	USERTABLE                    = os.Getenv("USERTABLE")
+	PROJECTTABLE                 = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE            = os.Getenv("SUBSCRIPTIONTABLE")
 	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
-	DATABASE_ENDPOINT            = os.Getenv("DATABASE_ENDPOINT")
-	DATABASE_NAME                = os.Getenv("DATABASE_NAME")
-	DATABASE_SECRET_ARN          = os.Getenv("DATABASE_SECRET_ARN")
 	TICKET_CREDENTIAL_ARN        = os.Getenv("TICKET_CREDENTIAL_ARN")
 	BUILD_EVENTBUS_NAME          = os.Getenv("BUILD_EVENTBUS_NAME")
 	BUILD_EVENT_SOURCE           = os.Getenv("BUILD_EVENT_SOURCE")
@@ -57,35 +53,7 @@ func run() error {
 
 	eventbridgeClient := eventbridge.NewFromConfig(awsConfig)
 
-	databaseOptions, err := database.CreateDatabaseOptions(awsConfig, context.TODO(), DATABASE_SECRET_ARN, DATABASE_ENDPOINT, DATABASE_NAME)
-	if err != nil {
-		return err
-	}
-	databaseClient, err := mongo.Connect(context.TODO(), databaseOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if err = databaseClient.Disconnect(ctx); err != nil {
-			log.Printf("ERROR CLEANUP: %v\n", err)
-		}
-		cancel()
-	}()
-	databaseHandle := databaseClient.Database(DATABASE_NAME)
-
-	database.SetupIndexes(databaseHandle.Collection(user.USER_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-		{FieldNames: []string{"github_data.installation_id"}, SortingOrder: 1, Unique: true},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(project.PROJECT_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"repository.id", "owner_id", "repository.branch"}, SortingOrder: 1, Unique: false},
-	})
-
-	database.SetupIndexes(databaseHandle.Collection(subscription.SUBSCRIPTION_COLLECTION), context.TODO(), []database.Index{
-		{FieldNames: []string{"id"}, SortingOrder: 1, Unique: true},
-	})
+	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
 	webhookClient, err := auth.CreateGithubWebhookClient(awsConfig, context.TODO(), GITHUB_CLIENT_CREDENTIAL_ARN)
 	if err != nil {
@@ -105,9 +73,12 @@ func run() error {
 	}
 
 	httpRouter := router.NewRouter(routecontext.Context{
+		DynamoClient:        dynamoClient,
+		UserTable:           USERTABLE,
+		ProjectTable:        PROJECTTABLE,
+		SubscriptionTable:   SUBSCRIPTIONTABLE,
 		WebhookClient:       webhookClient,
 		CloudwatchClient:    cloudwatchClient,
-		Database:            databaseHandle,
 		EventClient:         eventbridgeClient,
 		BuildEventOptions:   buildEventOptions,
 		DeployTicketOptions: deployTicketOptions,
