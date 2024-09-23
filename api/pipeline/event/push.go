@@ -142,12 +142,21 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 
 	cloudLogger.WriteLog("START INIT %s", execId)
 	cloudLogger.WriteLog("Event triggered by github webhook")
-	cloudLogger.WriteLog("Emitting event to pipeline...")
 	if err := cloudLogger.PushLogs(); err != nil {
 		return err
 	}
 
-	err = emitBuildEvent(transportCtx, routeCtx, execId, userDoc, projectDoc)
+	cloudLogger.WriteLog("Generating installation token...")
+	installToken, _, err := routeCtx.GithubAppClient.Apps.CreateInstallationToken(transportCtx, userDoc.InstallationId, nil)
+	if err != nil {
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to generate installation token: %v", err)
+	}
+
+	cloudLogger.WriteLog("Emitting event to pipeline...")
+	err = emitBuildEvent(transportCtx, routeCtx, execId, installToken.GetToken(), userDoc, projectDoc)
 	if err != nil {
 		cloudLogger.WriteLog("failed to emit build event: %v", err)
 		if err := cloudLogger.PushLogs(); err != nil {
@@ -164,7 +173,7 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 	return nil
 }
 
-func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execId string, userDoc *user.User, projectDoc *project.Project) error {
+func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context, execId, installToken string, userDoc *user.User, projectDoc *project.Project) error {
 	err := pipeline.CheckBuildSubscriptionLimit(transportCtx, routeCtx.DynamoClient, &pipeline.CheckBuildSubscriptionLimitInput{
 		UserTable:         routeCtx.UserTable,
 		SubscriptionTable: routeCtx.SubscriptionTable,
@@ -179,10 +188,18 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 		return fmt.Errorf("failed to create pipeline ticket")
 	}
 
+	// Usage of the installation token like this is documented here:
+	// https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
+	tokenRepositoryUrl := fmt.Sprintf(
+		"https://x-access-token:%s@%s",
+		installToken,
+		strings.TrimPrefix(projectDoc.Repository.URL, "https://"),
+	)
+
 	buildRequest := &event.BuildRequest{
 		ExecutionIdentifier: execId,
 		DeployTicket:        deployTicket,
-		RepositoryURL:       projectDoc.Repository.URL,
+		RepositoryURL:       tokenRepositoryUrl,
 		RepositoryBranch:    projectDoc.Repository.Branch,
 		BuildCommand:        projectDoc.BuildCommand,
 		OutputDirectory:     projectDoc.OutputDirectory,

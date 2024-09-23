@@ -48,6 +48,8 @@ While creating the app, it's important to configure the following parameters:
 Finally, create and extract the following credentials:
 - `client_id`
 - `client_secret`
+- `app_id`
+- `app_secret`
 - `webhook_secret`
 
 
@@ -59,7 +61,7 @@ You can use the `aws cli` to do this:
 ```bash
 export GITHUB_CRED_ARN=$(aws secretsmanager create-secret \
     --name battleshiper-github-credentials \
-    --secret-string '{"client_id":"1234","client_secret":"1234","webhook_secret":"1234"}' \
+    --secret-string '{"client_id":"1234","client_secret":"1234","app_id":"12345","app_secret":"12345","webhook_secret":"1234"}' \
     --query 'ARN' --output text)
 ```
 

@@ -80,12 +80,18 @@ func run() error {
 		return err
 	}
 
+	githubAppClient, err := auth.CreateGithubAppClient(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
 		DynamoClient:        dynamoClient,
 		UserTable:           USERTABLE,
 		ProjectTable:        PROJECTTABLE,
 		SubscriptionTable:   SUBSCRIPTIONTABLE,
 		WebhookClient:       webhookClient,
+		GithubAppClient:     githubAppClient,
 		CloudwatchClient:    cloudwatchClient,
 		EventClient:         eventbridgeClient,
 		BuildEventOptions:   buildEventOptions,

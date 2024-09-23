@@ -553,11 +553,12 @@ Resources:
       Environment:
         Variables:
           BOOTSTRAP_TIMEOUT: "1500ms"
-          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
-          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           USERTABLE: !Ref BattleshiperUserTable
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
+          JWT_CREDENTIAL_ARN: !Ref BattleshiperApiJwtCredentials
+          GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
+          TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           INIT_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           INIT_EVENT_SOURCE: "ch.megakuul.battleshiper"
           INIT_EVENT_ACTION: "battleshiper.init"

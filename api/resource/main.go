@@ -30,28 +30,29 @@ import (
 )
 
 var (
-	REGION                  = os.Getenv("AWS_REGION")
-	BOOTSTRAP_TIMEOUT       = os.Getenv("BOOTSTRAP_TIMEOUT")
-	USERTABLE               = os.Getenv("USERTABLE")
-	PROJECTTABLE            = os.Getenv("PROJECTTABLE")
-	SUBSCRIPTIONTABLE       = os.Getenv("SUBSCRIPTIONTABLE")
-	JWT_CREDENTIAL_ARN      = os.Getenv("JWT_CREDENTIAL_ARN")
-	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
-	INIT_EVENTBUS_NAME      = os.Getenv("INIT_EVENTBUS_NAME")
-	INIT_EVENT_SOURCE       = os.Getenv("INIT_EVENT_SOURCE")
-	INIT_EVENT_ACTION       = os.Getenv("INIT_TICKET_ACTION")
-	INIT_EVENT_TICKET_TTL   = os.Getenv("INIT_TICKET_TTL")
-	BUILD_EVENTBUS_NAME     = os.Getenv("BUILD_EVENTBUS_NAME")
-	BUILD_EVENT_SOURCE      = os.Getenv("BUILD_EVENT_SOURCE")
-	BUILD_EVENT_ACTION      = os.Getenv("BUILD_EVENT_ACTION")
-	DEPLOY_EVENT_SOURCE     = os.Getenv("DEPLOY_EVENT_SOURCE")
-	DEPLOY_EVENT_ACTION     = os.Getenv("DEPLOY_EVENT_ACTION")
-	DEPLOY_EVENT_TICKET_TTL = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
-	DELETE_EVENTBUS_NAME    = os.Getenv("DELETE_EVENTBUS_NAME")
-	DELETE_EVENT_SOURCE     = os.Getenv("DELETE_EVENT_SOURCE")
-	DELETE_EVENT_ACTION     = os.Getenv("DELETE_EVENT_ACTION")
-	DELETE_EVENT_TICKET_TTL = os.Getenv("DELETE_EVENT_TICKET_TTL")
-	CLOUDFRONT_CACHE_ARN    = os.Getenv("CLOUDFRONT_CACHE_ARN")
+	REGION                       = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT            = os.Getenv("BOOTSTRAP_TIMEOUT")
+	USERTABLE                    = os.Getenv("USERTABLE")
+	PROJECTTABLE                 = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE            = os.Getenv("SUBSCRIPTIONTABLE")
+	JWT_CREDENTIAL_ARN           = os.Getenv("JWT_CREDENTIAL_ARN")
+	GITHUB_CLIENT_CREDENTIAL_ARN = os.Getenv("GITHUB_CLIENT_CREDENTIAL_ARN")
+	TICKET_CREDENTIAL_ARN        = os.Getenv("TICKET_CREDENTIAL_ARN")
+	INIT_EVENTBUS_NAME           = os.Getenv("INIT_EVENTBUS_NAME")
+	INIT_EVENT_SOURCE            = os.Getenv("INIT_EVENT_SOURCE")
+	INIT_EVENT_ACTION            = os.Getenv("INIT_TICKET_ACTION")
+	INIT_EVENT_TICKET_TTL        = os.Getenv("INIT_TICKET_TTL")
+	BUILD_EVENTBUS_NAME          = os.Getenv("BUILD_EVENTBUS_NAME")
+	BUILD_EVENT_SOURCE           = os.Getenv("BUILD_EVENT_SOURCE")
+	BUILD_EVENT_ACTION           = os.Getenv("BUILD_EVENT_ACTION")
+	DEPLOY_EVENT_SOURCE          = os.Getenv("DEPLOY_EVENT_SOURCE")
+	DEPLOY_EVENT_ACTION          = os.Getenv("DEPLOY_EVENT_ACTION")
+	DEPLOY_EVENT_TICKET_TTL      = os.Getenv("DEPLOY_EVENT_TICKET_TTL")
+	DELETE_EVENTBUS_NAME         = os.Getenv("DELETE_EVENTBUS_NAME")
+	DELETE_EVENT_SOURCE          = os.Getenv("DELETE_EVENT_SOURCE")
+	DELETE_EVENT_ACTION          = os.Getenv("DELETE_EVENT_ACTION")
+	DELETE_EVENT_TICKET_TTL      = os.Getenv("DELETE_EVENT_TICKET_TTL")
+	CLOUDFRONT_CACHE_ARN         = os.Getenv("CLOUDFRONT_CACHE_ARN")
 )
 
 func main() {
@@ -121,12 +122,18 @@ func run() error {
 	}
 	deleteEventOptions := pipeline.CreateEventOptions(DELETE_EVENTBUS_NAME, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, deleteTicketOptions)
 
+	githubAppClient, err := auth.CreateGithubAppClient(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
+	if err != nil {
+		return err
+	}
+
 	httpRouter := router.NewRouter(routecontext.Context{
 		DynamoClient:          dynamoClient,
 		UserTable:             USERTABLE,
 		ProjectTable:          PROJECTTABLE,
 		SubscriptionTable:     SUBSCRIPTIONTABLE,
 		CloudwatchClient:      cloudwatchClient,
+		GithubAppClient:       githubAppClient,
 		JwtOptions:            jwtOptions,
 		EventClient:           eventClient,
 		InitEventOptions:      initEventOptions,
