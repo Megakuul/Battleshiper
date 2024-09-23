@@ -53,7 +53,7 @@ type fetchInfoOutput struct {
 	Provider  string                 `json:"provider"`
 	AvatarURL string                 `json:"avatar_url"`
 
-	Subscription *subscriptionOutput `json:"subscriptions"`
+	Subscription *subscriptionOutput `json:"subscription"`
 }
 
 // HandleFetchInfo fetches user information from the database cluster.

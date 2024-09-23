@@ -61,4 +61,5 @@ const config = {
 	},
 };
 
+/** @type {import('tailwindcss').Config} */
 export default config;

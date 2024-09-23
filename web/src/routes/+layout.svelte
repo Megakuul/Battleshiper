@@ -3,8 +3,11 @@
 	import BattleshiperIcon from "$lib/assets/BattleshiperIcon.svg"
   import * as Sheet from "$lib/components/ui/sheet";
   import { Button } from "$lib/components/ui/button";
+  import { Toaster } from "$lib/components/ui/sonner";
 
 </script>
+
+<Toaster />
 
 <div class="app">
 	<nav class="h-24 flex flex-row w-full lg:w-auto justify-evenly items-center bg-black">

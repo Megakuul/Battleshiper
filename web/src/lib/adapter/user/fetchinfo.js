@@ -35,7 +35,7 @@
  * @property {Object.<ROLE, null>} roles
  * @property {string} provider
  * @property {string} avatar_url
- * @property {subscriptionOutput} [subscriptions]
+ * @property {subscriptionOutput} subscription
  */
 
 /**

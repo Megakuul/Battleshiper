@@ -1,3 +1,5 @@
+import { Authorize } from "../auth/authorize";
+
 /**
  * Registers the user on the database.
  * @throws {Error}
@@ -9,6 +11,8 @@ export const RegisterUser = async () => {
   })
   if (res.ok) {
     return;
+  } else if (res.status === 401) {
+    Authorize()
   } else {
     throw new Error(await res.text());
   }
