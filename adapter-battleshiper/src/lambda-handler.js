@@ -12,28 +12,41 @@ const server = new Server(manifest);
 export const handler = async (event, context) => {
   await server.init({ env: process.env });
 
-  const url = new URL(`${event.requestContext.http.protocol}://${event.requestContext.domainName}/${event.rawPath}${event.rawQueryString}`);
+  try {
+    const url = new URL(`https://${event.requestContext.domainName}/${event.rawPath}${event.rawQueryString}`);
 
-  /** @type {Request} */
-  const req = new Request(url, {
-    method: event.requestContext.http.method,
-    headers: new Headers(event.headers),
-    body: event.body,
-  })
+    /** @type {Request} */
+    const req = new Request(url, {
+      method: event.requestContext.http.method,
+      headers: new Headers(event.headers),
+      body: event.body,
+    })
+  
+    /** @type {Response} */
+    const res = await server.respond(req, {
+      platform: { context },
+      getClientAddress: (request) => {
+        return event.headers["x-forwarded-for"] || event.requestContext.http.sourceIp;
+      }
+    })
 
-  /** @type {Response} */
-  const res = await server.respond(req, {
-    platform: { context },
-    getClientAddress: (request) => {
-      return event.headers["x-forwarded-for"] || event.requestContext.http.sourceIp;
+    return {
+      statusCode: res.status,
+      headers: Object.fromEntries(res.headers.entries()),
+      body: await res.text(),
+      isBase64Encoded: false,
     }
-  })
-
-  return {
-    statusCode: res.status,
-    headers: res.headers,
-    // Object.fromEntries(res.headers.entries())
-    body: await res.text(),
-    isBase64Encoded: false,
+  } catch (err) {
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: {
+        message: `internal server error`,
+        error: DEBUGMODE ? err.message : undefined,
+      },
+      isBase64Encoded: false,
+    }
   }
 };

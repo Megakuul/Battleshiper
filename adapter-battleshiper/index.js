@@ -5,7 +5,7 @@ import { posix } from 'node:path';
 import AdmZip from "adm-zip"; 
 
 /** @param {import('./index.js').default} */
-export default function (options = {}) {
+export default function (options) {
 	/** @type {import('@sveltejs/kit').Adapter} */
 	const adapter = {
 		name: '@megakuul/adapter-battleshiper',
@@ -38,6 +38,7 @@ export default function (options = {}) {
           SERVER: `${builder.getServerDirectory()}/index.js`,
           SHIMS: `${src}/shims.js`,
           MANIFEST: `${tmp}/manifest.js`,
+          DEBUGMODE: options?.debug ? true : false,
         }
       })
 
@@ -69,7 +70,7 @@ export default function (options = {}) {
 
       try {
         const zip = new AdmZip();
-        zip.addLocalFile(`${dest}/server/index.js`, "", "index.js");
+        zip.addLocalFile(`${dest}/server/index.js`, "", "index.mjs");
         await zip.writeZipPromise(`${dest}/server/handler.zip`);
       } catch (err) {
         console.error("failed to create zip file:")

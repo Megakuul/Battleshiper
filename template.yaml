@@ -1739,6 +1739,12 @@ Resources:
 
 
 Outputs:
+  BattleshiperWebBucket:
+    Description: "Bucketname of the internal battleshiper asset bucket"
+    Value: !Ref BattleshiperStaticBucket
+  BattleshiperProjectWebBucket:
+    Description: "Bucketname of the battleshiper project asset bucket"
+    Value: !Ref BattleshiperProjectStaticBucket
   BattleshiperCDNHost:
     Description: "Hostname of the battleshiper-cdn."
     Value: !GetAtt BattleshiperCDN.DomainName

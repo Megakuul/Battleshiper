@@ -3,4 +3,4 @@
 build-BattleshiperApiWebFunc:
 	npm ci
 	npm run build
-	cp build/server/index.js "$(ARTIFACTS_DIR)/index.js"
+	cp build/server/index.js "$(ARTIFACTS_DIR)/index.mjs"

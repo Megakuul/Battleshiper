@@ -1,128 +1,70 @@
 # Battleshiper
 
+Battleshiper - A Serverless Sveltekit Deployment Platform. 
 
-## Preparation
----
-To set up Battleshiper, the following prerequisites are required:
-- `aws cli`
-- `aws sam cli`
-- `active aws acm certificate`
-- `github application`
-- `github application credentials`
-
-### CLI Tools 
-You can install the cli tools with your local package manager:
-```bash
-yay -S aws-cli-v2 aws-sam-cli
-```
+![battleshiper favicon](/web/static/favicon.png "battleshiper favicon")
 
 
+[How to setup Battleshiper?](/docs/SETUP.md)
 
-### ACM Certificate
-You can use the `aws cli` to generate an ACM certificate for the desired Battleshiper domain:
-```bash
-export DOMAIN="battleshiper.dev"
-export CERT_ARN=$(aws acm request-certificate --region us-east-1 --domain-name $DOMAIN --validation-method DNS --query 'CertificateArn' --output text)
-aws acm describe-certificate --region us-east-1 --certificate-arn $CERT_ARN --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
-```
+[How to update Battleshiper?](/docs/UPDATE.md)
 
-Next create a wildcard certificate on your domain, this certificate will be used for the projects hosted on battleshiper:
-```bash
-export WILD_CERT_ARN=$(aws acm request-certificate --region us-east-1 --domain-name "*.$DOMAIN" --validation-method DNS --query 'CertificateArn' --output text)
-aws acm describe-certificate --region us-east-1 --certificate-arn $WILD_CERT_ARN --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
-```
-
-To activate the certificates, you must add the specified DNS records to your domain.
+[How to delete Battleshiper?](/docs/DELETE.md)
 
 
-### GitHub Application
-Create the application via the GitHub interface. If you need guidance, refer to their [documentation](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app).
-
-While creating the app, it's important to configure the following parameters:
-- Set Callback URL to https://$DOMAIN/api/auth/callback.
-- Enable Webhook and set the URL to https://$DOMAIN/api/pipeline/event.
-- Create a strong Webhook secret and remember it for the next step.
-- 
-
-Finally, create and extract the following credentials:
-- `client_id`
-- `client_secret`
-- `webhook_secret`
-
-
-
-### GitHub Application Credentials
-To make the credentials accessible to your system, create a secret in AWS Secrets Manager containing the extracted credentials.
-
-You can use the `aws cli` to do this:
-```bash
-export GITHUB_CRED_ARN=$(aws secretsmanager create-secret \
-    --name battleshiper-github-credentials \
-    --secret-string '{"client_id":"1234","client_secret":"1234","webhook_secret":"1234"}' \
-    --query 'ARN' --output text)
-```
-
-Finally extract the ARN, which will be used later for deployment.
-
-
-
-## Deployment
----
-Battleshiper can be deployed with the `aws sam cli`.
-
-First compile the lambda functions:
-```bash
-sam build
-```
-
-Then deploy them to aws with deploy:
-```bash
-sam deploy --parameter-overrides ApplicationDomain=$DOMAIN ApplicationDomainCertificateArn=$CERT_ARN ApplicationDomainWildcardCertificateArn=$WILD_CERT_ARN GithubOAuthClientCredentialArn=$GITHUB_CRED_ARN GithubAdministratorUsername=Megakuul
-```
-
-Specify your Github username as `GithubAdministratorUsername`. Doing so will grant your account the `ROLE_MANAGER` role during registration.
-This is the highest privilege role, allowing you to assign all other roles to your account.
-
-
-## Finalize
+## Architecture
 ---
 
-To finalize the deployment, first you need to add two dns records to your provider:
+Battleshiper is composed of three core systems.
+- Internal
+- Project
+- Pipeline
 
-1. For the base domain, set the CNAME to the battleshiper cdn hostname found in the sam output:
-```bash
-CNAME $DOMAIN <BATTLESHIPER-CDN-HOST>
-```
-
-2. For the wildcard domain, set the CNAME to the battleshiper project cdn hostname found in the sam output:
-```bash
-CNAME *.$DOMAIN <BATTLESHIPER-PROJECT-CDN-HOST>
-```
+All of those systems serve specific use cases that are explained below.
 
 
-## Update
----
-If you want to update the Battleshiper system, you can simply update the sam stack and then redeploy it:
-```bash
-sam build
+### Internal System
 
-sam deploy
-```
-
-**IMPORTANT**:
-- You can only update the internal Battleshiper components, project stacks must be updated manually if necessary.
-- If you update the system you must ensure that all updated properties can be "updated" by cloudformation.
+![internal system architecture](/docs/assets/battleshiper_internal.png)
+(example is illustrative and not fully comprehensive)
 
 
-## Delete
----
-To fully remove the Battleshiper system you first need to delete all project stacks.
-Those stacks can be found in the cloudformation console and can simply be deleted.
 
-After all project stacks are cleaned up, you can delete the internal Battleshiper system with the sam cli:
-```bash
-sam delete --stack-name battleshiper
-```
+The internal system primarily consists of the Battleshiper API, which serves as the interface for the entire application.
 
-**IMPORTANT**:
-If deletion fails due to dependencies on VPC components, make sure to delete all lambda network interfaces (ENIs). Since ENIs are managed by lambda, not cloudformation, there can be a slight delay in their removal, as noted [here](https://stackoverflow.com/questions/41299662/aws-lambda-created-eni-not-deleting-while-deletion-of-stack), which may cause issues.
+In addition to the API, the system includes a DynamoDB database (painfully migrated from DocumentDB), which stores all user, subscription, and project data. To provide a dashboard, the internal system uses a custom CloudFront instance in combination with an S3 bucket to host the web dashboard (which is controlled by a catch-all API SvelteKit server function).
+
+
+### Project System
+
+![project system architecture](/docs/assets/battleshiper_project.png)
+(example is illustrative and not fully comprehensive)
+
+
+
+The project system is the core product of Battleshiper, providing the infrastructure that powers customer projects.
+
+This system consists of a core CloudFront instance used for all customer projects. The structure of SvelteKit applications is leveraged to create a highly efficient system: All static assets (`/_app/*`) and prerendered pages are stored in an S3 bucket. A CloudFront Function (CacheRouteFunc) routes requests to the corresponding bucket path based on the requested hostname.
+
+Requests for static assets are cached after being fetched once, utilizing CloudFronts native caching mechanisms.
+
+Traffic for non-static content is sent to a custom router Lambda function, which directly invokes the corresponding project function. CloudFront is connected to the Lambda via an API Gateway that redirects all traffic to the router. Initially, the API Gateway was responsible for routing, but due to its limitations, a custom router function was added.
+
+To inform the router about which project it must route to, another CloudFront Function (ServerRouteFunc) adds the requested project as a custom header to the request.
+
+Finally, there are specific considerations for prerendered pages. If a user requests a prerendered page without specifying the `.html` extension, CloudFront cannot identify it as prerendered. To resolve this, entries for all prerendered pages are stored in a CloudFront edge cache (Route Cache). The function checks these entries and, on a match, manually adds the .html extension.
+
+
+### Pipeline System
+
+![pipeline system architecture](/docs/assets/battleshiper_pipeline.png)
+(example is illustrative and not fully comprehensive)
+
+
+The pipeline system is the backbone of Battleshiper, used to build, deploy, and control projects.
+
+The core product of this system is an API controlled by a central EventBridge bus. The API functions are used to initialize, deploy, and delete projects. Additionally, a Batch Job Queue is employed to build the projects.
+
+To ensure the user-defined build process is fully isolated, a custom VPC is dedicated to the build Batch Jobs. During the build process, each project is granted permission to write data to a specific prefix in the build asset S3 bucket, where data is automatically cleaned up after a few days. The build assets are later validated and transferred from this bucket into the project system.
+
+For added security, the execution of API functions requires a ticket. This ticket contains details about the source, destination, project, and user involved, and is signed with a key stored in SecretsManager. This mechanism ensures that the execution of pipeline functions is not solely restricted by IAM permissions to the event bus.

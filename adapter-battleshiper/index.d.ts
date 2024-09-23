@@ -1,3 +1,7 @@
 import { Adapter } from '@sveltejs/kit';
 
-export default function plugin(opts?: {}): Adapter;
+export interface AdapterOptions {
+	debug?: bool;
+}
+
+export default function plugin(options?: AdapterOptions): Adapter;
