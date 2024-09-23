@@ -19,10 +19,6 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type findUserInput struct {
-	UserId string `json:"user_id"`
-}
-
 type userOutput struct {
 	Id             string                 `json:"id"`
 	Privileged     bool                   `json:"privileged"`
@@ -68,11 +64,7 @@ func HandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context
 }
 
 func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findUserOutput, int, error) {
-	var findUserInput findUserInput
-	err := json.Unmarshal([]byte(request.Body), &findUserInput)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
-	}
+	UserId := request.QueryStringParameters["user_id"]
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -108,7 +100,7 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Table: routeCtx.UserTable,
 		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":id": &dynamodbtypes.AttributeValueMemberS{Value: findUserInput.UserId},
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: UserId},
 		},
 		ConditionExpr: "id = :id",
 	})

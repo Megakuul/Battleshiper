@@ -18,11 +18,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type RefreshResponse struct {
-	AccessToken string `json:"AccessToken"`
-	Error       string `json:"Error"`
-}
-
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
 func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	cookie, code, err := runHandleRefresh(request, transportCtx, routeCtx)

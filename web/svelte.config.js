@@ -4,7 +4,7 @@ import adapter from "@megakuul/adapter-battleshiper";
 const config = {
 	kit: {
 		adapter: adapter({
-			debug: true,
+			debug: false,
 		}),
 	}
 };

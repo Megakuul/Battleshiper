@@ -20,11 +20,6 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-type findProjectInput struct {
-	ProjectName string `json:"project_name"`
-	OwnerId     string `json:"owner_id"`
-}
-
 type repositoryOutput struct {
 	Id     int64  `json:"id"`
 	URL    string `json:"url"`
@@ -78,11 +73,8 @@ func HandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx cont
 }
 
 func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*findProjectOutput, int, error) {
-	var findProjectInput findProjectInput
-	err := json.Unmarshal([]byte(request.Body), &findProjectInput)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to deserialize request: invalid body")
-	}
+	OwnerId := request.QueryStringParameters["owner_id"]
+	ProjectName := request.QueryStringParameters["project_name"]
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
@@ -115,12 +107,12 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	var foundProjectDocs []project.Project
-	if findProjectInput.OwnerId != "" {
+	if OwnerId != "" {
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
 			Table: routeCtx.ProjectTable,
 			Index: project.GSI_OWNER_ID,
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
-				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.OwnerId},
+				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: OwnerId},
 			},
 			ConditionExpr: "owner_id = :owner_id",
 			Limit:         -1,
@@ -128,12 +120,12 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
 		}
-	} else if findProjectInput.ProjectName != "" {
+	} else if ProjectName != "" {
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
 			Table: routeCtx.ProjectTable,
 			Index: "",
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
-				":name": &dynamodbtypes.AttributeValueMemberS{Value: findProjectInput.ProjectName},
+				":name": &dynamodbtypes.AttributeValueMemberS{Value: ProjectName},
 			},
 			ConditionExpr: "name = :name",
 			Limit:         -1,

@@ -10,7 +10,7 @@
 	},
 	"devDependencies": {
 		"@fontsource/fira-mono": "^4.5.10",
-		"@megakuul/adapter-battleshiper": "^0.4.0",
+		"@megakuul/adapter-battleshiper": "^0.5.0",
 		"@neoconfetti/svelte": "^1.0.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^3.0.0",

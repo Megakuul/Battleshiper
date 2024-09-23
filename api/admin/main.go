@@ -107,7 +107,7 @@ func run() error {
 	httpRouter.AddRoute("GET", "/api/admin/findproject", findproject.HandleFindProject)
 	httpRouter.AddRoute("PATCH", "/api/admin/updateuser", updateuser.HandleUpdateUser)
 	httpRouter.AddRoute("PATCH", "/api/admin/updaterole", updaterole.HandleUpdateRole)
-	httpRouter.AddRoute("GET", "/api/admin/fetchlog", fetchlog.HandleFetchLog)
+	httpRouter.AddRoute("POST", "/api/admin/fetchlog", fetchlog.HandleFetchLog)
 	httpRouter.AddRoute("GET", "/api/admin/listsubscription", listsubscription.HandleListSubscription)
 	httpRouter.AddRoute("PUT", "/api/admin/upsertsubscription", upsertsubscription.HandleUpsertSubscription)
 	httpRouter.AddRoute("DELETE", "/api/admin/deleteuser", deleteuser.HandleDeleteUser)

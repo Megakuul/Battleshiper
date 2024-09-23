@@ -139,7 +139,7 @@ func run() error {
 
 	httpRouter.AddRoute("GET", "/api/resource/listrepository", listrepository.HandleListRepositories)
 	httpRouter.AddRoute("GET", "/api/resource/listproject", listproject.HandleListProject)
-	httpRouter.AddRoute("GET", "/api/resource/fetchlog", fetchlog.HandleFetchLog)
+	httpRouter.AddRoute("POST", "/api/resource/fetchlog", fetchlog.HandleFetchLog)
 	httpRouter.AddRoute("POST", "/api/resource/createproject", createproject.HandleCreateProject)
 	httpRouter.AddRoute("POST", "/api/resource/buildproject", buildproject.HandleBuildProject)
 	httpRouter.AddRoute("POST", "/api/resource/updatealias", updatealias.HandleUpdateAlias)

@@ -1,0 +1,12 @@
+/**
+ * @typedef {(
+ * "USER" | "SUPPORT" | "MAINTAINER" | "SUBSCRIPTION_MANAGER" | "ROLE_MANAGER"
+ * )} ROLE
+ */
+
+/**
+ * @typedef {(
+ * "READ_USER" | "READ_PROJECT" | "READ_LOGS" | "READ_SUBSCRIPTION" | "WRITE_USER" | "WRITE_PROJECT" | "WRITE_SUBSCRIPTION" | "WRITE_ROLE"
+ * )} ACCESS
+ */
+

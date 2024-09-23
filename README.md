@@ -2,14 +2,18 @@
 
 Battleshiper - A Serverless Sveltekit Deployment Platform. 
 
-![battleshiper favicon](/web/static/favicon.png "battleshiper favicon")
+![battleshiper favicon](/web/static/battleshiper.svg "battleshiper favicon")
 
 
-[How to setup Battleshiper?](/docs/SETUP.md)
+## Installation
+---
 
-[How to update Battleshiper?](/docs/UPDATE.md)
+- [[How to setup Battleshiper?](/docs/SETUP.md)]
 
-[How to delete Battleshiper?](/docs/DELETE.md)
+- [[How to update Battleshiper?](/docs/UPDATE.md)]
+
+- [[How to delete Battleshiper?](/docs/DELETE.md)]
+
 
 
 ## Architecture
