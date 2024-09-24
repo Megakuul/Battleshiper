@@ -13,11 +13,10 @@
   import { fade } from "svelte/transition";
   import BorderBeam from "$lib/components/BorderBeam.svelte";
   import { goto } from "$app/navigation";
+  import { ProjectInfo } from "$lib/stores";
+    import { toast } from "svelte-sonner";
 
-  /** @type {import("$lib/adapter/resource/listproject").listProjectOutput}*/
-  let ProjectInfo;
-
-
+  /** @type {string} */
   let Error = "";
 
   let Hostname = "";
@@ -25,20 +24,40 @@
   onMount(async () => {
     Hostname = window.location.hostname;
     try {
-      ProjectInfo = await ListProject();
+      if (!$ProjectInfo) {
+        $ProjectInfo = await ListProject();
+      }
     } catch (/** @type {any} */ err) {
       Error = err.message;
     }
   })
 </script>
 
-{#if ProjectInfo}
-  <div class="flex flex-col gap-8 justify-center mt-12 mb-16">
+{#if $ProjectInfo}
+  <div class="flex flex-col gap-8 items-center mt-12 mb-16">
     <h1 class="text-6xl font-bold text-center text-slate-200/80 ">Projects</h1>
-    <Button variant="ghost" class="self-center" on:click={() => goto("/project/new")}>Create new Project</Button>
+    <div class="flex flex-row gap-2">
+      <Button variant="ghost" class="text-sm md:text-xl" on:click={async () => {
+        try {
+          $ProjectInfo = await ListProject();
+          toast("Success", {
+            description: "Projects refreshed",
+          })
+        } catch (/** @type {any} */ err) {
+          Error = err.message;
+          toast("Error", {
+            description: err.message,
+          })
+        }
+      }}>Refresh Projects <Icon icon="line-md:rotate-270" class="ml-1" />
+      </Button>
+      <Button variant="ghost" class="text-sm md:text-xl" on:click={() => goto("/project/new")}>
+        Create new Project <Icon icon="line-md:folder-plus" class="ml-1" />
+      </Button>
+    </div>
   </div>
-  <div class="flex flex-col gap-12 items-center h-[80vh] overflow-scroll-hidden">
-    {#each ProjectInfo.projects as project}
+  <div class="flex flex-col gap-12 mb-10 items-center h-[80vh] overflow-scroll-hidden">
+    {#each $ProjectInfo.projects as project}
       <div class="relative w-9/12 group flex flex-row items-center p-6 rounded-lg overflow-hidden cursor-pointer bg-slate-900/10 border-[1px] border-slate-200/15">
         <BorderBeam size={150} duration={10} colorFrom="#304352" colorTo="#d7d2cc" class="transition-all duration-700 opacity-0 group-hover:opacity-100" />
         <Tooltip.Root>

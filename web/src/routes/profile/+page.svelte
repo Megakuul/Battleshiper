@@ -12,16 +12,16 @@
   import { Authorize } from "$lib/adapter/auth/authorize";
   import SpecItem from "./SpecItem.svelte";
   import { fade } from "svelte/transition";
+  import { UserInfo } from "$lib/stores";
 
-
-  /** @type {import("$lib/adapter/user/fetchinfo").fetchInfoOutput}*/
-  let UserInfo
-
+  /** @type {string} */
   let Error = "";
 
   onMount(async () => {
     try {
-      UserInfo = await FetchInfo();
+      if (!$UserInfo) {
+        $UserInfo = await FetchInfo();
+      }
     } catch (/** @type {any} */ err) {
       Error = err.message;
     }
@@ -36,23 +36,23 @@
   }
 </script>
 
-{#if UserInfo}
+{#if $UserInfo}
   <div transition:fade class="flex flex-col gap-8 lg:flex-row my-20 min-h-[80vh] mx-6 md:mx-12">
     <div class="w-full bg-slate-800 bg-opacity-55 p-6 md:p-12 rounded-lg overflow-hidden flex flex-col justify-center items-center gap-4">
       <div class="flex flex-row justify-start items-start gap-4">
         <Avatar.Root class="h-16 md:h-20 w-16 md:w-20">
-          <Avatar.Image src="{UserInfo.avatar_url}" alt="{UserInfo.name}" />
+          <Avatar.Image src="{$UserInfo.avatar_url}" alt="{$UserInfo.name}" />
           <Avatar.Fallback>-</Avatar.Fallback>
         </Avatar.Root>
         <div class="flex flex-col">
-          <h1 class="text-3xl md:text-6xl opacity-80 font-bold">{UserInfo.name}</h1>
-          <h2 class="text-xl md:text-3xl opacity-80 mb-4">#{UserInfo.id}</h2>
+          <h1 class="text-3xl md:text-6xl opacity-80 font-bold">{$UserInfo.name}</h1>
+          <h2 class="text-xl md:text-3xl opacity-80 mb-4">#{$UserInfo.id}</h2>
           <h2 class="text-xl md:text-3xl opacity-80"><span class="font-bold">Provider: </span>
-            <span class="lowercase text-[rgba(132,62,35,1)]">"{UserInfo.provider}"</span>
+            <span class="lowercase text-[rgba(132,62,35,1)]">"{$UserInfo.provider}"</span>
           </h2>
           <h2 class="text-xl md:text-3xl opacity-80">
             <span class="font-bold block">Roles: <span class="text-yellow-700">[</span></span>
-              {#each Object.entries(UserInfo.roles) as role}
+              {#each Object.entries($UserInfo.roles) as role}
                 <span class="lowercase ml-4 block text-[rgba(132,62,35,1)]">"{role[0]}",</span>
               {/each}
             <span class="font-bold block text-yellow-700">]</span></h2>
@@ -61,71 +61,71 @@
     </div>
 
     <div class="w-full bg-slate-800 bg-opacity-55 rounded-lg p-12 max-h-[80vh] overflow-scroll-hidden flex flex-col items-center gap-4"> 
-      {#if UserInfo.subscription}
-        <h1 class="text-3xl md:text-6xl opacity-80 font-bold">{UserInfo.subscription.name}</h1>
-        <h2 class="text-xl md:text-3xl opacity-80 mb-4">#{UserInfo.subscription.id}</h2>
-        {#if UserInfo.subscription.project_specs}
+      {#if $UserInfo.subscription}
+        <h1 class="text-3xl md:text-6xl opacity-80 font-bold">{$UserInfo.subscription.name}</h1>
+        <h2 class="text-xl md:text-3xl opacity-80 mb-4">#{$UserInfo.subscription.id}</h2>
+        {#if $UserInfo.subscription.project_specs}
         <div class="w-full rounded-xl bg-slate-800 bg-opacity-40 p-8">
           <h3 class="text-2xl font-bold opacity-80 text-center mb-10">Project Specs</h3>
           <div class="flex flex-wrap justify-around items-center gap-6">
             <SpecItem 
               title="Projects" 
-              value="{UserInfo.subscription.project_specs.project_count}x" 
-              description="{UserInfo.subscription.project_specs.project_count} projects">
+              value="{$UserInfo.subscription.project_specs.project_count}x" 
+              description="{$UserInfo.subscription.project_specs.project_count} projects">
             </SpecItem>
             <SpecItem 
               title="Aliases" 
-              value="{UserInfo.subscription.project_specs.alias_count}x" 
-              description="{UserInfo.subscription.project_specs.alias_count} aliases per project">
+              value="{$UserInfo.subscription.project_specs.alias_count}x" 
+              description="{$UserInfo.subscription.project_specs.alias_count} aliases per project">
             </SpecItem>
             <SpecItem 
               title="Prerender Routes" 
-              value="{UserInfo.subscription.project_specs.prerender_routes}x" 
-              description="{UserInfo.subscription.project_specs.prerender_routes} prerender routes per project">
+              value="{$UserInfo.subscription.project_specs.prerender_routes}x" 
+              description="{$UserInfo.subscription.project_specs.prerender_routes} prerender routes per project">
             </SpecItem>
             <SpecItem 
               title="Prerender Storage" 
-              value="{bytesToGigabytes(UserInfo.subscription.project_specs.prerender_storage)}GB" 
-              description="{bytesToGigabytes(UserInfo.subscription.project_specs.prerender_storage)} GB per project">
+              value="{bytesToGigabytes($UserInfo.subscription.project_specs.prerender_storage)}GB" 
+              description="{bytesToGigabytes($UserInfo.subscription.project_specs.prerender_storage)} GB per project">
             </SpecItem>
             <SpecItem 
               title="Client Storage" 
-              value="{bytesToGigabytes(UserInfo.subscription.project_specs.client_storage)}GB" 
-              description="{bytesToGigabytes(UserInfo.subscription.project_specs.client_storage)} GB per project">
+              value="{bytesToGigabytes($UserInfo.subscription.project_specs.client_storage)}GB" 
+              description="{bytesToGigabytes($UserInfo.subscription.project_specs.client_storage)} GB per project">
             </SpecItem>
             <SpecItem 
               title="Server Storage" 
-              value="{bytesToGigabytes(UserInfo.subscription.project_specs.server_storage)}GB" 
-              description="{bytesToGigabytes(UserInfo.subscription.project_specs.server_storage)} GB per project">
+              value="{bytesToGigabytes($UserInfo.subscription.project_specs.server_storage)}GB" 
+              description="{bytesToGigabytes($UserInfo.subscription.project_specs.server_storage)} GB per project">
             </SpecItem>
           </div>
         </div>
         {/if}
-        {#if UserInfo.subscription.pipeline_specs}
+        {#if $UserInfo.subscription.pipeline_specs}
         <div class="w-full rounded-xl bg-slate-800 bg-opacity-40 p-8">
           <h3 class="text-2xl font-bold opacity-80 text-center mb-10">Pipeline Specs</h3>
           <div class="flex flex-wrap justify-around items-center gap-6">
             <SpecItem 
               title="Daily Builds" 
-              value="{UserInfo.subscription.pipeline_specs.daily_builds}x" 
-              description="{UserInfo.subscription.pipeline_specs.daily_builds} builds per day">
+              value="{$UserInfo.subscription.pipeline_specs.daily_builds}x" 
+              description="{$UserInfo.subscription.pipeline_specs.daily_builds} builds per day">
             </SpecItem>
             <SpecItem 
               title="Daily Deployments" 
-              value="{UserInfo.subscription.pipeline_specs.daily_deployments}x" 
-              description="{UserInfo.subscription.pipeline_specs.daily_deployments} deployments per day">
+              value="{$UserInfo.subscription.pipeline_specs.daily_deployments}x" 
+              description="{$UserInfo.subscription.pipeline_specs.daily_deployments} deployments per day">
             </SpecItem>
           </div>
         </div>
         {/if}
-        {#if UserInfo.subscription.cdn_specs}
+        {#if $UserInfo.subscription.cdn_specs}
         <div class="w-full rounded-xl bg-slate-800 bg-opacity-40 p-8">
           <h3 class="text-2xl font-bold opacity-80 text-center mb-10">CDN Specs</h3>
           <div class="flex flex-wrap justify-around items-center gap-6">
             <SpecItem 
               title="CDN Instances" 
-              value="{UserInfo.subscription.cdn_specs.instance_count}x" 
-              description="{UserInfo.subscription.cdn_specs.instance_count} instances">
+              value="{$UserInfo.subscription.cdn_specs.instance_count}x" 
+              description="{$UserInfo.subscription.cdn_specs.instance_count} instances">
             </SpecItem>
           </div>
         </div>
