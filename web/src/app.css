@@ -56,4 +56,13 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  .overflow-scroll-hidden::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+  .overflow-scroll-hidden {
+    overflow: scroll;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
 }
