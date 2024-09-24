@@ -97,7 +97,7 @@
 
 	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
 		<h1 class="text-3xl lg:text-4xl font-bold">CI/CD? Relax.</h1>
-		<PinContainer title="/deployment" href="/deployment" containerClassName="my-16">
+		<PinContainer title="/project" href="/project" containerClassName="my-16">
 			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Automated Deployment</h2>
 				<div class="text-base font-normal text-slate-500">

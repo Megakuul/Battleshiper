@@ -22,10 +22,6 @@
 		</a>
 		<a 
 			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
-			href="/deployment">Deployments
-		</a>
-		<a 
-			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
 			href="/project">Projects
 		</a>
 		<a 
@@ -49,10 +45,6 @@
 					<a 
 						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
 						href="/">Home
-					</a>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/deployment">Deployments
 					</a>
 					<a 
 						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 

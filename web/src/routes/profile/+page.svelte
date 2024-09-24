@@ -1,6 +1,6 @@
 <script>
   import { FetchInfo } from "$lib/adapter/user/fetchinfo";
-  import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
+  import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import CircleAlert from "lucide-svelte/icons/circle-alert";
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { Button } from "$lib/components/ui/button";
@@ -10,7 +10,8 @@
   import { onMount } from "svelte";
   import { RegisterUser } from "$lib/adapter/user/registeruser";
   import { Authorize } from "$lib/adapter/auth/authorize";
-    import SpecItem from "./SpecItem.svelte";
+  import SpecItem from "./SpecItem.svelte";
+  import { fade } from "svelte/transition";
 
 
   /** @type {import("$lib/adapter/user/fetchinfo").fetchInfoOutput}*/
@@ -36,7 +37,7 @@
 </script>
 
 {#if UserInfo}
-  <div class="flex flex-col gap-8 lg:flex-row my-20 min-h-[60vh] mx-6 md:mx-12">
+  <div transition:fade class="flex flex-col gap-8 lg:flex-row my-20 min-h-[80vh] mx-6 md:mx-12">
     <div class="w-full bg-slate-800 bg-opacity-55 p-6 md:p-12 rounded-lg overflow-hidden flex flex-col justify-center items-center gap-4">
       <div class="flex flex-row justify-start items-start gap-4">
         <Avatar.Root class="h-16 md:h-20 w-16 md:w-20">
@@ -140,10 +141,10 @@
     </div>
   </div>
 {:else if Error}
-  <div class="min-h-[60vh] flex justify-center items-center">
-    <h1 class="text-6xl opacity-80">Oops... please log in to continue!</h1>
+  <div transition:fade class="min-h-[60vh] flex justify-center items-center">
+    <h1 class="text-3xl md:text-6xl text-center opacity-80">Oops... please log in to continue!</h1>
   </div>
-  <div class="m-6 flex flex-col space-y-4">
+  <div transition:fade class="m-6 flex flex-col space-y-4">
     <Tooltip.Root>
       <Tooltip.Trigger asChild let:builder>
         <Button builders={[builder]} variant="outline" class="text-2xl h-20" on:click={Authorize}>
@@ -173,12 +174,7 @@
     </Alert.Root>
   </div>
 {:else}
-  <div class="flex items-center justify-center space-x-4">
-    <Skeleton class="h-36 w-36 rounded-full bg-slate-800" />
-    <div class="space-y-2">
-      <Skeleton class="h-8 w-[250px] bg-slate-800" />
-      <Skeleton class="h-8 w-[200px] bg-slate-800" />
-      <Skeleton class="h-8 w-[200px] bg-slate-800" />
-    </div>
+  <div transition:fade class="min-h-[80vh] flex justify-center items-center">
+    <LoaderCircle class="mr-2 h-16 w-16 opacity-80 animate-spin" />
   </div>
 {/if}

@@ -22,7 +22,7 @@ import (
 // It exchanges authCode, clientId and clientSecret with Access- and Refreshtoken.
 func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 
-	cookie, code, err := runHandleCallback(request, transportCtx, routeCtx)
+	cookies, code, err := runHandleCallback(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -35,18 +35,18 @@ func HandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: code,
 		Headers: map[string]string{
-			"Location":   routeCtx.FrontendRedirectURI,
-			"Set-Cookie": cookie,
+			"Location": routeCtx.FrontendRedirectURI,
 		},
+		Cookies: cookies,
 	}, nil
 }
 
-func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
+func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) ([]string, int, error) {
 	authCode := request.QueryStringParameters["code"]
 
 	token, err := routeCtx.OAuthConfig.Exchange(transportCtx, authCode)
 	if err != nil {
-		return "", http.StatusBadRequest, fmt.Errorf("failed to exchange authorization code")
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to exchange authorization code")
 	}
 
 	oauthClient := oauth2.NewClient(transportCtx, oauth2.StaticTokenSource(token))
@@ -54,7 +54,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	githubUser, _, err := githubClient.Users.Get(transportCtx, "")
 	if err != nil {
-		return "", http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
@@ -74,21 +74,21 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		// if the user is not registered, setting the refresh token is simply skipped (no error is emitted).
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); !ok {
-			return "", http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 		}
 	}
 
 	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
 	}
 
 	userTokenCookie := &http.Cookie{
 		Name:     "user_token",
 		Value:    userToken,
-		HttpOnly: false,
+		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
+		Path:     "/api",
 		Expires:  time.Now().Add(routeCtx.JwtOptions.TTL),
 	}
 
@@ -97,9 +97,9 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Value:    token.AccessToken,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
+		Path:     "/api",
 		Expires:  token.Expiry,
 	}
 
-	return fmt.Sprintf("%s, %s", accessTokenCookie.String(), userTokenCookie.String()), http.StatusFound, nil
+	return []string{accessTokenCookie.String(), userTokenCookie.String()}, http.StatusFound, nil
 }

@@ -17,7 +17,7 @@ import (
 
 // HandleLogout logs the user out and revokes the used tokens.
 func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	cookie, code, err := runHandleLogout(request, transportCtx, routeCtx)
+	cookies, code, err := runHandleLogout(request, transportCtx, routeCtx)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
@@ -29,27 +29,24 @@ func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.C
 	}
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: code,
-		Headers: map[string]string{
-			"Set-Cookie": cookie,
-		},
+		Cookies:    cookies,
 	}, nil
 }
 
-func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (string, int, error) {
-	clearCookieHeader := fmt.Sprintf(
-		"%s, %s",
+func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) ([]string, int, error) {
+	clearCookies := []string{
 		(&http.Cookie{Name: "user_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
 		(&http.Cookie{Name: "access_token", Expires: time.Now().Add(-24 * time.Hour)}).String(),
-	)
+	}
 
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
-		return "", http.StatusUnauthorized, fmt.Errorf("no user_token provided")
+		return nil, http.StatusUnauthorized, fmt.Errorf("no user_token provided")
 	}
 
 	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenCookie.Value)
 	if err != nil {
-		return "", http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
+		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
@@ -69,9 +66,9 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		// if the user is not registered, deleting the refresh token is simply skipped (no error is emitted).
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); !ok {
-			return "", http.StatusInternalServerError, fmt.Errorf("failed to update user on database")
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update user on database")
 		}
 	}
 
-	return clearCookieHeader, http.StatusOK, nil
+	return clearCookies, http.StatusOK, nil
 }
