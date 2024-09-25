@@ -14,6 +14,7 @@
   import AliasEditor from "./AliasEditor.svelte";
   import ConfigEditor from "./ConfigEditor.svelte";
   import PipelineState from "./PipelineState.svelte";
+    import ActionBar from "./ActionBar.svelte";
 
   /** @type {import("$lib/adapter/resource/listproject").projectOutput|undefined}*/
   let CurrentProject;
@@ -60,6 +61,8 @@
     <AliasEditor bind:CurrentProjectRef={CurrentProject} bind:ExceptionRef={Exception} />
 
     <ConfigEditor bind:CurrentProjectRef={CurrentProject} bind:ExceptionRef={Exception} />
+
+    <ActionBar bind:CurrentProjectRef={CurrentProject} bind:ExceptionRef={Exception} />
 
     {#if Exception}
     <div transition:fade class="flex flex-col items-center w-full">

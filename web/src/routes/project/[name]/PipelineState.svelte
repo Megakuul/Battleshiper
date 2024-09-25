@@ -1,26 +1,4 @@
 <script>
-  import { page } from "$app/stores";
-  import { ListProject } from "$lib/adapter/resource/listproject";
-  import * as Tooltip from "$lib/components/ui/tooltip";
-  import * as Alert from "$lib/components/ui/alert";
-  import * as Select from "$lib/components/ui/select";
-  import { Button } from "$lib/components/ui/button";
-  import { ProjectInfo } from "$lib/stores";
-  import Icon from "@iconify/svelte";
-  import LoaderCircle from "lucide-svelte/icons/loader-circle";
-  import CircleAlert from "lucide-svelte/icons/circle-alert";
-  import { onMount } from "svelte";
-  import { fade } from "svelte/transition";
-  import { goto } from "$app/navigation";
-  import { flip } from 'svelte/animate';
-  import { toast } from "svelte-sonner";
-  import { Input } from "$lib/components/ui/input";
-  import { UpdateProject } from "$lib/adapter/resource/updateproject";
-  import { UpdateAlias } from "$lib/adapter/resource/updatealias";
-  import StatusBar from "./StatusBar.svelte";
-  import AliasEditor from "./AliasEditor.svelte";
-  import ConfigEditor from "./ConfigEditor.svelte";
-  import BuildStatus from "./PipelineState.svelte";
   import ConnectionBeam from "$lib/components/ConnectionBeam.svelte";
 
   /** @type {import("$lib/adapter/resource/listproject").projectOutput}*/
