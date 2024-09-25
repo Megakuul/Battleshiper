@@ -34,7 +34,7 @@
   };
 
   /** @type {string} */
-  let Error = "";
+  let Exception = "";
 
   onMount(async () => {
     try {
@@ -43,12 +43,16 @@
       }
       $RepositoryInfo.repositories[0].full_name
     } catch (/** @type {any} */ err) {
-      Error = err.message;
+      Exception = err.message;
       toast("Error", {
         description: "Failed to load available repositories",
       })
     }
   })
+
+  // Generate a user friendly message if the exception is longer then 250 chars.
+  // This is primarely for unexpected errors that cause the api to return an error page in html format.
+  $: if (Exception && Exception.length > 250) Exception = "Unexpected error occured";
 
   /** @type {boolean} */
   let createButtonState;
@@ -87,7 +91,7 @@
           CurrentProjectInput.repository.id = v.value.id;
           CurrentProjectInput.repository.url = getRepositoryUrl(v.value.full_name);
         } else {
-          toast("Validation Error", {
+          toast("Validation Exception", {
             description: "Failed to apply repository",
           })
         }
@@ -124,8 +128,8 @@
         createButtonState = false;
         goto("/project");
       } catch (/** @type {any} */ err) {
-        Error = err.message;
-        toast.error("Error", {
+        Exception = err.message;
+        toast.error("Exception", {
           description: "Failed to create project",
         })
       }
@@ -139,12 +143,12 @@
   </div>
 </div>
 
-{#if Error}
+{#if Exception}
   <div transition:fade class="m-6 flex flex-col items-center space-y-4">
     <Alert.Root variant="destructive" class="w-11/12 lg:w-8/12">
       <CircleAlert class="h-4 w-4" />
       <Alert.Title>Error</Alert.Title>
-      <Alert.Description>{Error}</Alert.Description>
+      <Alert.Description>{Exception}</Alert.Description>
     </Alert.Root>
   </div>
 {/if}

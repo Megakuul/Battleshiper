@@ -8,7 +8,6 @@
 /**
  * @typedef {Object} updateProjectInput
  * @property {string} project_name
- * @property {string} build_image
  * @property {string} build_command
  * @property {string} output_directory
  * @property {repositoryInput} repository

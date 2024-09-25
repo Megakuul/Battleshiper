@@ -36,7 +36,7 @@
  * @property {string} build_command
  * @property {string} output_directory
  * @property {repositoryOutput} repository
- * @property {Object.<string, Object>} aliases
+ * @property {Object.<string, null>} aliases
  * @property {eventResultOutput} last_event_result
  * @property {buildResultOutput} last_build_result
  * @property {deploymentResultOutput} last_deployment_result

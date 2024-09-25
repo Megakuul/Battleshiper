@@ -28,7 +28,7 @@ export const ProjectInfo = writable({
       name: "example",
       deleted: false,
       initialized: true,
-      status: "DEPLOYMENT FAILED: BLDIJSFOISJDFO JEOJF OIEJSOFJOWWWJWO EJOIWJOFJWOIJEOWEJF OWJEFOJWEFOJWEO JWEO",
+      status: "DEPLOYMENT FAILED: BLDIJSFOISJDFO J\n asdf asd fasd fasd fasd fasd fwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEOJF OIEJSOFJOWWWJWO EJOIWJOFJWOIJEOWEJF OWJEFOJWEFOJWEO JWEO",
       build_image: "node:14-alpine",
       build_command: "npm run build",
       output_directory: "/dist",
@@ -38,14 +38,8 @@ export const ProjectInfo = writable({
         branch: "main"
       },
       aliases: {
-        prod: {
-          url: "https://example.com",
-          active: true
-        },
-        staging: {
-          url: "https://staging.example.com",
-          active: false
-        }
+        prod: null,
+        staging: null
       },
       last_event_result: {
         execution_identifier: "7e8237e9-ea45-4180-822f-2a104c9e12e0",

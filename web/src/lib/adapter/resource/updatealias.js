@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} updateAliasInput
  * @property {string} project_name
- * @property {Object.<string, Object>} aliases
+ * @property {Object.<string, null>} aliases
  */
 
 /**

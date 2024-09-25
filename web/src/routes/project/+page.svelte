@@ -20,20 +20,25 @@
   } from "$env/static/public";
 
   /** @type {string} */
-  let Error = "";
+  let Exception = "";
 
+  /** @type {string} */
   let Hostname = "";
 
   onMount(async () => {
-    Hostname = window.location.hostname;
     try {
+      Hostname = window.location.hostname;
       if (!$ProjectInfo) {
         $ProjectInfo = await ListProject();
       }
     } catch (/** @type {any} */ err) {
-      Error = err.message;
+      Exception = err.message;
     }
   })
+
+  // Generate a user friendly message if the exception is longer then 250 chars.
+  // This is primarely for unexpected errors that cause the api to return an error page in html format.
+  $: if (Exception && Exception.length > 250) Exception = "Unexpected error occured";
 </script>
 
 <svelte:head>
@@ -57,7 +62,7 @@
             description: "Projects refreshed",
           })
         } catch (/** @type {any} */ err) {
-          Error = err.message;
+          Exception = err.message;
           toast("Error", {
             description: err.message,
           })
@@ -121,7 +126,7 @@
       </a>
     {/each}
   </div>
-{:else if Error}
+{:else if Exception}
   <div transition:fade class="min-h-[60vh] flex justify-center items-center">
     <h1 class="text-3xl md:text-6xl text-center opacity-80">Oops... projects hit a snag!</h1>
   </div>
@@ -139,7 +144,7 @@
     <Alert.Root variant="destructive">
       <CircleAlert class="h-4 w-4" />
       <Alert.Title>Error</Alert.Title>
-      <Alert.Description>{Error}</Alert.Description>
+      <Alert.Description>{Exception}</Alert.Description>
     </Alert.Root>
   </div>
 {:else}

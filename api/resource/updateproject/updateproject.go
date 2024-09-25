@@ -28,7 +28,6 @@ type repositoryInput struct {
 
 type updateProjectInput struct {
 	ProjectName     string          `json:"project_name"`
-	BuildImage      string          `json:"build_image"`
 	BuildCommand    string          `json:"build_command"`
 	OutputDirectory string          `json:"output_directory"`
 	Repository      repositoryInput `json:"repository"`
@@ -103,11 +102,6 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	updateSpec := map[string]dynamodbtypes.AttributeValue{}
-	if updateProjectInput.BuildImage != "" {
-		updateSpec["build_image"] = &dynamodbtypes.AttributeValueMemberS{
-			Value: updateProjectInput.BuildImage,
-		}
-	}
 	if updateProjectInput.BuildCommand != "" {
 		updateSpec["build_command"] = &dynamodbtypes.AttributeValueMemberS{
 			Value: updateProjectInput.BuildCommand,
