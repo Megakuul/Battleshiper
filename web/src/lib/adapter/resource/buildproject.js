@@ -15,8 +15,7 @@
  * @throws {Error}
  */
 export const BuildProject = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/resource/buildproject`, {
+  const res = await fetch("/api/resource/buildproject", {
     method: "POST",
     headers: {
       'Content-Type': 'application/json'

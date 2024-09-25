@@ -15,8 +15,7 @@
  * @throws {Error}
  */
 export const DeleteProject = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/deleteproject`, {
+  const res = await fetch("/api/admin/deleteproject", {
     method: "DELETE",
     headers: {
       'Content-Type': 'application/json'

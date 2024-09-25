@@ -27,7 +27,7 @@
  */
 export const UpdateProject = async (input) => {
   const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/resource/updateproject`, {
+  const res = await fetch("/api/resource/updateproject", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json"

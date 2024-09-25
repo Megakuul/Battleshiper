@@ -5,6 +5,14 @@
   import { Button } from "$lib/components/ui/button";
   import { Toaster } from "$lib/components/ui/sonner";
 
+	import {
+		PUBLIC_IMPRINT_HREF,
+		PUBLIC_PRIVACY_HREF,
+		PUBLIC_TOS_HREF,
+		PUBLIC_CONTACT_1,
+		PUBLIC_CONTACT_2,
+		PUBLIC_CONTACT_3
+	} from "$env/static/public";
 </script>
 
 <Toaster />
@@ -71,26 +79,26 @@
 		<div class="w-full flex flex-col sm:flex-row gap-8 justify-around mt-6">
 			<section class="flex flex-col gap-2">
 				<h1 class="text-slate-600 font-semibold opacity-70">Legal</h1>
-				{#if import.meta.env.VITE_IMPRINT_HREF}
-					<a class="text-slate-400 opacity-90 hover:underline" href="{import.meta.env.VITE_IMPRINT_HREF}">Imprint</a>
+				{#if PUBLIC_IMPRINT_HREF}
+					<a class="text-slate-400 opacity-90 hover:underline" href="{PUBLIC_IMPRINT_HREF}">Imprint</a>
 				{/if}
-				{#if import.meta.env.VITE_PRIVACY_HREF}
-					<a class="text-slate-400 opacity-90 hover:underline" href="{import.meta.env.VITE_PRIVACY_HREF}">Privacy Policy</a>
+				{#if PUBLIC_PRIVACY_HREF}
+					<a class="text-slate-400 opacity-90 hover:underline" href="{PUBLIC_PRIVACY_HREF}">Privacy Policy</a>
 				{/if}
-				{#if import.meta.env.VITE_TOS_HREF}
-					<a class="text-slate-400 opacity-90 hover:underline" href="{import.meta.env.VITE_TOS_HREF}">Terms of Services</a>
+				{#if PUBLIC_TOS_HREF}
+					<a class="text-slate-400 opacity-90 hover:underline" href="{PUBLIC_TOS_HREF}">Terms of Services</a>
 				{/if}
 			</section>
 			<section class="flex flex-col gap-2">
 				<h1 class="text-slate-600 font-semibold opacity-70">Contact</h1>
-				{#if import.meta.env.VITE_CONTACT_1}
-					<p class="text-slate-400 text-sm">{import.meta.env.VITE_CONTACT_1}</p>
+				{#if PUBLIC_CONTACT_1}
+					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
 				{/if}
-				{#if import.meta.env.VITE_CONTACT_2}
-					<p class="text-slate-400 text-sm">{import.meta.env.VITE_CONTACT_1}</p>
+				{#if PUBLIC_CONTACT_2}
+					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
 				{/if}
-				{#if import.meta.env.VITE_CONTACT_3}
-					<p class="text-slate-400 text-sm">{import.meta.env.VITE_CONTACT_1}</p>
+				{#if PUBLIC_CONTACT_3}
+					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
 				{/if}
 			</section>
 		</div>

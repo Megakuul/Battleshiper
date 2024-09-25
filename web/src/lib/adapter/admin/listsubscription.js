@@ -40,8 +40,7 @@
  * @throws {Error}
  */
 export const ListSubscription = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/listsubscription`, {
+  const res = await fetch("/api/admin/listsubscription", {
     method: "GET",
   })
   if (res.ok) {

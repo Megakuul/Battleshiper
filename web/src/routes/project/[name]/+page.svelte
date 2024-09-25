@@ -32,6 +32,11 @@
   })
 </script>
 
+<svelte:head>
+	<title>Project | Battleshiper</title>
+  <meta name="robots" content="noindex, follow">
+</svelte:head>
+
 {#if CurrentProject}
   <h1>Project {CurrentProject.name}</h1>
 {:else if Error}

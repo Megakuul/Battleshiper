@@ -35,8 +35,7 @@
  * @throws {Error}
  */
 export const FindProject = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/findproject?${new URLSearchParams(input).toString()}`, {
+  const res = await fetch(`/api/admin/findproject?${new URLSearchParams(input).toString()}`, {
     method: "GET",
   })
   if (res.ok) {

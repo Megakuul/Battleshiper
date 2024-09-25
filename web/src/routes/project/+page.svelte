@@ -14,7 +14,10 @@
   import BorderBeam from "$lib/components/BorderBeam.svelte";
   import { goto } from "$app/navigation";
   import { ProjectInfo } from "$lib/stores";
-    import { toast } from "svelte-sonner";
+  import { toast } from "svelte-sonner";
+  import { 
+    PUBLIC_SEO_DOMAIN 
+  } from "$env/static/public";
 
   /** @type {string} */
   let Error = "";
@@ -32,6 +35,16 @@
     }
   })
 </script>
+
+<svelte:head>
+	<title>Projects | Battleshiper</title>
+	<meta name="description" content="Manage all Battleshiper projects in one place." />
+	<meta property="og:description" content="Manage all Battleshiper projects in one place." />
+	<meta property="og:title" content="Projects - Battleshiper">
+  <meta property="og:type" content="website">
+	<meta property="og:image" content="https://{PUBLIC_SEO_DOMAIN}/favicon.png" />
+	<link rel="canonical" href="https://{PUBLIC_SEO_DOMAIN}/project" />
+</svelte:head>
 
 {#if $ProjectInfo}
   <div class="flex flex-col gap-8 items-center mt-12 mb-16">
@@ -58,7 +71,9 @@
   </div>
   <div class="flex flex-col gap-12 mb-10 items-center h-[80vh] overflow-scroll-hidden">
     {#each $ProjectInfo.projects as project}
-      <div class="relative w-9/12 group flex flex-row items-center p-6 rounded-lg overflow-hidden cursor-pointer bg-slate-900/10 border-[1px] border-slate-200/15">
+      <a 
+        href="/project/{project.name}" 
+        class="relative w-9/12 group flex flex-row items-center p-6 rounded-lg overflow-hidden cursor-pointer bg-slate-900/10 border-[1px] border-slate-200/15">
         <BorderBeam size={150} duration={10} colorFrom="#304352" colorTo="#d7d2cc" class="transition-all duration-700 opacity-0 group-hover:opacity-100" />
         <Tooltip.Root>
           <Tooltip.Trigger>
@@ -103,7 +118,7 @@
             {/if}
           </Tooltip.Content>
         </Tooltip.Root>
-      </div>
+      </a>
     {/each}
   </div>
 {:else if Error}

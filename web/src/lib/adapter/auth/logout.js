@@ -3,8 +3,7 @@
  * @throws {Error}
  */
 export const Logout = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/auth/logout`, {
+  const res = await fetch("/api/auth/logout", {
     method: "POST",
   })
   if (res.ok) {

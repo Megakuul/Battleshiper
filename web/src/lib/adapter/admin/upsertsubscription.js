@@ -40,8 +40,7 @@
  * @throws {Error}
  */
 export const UpsertSubscription = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/upsertsubscription`, {
+  const res = await fetch("/api/admin/upsertsubscription", {
     method: "PUT",
     headers: {
       'Content-Type': 'application/json'

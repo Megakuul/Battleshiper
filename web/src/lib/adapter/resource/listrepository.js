@@ -17,8 +17,7 @@
  * @throws {Error}
  */
 export const ListRepository = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/resource/listrepository`, {
+  const res = await fetch("/api/resource/listrepository", {
     method: "GET",
   })
   if (res.ok) {

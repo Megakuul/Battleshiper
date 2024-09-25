@@ -15,6 +15,11 @@
   import { toast } from "svelte-sonner";
   import { CreateProject } from "$lib/adapter/resource/createproject";
 
+  import {
+    PUBLIC_BATTLESHIPER_APP_URL,
+    PUBLIC_SEO_DOMAIN
+  } from "$env/static/public"
+
   /** @type {import("$lib/adapter/resource/createproject").createProjectInput} */
   let CurrentProjectInput = {
     project_name: "",
@@ -57,6 +62,17 @@
   }
 </script>
 
+<svelte:head>
+	<title>New Project | Battleshiper</title>
+  <meta name="robots" content="noindex, follow">
+	<meta name="description" content="Launch applications today and fulfill your vision." />
+	<meta property="og:description" content="Launch applications today and fulfill your vision." />
+	<meta property="og:title" content="New Project - Battleshiper">
+  <meta property="og:type" content="website">
+	<meta property="og:image" content="https://{PUBLIC_SEO_DOMAIN}/favicon.png" />
+	<link rel="canonical" href="https://{PUBLIC_SEO_DOMAIN}/project/new" />
+</svelte:head>
+
 <div transition:fade class="flex flex-col gap-8 justify-center mt-12 mb-16">
   <h1 class="text-6xl font-bold text-center text-slate-200/80">New Project</h1>
 </div>
@@ -90,7 +106,7 @@
       <Popover.Root>
         <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
         <Popover.Content>
-          Install the <a class="underline font-semibold" href="{import.meta.env.VITE_BATTLESHIPER_APP_URL}">Battleshiper</a> App,
+          Install the <a class="underline font-semibold" href="{PUBLIC_BATTLESHIPER_APP_URL}">Battleshiper</a> App,
           <br> and grant read access to the desired repositories.
         </Popover.Content>
       </Popover.Root>

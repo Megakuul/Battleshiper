@@ -44,8 +44,7 @@
  * @throws {Error}
  */
 export const FetchInfo = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/user/fetchinfo`, {
+  const res = await fetch("/api/user/fetchinfo", {
     method: "GET",
   })
   if (res.ok) {

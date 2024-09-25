@@ -16,8 +16,7 @@
  * @throws {Error}
  */
 export const UpdateRole = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/updaterole`, {
+  const res = await fetch("/api/admin/updaterole", {
     method: "PATCH",
     headers: {
       'Content-Type': 'application/json'

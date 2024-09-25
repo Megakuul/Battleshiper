@@ -26,8 +26,7 @@
  * @throws {Error}
  */
 export const FindUser = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/admin/finduser?${new URLSearchParams(input).toString()}`, {
+  const res = await fetch(`/api/admin/finduser?${new URLSearchParams(input).toString()}`, {
     method: "GET",
   })
   if (res.ok) {

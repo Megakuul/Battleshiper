@@ -16,8 +16,7 @@
  * @throws {Error}
  */
 export const UpdateAlias = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/resource/updatealias`, {
+  const res = await fetch("/api/resource/updatealias", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

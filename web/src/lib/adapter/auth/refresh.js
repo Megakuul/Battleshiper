@@ -3,8 +3,7 @@
  * @throws {Error}
  */
 export const Refresh = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/auth/refresh`, {
+  const res = await fetch("/api/auth/refresh", {
     method: "POST",
   })
   if (res.ok) {

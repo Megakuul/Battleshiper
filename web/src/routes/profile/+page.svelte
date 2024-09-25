@@ -13,6 +13,9 @@
   import SpecItem from "./SpecItem.svelte";
   import { fade } from "svelte/transition";
   import { UserInfo } from "$lib/stores";
+  import { 
+    PUBLIC_SEO_DOMAIN 
+  } from "$env/static/public";
 
   /** @type {string} */
   let Error = "";
@@ -35,6 +38,16 @@
     return parseFloat((bytes / 1000000).toFixed(2))
   }
 </script>
+
+<svelte:head>
+	<title>Profile | Battleshiper</title>
+	<meta name="description" content="Check out your user profile and view your subscription status." />
+	<meta property="og:description" content="Check out your user profile and view your subscription status." />
+	<meta property="og:title" content="Profile - Battleshiper">
+  <meta property="og:type" content="website">
+	<meta property="og:image" content="https://{PUBLIC_SEO_DOMAIN}/favicon.png" />
+	<link rel="canonical" href="https://{PUBLIC_SEO_DOMAIN}/profile" />
+</svelte:head>
 
 {#if $UserInfo}
   <div transition:fade class="flex flex-col gap-8 lg:flex-row my-20 min-h-[80vh] mx-6 md:mx-12">

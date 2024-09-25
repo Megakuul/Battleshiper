@@ -5,15 +5,23 @@
   import Beam from "$lib/components/Beam.svelte";
 	import GridBackground from "$lib/components/GridBackground.svelte";
   import Spotlight from "$lib/components/Spotlight.svelte";
-    import SvelteIcon from "$lib/components/SvelteIcon.svelte";
+  import SvelteIcon from "$lib/components/SvelteIcon.svelte";
   import Typewriter from "$lib/components/Typewriter.svelte";
-    import PinContainer from "$lib/components/ui/pin/PinContainer.svelte";
+  import PinContainer from "$lib/components/ui/pin/PinContainer.svelte";
 
+	import {
+		PUBLIC_SEO_DOMAIN
+	} from "$env/static/public";
 </script>
 
 <svelte:head>
 	<title>Home | Battleshiper</title>
 	<meta name="description" content="Deploy your SvelteKit applications on automated, scalable infrastructure with no configuration worries." />
+	<meta property="og:description" content="Deploy your SvelteKit applications on automated, scalable infrastructure with no configuration worries." />
+	<meta property="og:title" content="Home - Battleshiper">
+  <meta property="og:type" content="website">
+	<meta property="og:image" content="https://{PUBLIC_SEO_DOMAIN}/favicon.png" />
+	<link rel="canonical" href="https://{PUBLIC_SEO_DOMAIN}" />
 </svelte:head>
 
 <GridBackground gridBlockSize={64} gridColor="rgba(255, 255, 255, 0.2)" className="flex justify-center">

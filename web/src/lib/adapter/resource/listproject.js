@@ -54,8 +54,7 @@
  * @throws {Error}
  */
 export const ListProject = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
-  const res = await fetch(`${devUrl?devUrl:""}/api/resource/listproject`, {
+  const res = await fetch("/api/resource/listproject", {
     method: "GET",
   })
   if (res.ok) {
