@@ -3,6 +3,7 @@
   import * as Alert from "$lib/components/ui/alert";
   import * as Select from "$lib/components/ui/select";
   import * as Popover from "$lib/components/ui/popover";
+  import * as HoverCard from "$lib/components/ui/hover-card";
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -115,8 +116,43 @@
         </Popover.Content>
       </Popover.Root>
     </div>
-    <Input bind:value={CurrentProjectInput.build_image} type="text" placeholder="Build Image" />
-    <Input bind:value={CurrentProjectInput.build_command} type="text" placeholder="Build Command" />
+    <div class="flex flex-row gap-4">
+      <Input bind:value={CurrentProjectInput.build_image} type="text" placeholder="Build Image" />
+      <Popover.Root>
+        <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
+        <Popover.Content>
+          The image must include the following components:
+            <span class="block"> • <span class="font-bold text-green-900">nodejs</span></span>
+            <span class="block"> • <span class="font-bold text-red-900">git-cli</span></span>
+            <span class="block"> • <span class="font-bold text-orange-600">aws-cli</span></span>
+        </Popover.Content>
+      </Popover.Root>
+    </div>
+    <div class="flex flex-row gap-4">
+      <Input bind:value={CurrentProjectInput.build_command} type="text" placeholder="Build Command" />
+      <Popover.Root>
+        <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
+        <Popover.Content>
+          To build the application correctly, install
+          <HoverCard.Root>
+            <HoverCard.Trigger href="https://www.npmjs.com/package/@megakuul/adapter-battleshiper" class="font-bold underline text-nowrap">
+              @megakuul/adapter-battleshiper
+            </HoverCard.Trigger>
+            <HoverCard.Content>
+              <div class="flex flex-row items-center">
+                <Icon icon="devicon:npm" class="w-8" />
+                <p class="font-bold">adapter-battleshiper</p>
+              </div>
+              <p class="text-xs">Custom Svelte adapter for Battleshiper</p>
+            </HoverCard.Content>
+          </HoverCard.Root>
+          <a class="" href=""></a> 
+          to your project.
+        </Popover.Content>
+      </Popover.Root>
+    </div>
+
+    
     <Input bind:value={CurrentProjectInput.output_directory} type="text" placeholder="Build Output Directory" />
     <Button class="mt-auto" type="submit" on:click={async () => {
       try {
