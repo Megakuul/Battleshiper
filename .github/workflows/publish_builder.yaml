@@ -1,0 +1,38 @@
+name: publish adapter-battleshiper to npm
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "builder/**"
+
+jobs:
+  publish-builder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push bun builder
+        uses: docker/build-push-action@v6
+        with:
+          context: ./builder/battleshiper-bun-builder
+          push: true
+          tags: megakuul/battleshiper-bun-builder:latest
+
+      - name: Build and push node builder
+        uses: docker/build-push-action@v6
+        with:
+          context: ./builder/battleshiper-node-builder
+          push: true
+          tags: megakuul/battleshiper-node-builder:latest

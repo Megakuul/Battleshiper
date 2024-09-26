@@ -1,4 +1,4 @@
-name: publish adapter-battleshiper to npm
+name: publish adapter-battleshiper to package registries
 
 on:
   push:

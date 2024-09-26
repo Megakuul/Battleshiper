@@ -10,7 +10,7 @@ Install the adapter and update your `svelte.config.js`:
 ```bash
 # Installing from npm
 npm i --save-dev @megakuul/adapter-battleshiper
-# Or even better: install from jsr
+# Or even better: install from jsr (preferred, but requires a registry redirect in .npmrc or bunfig.toml when not working with deno))
 npx jsr add --save-dev @megakuul/adapter-battleshiper
 ```
 

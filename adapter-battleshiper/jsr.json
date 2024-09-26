@@ -1,6 +1,8 @@
 {
   "name": "@megakuul/adapter-battleshiper",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "exports": "./index.js",
-  "types": "./index.d.ts"
+  "publish": {
+    "include": ["./src/*.js"]
+  }
 }
