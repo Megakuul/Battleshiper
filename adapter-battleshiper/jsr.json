@@ -3,6 +3,10 @@
   "version": "0.5.2",
   "exports": "./index.js",
   "publish": {
-    "include": ["./src/*.js"]
+    "include": [
+      "./index.js",
+      "./index.d.ts",
+      "./src/*.js"
+    ]
   }
 }

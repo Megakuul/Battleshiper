@@ -3,6 +3,7 @@
 A SvelteKit adapter for deployment on battleshiper lambda infrastructure.
 
 
+
 ## Installation
 
 Install the adapter and update your `svelte.config.js`:
