@@ -8,7 +8,6 @@
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import Icon from '@iconify/svelte';
   import { onMount } from "svelte";
-  import { RegisterUser } from "$lib/adapter/user/registeruser";
   import { Authorize } from "$lib/adapter/auth/authorize";
   import { fade } from "svelte/transition";
   import BorderBeam from "$lib/components/BorderBeam.svelte";

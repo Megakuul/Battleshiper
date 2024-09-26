@@ -11,7 +11,7 @@
 	"devDependencies": {
 		"@fontsource/fira-mono": "^4.5.10",
 		"@iconify/svelte": "^4.0.2",
-		"@megakuul/adapter-battleshiper": "npm:@jsr/megakuul__adapter-battleshiper@^0.5.1",
+		"@megakuul/adapter-battleshiper": "^0.5.4",
 		"@neoconfetti/svelte": "^1.0.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^3.0.0",
@@ -25,9 +25,10 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@internationalized/date": "^3.5.5",
 		"bits-ui": "^0.21.15",
 		"clsx": "^2.1.1",
-		"lucide-svelte": "^0.417.0",
+		"lucide-svelte": "^0.446.0",
 		"mode-watcher": "^0.4.1",
 		"svelte-motion": "^0.12.2",
 		"svelte-sonner": "^0.3.28",

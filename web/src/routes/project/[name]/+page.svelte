@@ -14,7 +14,7 @@
   import AliasEditor from "./AliasEditor.svelte";
   import ConfigEditor from "./ConfigEditor.svelte";
   import PipelineState from "./PipelineState.svelte";
-    import ActionBar from "./ActionBar.svelte";
+  import ActionBar from "./ActionBar.svelte";
 
   /** @type {import("$lib/adapter/resource/listproject").projectOutput|undefined}*/
   let CurrentProject;

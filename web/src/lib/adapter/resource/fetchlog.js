@@ -26,7 +26,6 @@
  * @throws {Error}
  */
 export const FetchLog = async (input) => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
   const res = await fetch("/api/resource/fetchlog", {
     method: "POST",
     headers: {

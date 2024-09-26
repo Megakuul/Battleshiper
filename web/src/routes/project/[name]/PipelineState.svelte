@@ -62,7 +62,7 @@
           {:else}
             <p class="text-xl font-bold text-red-800">FAILURE</p>
           {/if} 
-          <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_event_result.timestamp).toLocaleString("en-US", {
+          <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_event_result.timestamp * 1000).toLocaleString("en-US", {
             minute: "2-digit",
             hour: "2-digit",
             hour12: false,
@@ -86,7 +86,7 @@
             {:else}
               <p class="text-xl font-bold text-red-800">FAILURE</p>
             {/if}
-            <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_build_result.timestamp).toLocaleString("en-US", {
+            <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_build_result.timestamp * 1000).toLocaleString("en-US", {
               minute: "2-digit",
               hour: "2-digit",
               hour12: false,
@@ -111,7 +111,7 @@
             {:else}
               <p class="text-xl font-bold text-red-800">FAILURE</p>
             {/if}
-            <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_deployment_result.timestamp).toLocaleString("en-US", {
+            <p class="text-sm text-opacity-60">{new Date(CurrentProjectRef.last_deployment_result.timestamp * 1000).toLocaleString("en-US", {
               minute: "2-digit",
               hour: "2-digit",
               hour12: false,

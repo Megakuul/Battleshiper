@@ -24,8 +24,8 @@
   /** @type {import("$lib/adapter/resource/createproject").createProjectInput} */
   let CurrentProjectInput = {
     project_name: "",
-    build_command: "npm run build",
-    build_image: "megakuul/battleshiper-build:latest",
+    build_command: "bun install && bun run build",
+    build_image: "megakuul/battleshiper-bun-builder:latest",
     output_directory: "./build",
     repository: {
       id: 0,
@@ -110,9 +110,21 @@
       </Select.Root>
       <Popover.Root>
         <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
-        <Popover.Content>
-          Install the <a class="underline font-semibold" href="{PUBLIC_BATTLESHIPER_APP_URL}">Battleshiper</a> App,
-          <br> and grant read access to the desired repositories.
+        <Popover.Content class="text-sm">
+          Install the 
+          <HoverCard.Root>
+            <HoverCard.Trigger href="{PUBLIC_BATTLESHIPER_APP_URL}" class="font-bold underline text-nowrap">
+              Battleshiper App
+            </HoverCard.Trigger>
+            <HoverCard.Content>
+              <div class="flex flex-row items-center">
+                <Icon icon="skill-icons:github-dark" class="w-5 h-5 mr-2" />
+                <p class="font-bold">Battleshiper Github App</p>
+              </div>
+              <p class="text-xs text-nowrap">App is used to access project repositories</p>
+            </HoverCard.Content>
+          </HoverCard.Root>
+          and grant read access to the desired repositories.
         </Popover.Content>
       </Popover.Root>
     </div>
@@ -120,11 +132,20 @@
       <Input bind:value={CurrentProjectInput.build_image} type="text" placeholder="Build Image" />
       <Popover.Root>
         <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
-        <Popover.Content>
-          The image must include the following components:
-            <span class="block"> • <span class="font-bold text-green-900">nodejs</span></span>
-            <span class="block"> • <span class="font-bold text-red-900">git-cli</span></span>
-            <span class="block"> • <span class="font-bold text-orange-600">aws-cli</span></span>
+        <Popover.Content class="text-sm overflow-hidden">
+          Image must include these components:
+            <span class="block text-nowrap"> • <span class="font-bold text-green-700">nodejs</span> / <span class="font-bold text-orange-200">bun</span></span>
+            <span class="block text-nowrap"> • <span class="font-bold text-red-800">git-cli</span></span>
+            <span class="block text-nowrap"> • <span class="font-bold text-orange-500">aws-cli</span></span>
+          Or use one of the pre-baked images:
+            <span class="block text-nowrap"> • 
+              <span class="text-slate-50/80">megakuul/</span>
+              <span class="font-bold text-green-700">battleshiper-node-builder</span>
+            </span>
+            <span class="block text-nowrap"> • 
+              <span class="text-slate-50/80">megakuul/</span>
+              <span class="font-bold text-orange-200">battleshiper-bun-builder</span>
+            </span>
         </Popover.Content>
       </Popover.Root>
     </div>
@@ -132,28 +153,49 @@
       <Input bind:value={CurrentProjectInput.build_command} type="text" placeholder="Build Command" />
       <Popover.Root>
         <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
-        <Popover.Content>
-          To build the application correctly, install
+        <Popover.Content class="text-sm text-center">
+          Use the battleshiper sveltekit adapter
           <HoverCard.Root>
             <HoverCard.Trigger href="https://www.npmjs.com/package/@megakuul/adapter-battleshiper" class="font-bold underline text-nowrap">
               @megakuul/adapter-battleshiper
             </HoverCard.Trigger>
             <HoverCard.Content>
-              <div class="flex flex-row items-center">
-                <Icon icon="devicon:npm" class="w-8" />
+              <div class="flex flex-row items-center gap-2">
+                <Icon icon="devicon:npm" class="w-4 h-4" />
                 <p class="font-bold">adapter-battleshiper</p>
               </div>
-              <p class="text-xs">Custom Svelte adapter for Battleshiper</p>
+              <p class="text-xs text-nowrap">Custom Svelte adapter for Battleshiper</p>
             </HoverCard.Content>
           </HoverCard.Root>
-          <a class="" href=""></a> 
-          to your project.
         </Popover.Content>
       </Popover.Root>
     </div>
 
+    <div class="flex flex-row gap-4">
+      <Input bind:value={CurrentProjectInput.output_directory} type="text" placeholder="Build Output Directory" />
+      <Popover.Root>
+        <Popover.Trigger class="hidden sm:block"><Icon icon="octicon:info-16" /></Popover.Trigger>
+        <Popover.Content class="text-sm">
+          Directory analyzed by the pipeline.<br>
+          Expected to contain the following data:
+          <span class="block text-nowrap"> • 
+            <span class="font-bold">prerendered/</span>
+            prerendered html pages
+          </span>
+          <span class="block text-nowrap"> • 
+            <span class="font-bold">client/</span>
+            sveltekit client assets
+          </span>
+          <span class="block text-nowrap"> • 
+            <span class="font-bold">server/</span>
+            sveltekit server as lambda (zip)
+          </span>
+        </Popover.Content>
+      </Popover.Root>
+    </div>
     
-    <Input bind:value={CurrentProjectInput.output_directory} type="text" placeholder="Build Output Directory" />
+
+
     <Button class="mt-auto" type="submit" on:click={async () => {
       try {
         createButtonState = true;
