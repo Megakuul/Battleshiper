@@ -1,7 +1,7 @@
 import { Adapter } from '@sveltejs/kit';
 
 export interface AdapterOptions {
-	debug?: bool;
+	debug?: boolean;
 }
 
 export default function plugin(options?: AdapterOptions): Adapter;
