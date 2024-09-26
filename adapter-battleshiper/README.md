@@ -8,7 +8,10 @@ A SvelteKit adapter for deployment on battleshiper lambda infrastructure.
 Install the adapter and update your `svelte.config.js`:
 
 ```bash
-npm i @megakuul/adapter-battleshiper --save-dev
+# Installing from npm
+npm i --save-dev @megakuul/adapter-battleshiper
+# Or even better: install from jsr
+npx jsr add --save-dev @megakuul/adapter-battleshiper
 ```
 
 ```javascript
