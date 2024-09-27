@@ -3,9 +3,10 @@
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import CircleAlert from "lucide-svelte/icons/circle-alert";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Button } from "$lib/components/ui/button";
+  import { Button, buttonVariants } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import * as Avatar from "$lib/components/ui/avatar";
+  import * as Dialog from "$lib/components/ui/dialog";
   import Icon from '@iconify/svelte';
   import { onMount } from "svelte";
   import { RegisterUser } from "$lib/adapter/user/registeruser";
@@ -15,6 +16,15 @@
   import { 
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
+    import { Input } from "$lib/components/ui/input";
+    import { toast } from "svelte-sonner";
+    import { FindUser } from "$lib/adapter/admin/finduser";
+    import { cn } from "$lib/utils";
+    import { DeleteUser } from "$lib/adapter/admin/deleteuser";
+    import UserPanel from "./UserPanel.svelte";
+    import ProjectPanel from "./ProjectPanel.svelte";
+    import SubscriptionPanel from "./SubscriptionPanel.svelte";
+    import RolePanel from "./RolePanel.svelte";
 
   /** @type {string} */
   let Exception = "";
@@ -47,31 +57,15 @@
 {#if $UserInfo}
   <div class="flex flex-col gap-8 items-center mt-12 mb-16">
     <h1 class="text-6xl font-bold text-center text-slate-200/80 ">Admin Center</h1>
-    <div class="flex flex-col gap-2 w-10/12 p-4 bg-slate-900/30 rounded-lg">
-      <h1 class="text-2xl font-bold">Users</h1>
-      {#if "SUPPORRT" in $UserInfo.roles || "MAINTAINEER" in $UserInfo.roles}
-        Update
-      {:else}
-        <Alert.Root variant="destructive">
-          <CircleAlert class="h-4 w-4" />
-          <Alert.Title>Forbidden</Alert.Title>
-          <Alert.Description>You need the <b>SUPPORT</b> or <b>MAINTAINER</b> role to access this section.</Alert.Description>
-        </Alert.Root>
-      {/if}
-    </div>
 
+    <UserPanel bind:ExceptionRef={Exception} UserRoles={$UserInfo.roles} />
+
+    <ProjectPanel bind:ExceptionRef={Exception} UserRoles={$UserInfo.roles} />
+
+    <SubscriptionPanel bind:ExceptionRef={Exception} UserRoles={$UserInfo.roles} />
+
+    <RolePanel bind:ExceptionRef={Exception} UserRoles={$UserInfo.roles} />
   </div>
-
-  {#if "MAINTAINER" in $UserInfo.roles}
-    
-  {/if}
-  {#if "SUBSCRIPTION_MANAGER" in $UserInfo.roles}
-    
-  {/if}
-  {#if "ROLE_MANAGER" in $UserInfo.roles}
-    
-  {/if}
-
 {:else if Exception}
   <div transition:fade class="min-h-[60vh] flex justify-center items-center">
     <h1 class="text-3xl md:text-6xl text-center opacity-80">Yikes! Admin Center ran into a hiccup.</h1>

@@ -15,8 +15,6 @@
   /** @type {any} */
   export let className = undefined;
   export { className as class };
-
-
 </script>
 
 

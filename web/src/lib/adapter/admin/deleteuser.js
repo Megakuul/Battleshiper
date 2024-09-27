@@ -14,7 +14,7 @@
  * @returns {Promise<deleteUserOutput>}
  * @throws {Error}
  */
-export const DeleteProject = async (input) => {
+export const DeleteUser = async (input) => {
   const res = await fetch("/api/admin/deleteuser", {
     method: "DELETE",
     headers: {

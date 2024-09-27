@@ -1,5 +1,5 @@
 /**
- * @typedef {Record<string, string>} findProjectInput
+ * @typedef {Object} findProjectInput
  * @property {string} project_name
  * @property {string} owner_id
  */

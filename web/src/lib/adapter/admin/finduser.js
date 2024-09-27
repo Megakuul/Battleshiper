@@ -1,5 +1,5 @@
 /**
- * @typedef {Record<string, string>} findUserInput
+ * @typedef {Object} findUserInput
  * @property {string} user_id
  */
 

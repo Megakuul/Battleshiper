@@ -16,6 +16,7 @@
   import { 
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
+  import { Refresh } from "$lib/adapter/auth/refresh";
 
   /** @type {string} */
   let Exception = "";
@@ -23,6 +24,7 @@
   onMount(async () => {
     try {
       if (!$UserInfo) {
+        await Refresh(); // Refresh user token
         $UserInfo = await FetchInfo();
       }
     } catch (/** @type {any} */ err) {
@@ -72,7 +74,8 @@
               {#each Object.entries($UserInfo.roles) as role}
                 <span class="lowercase ml-4 block text-[rgba(132,62,35,1)]">"{role[0]}",</span>
               {/each}
-            <span class="font-bold block text-yellow-700">]</span></h2>
+            <span class="font-bold block text-yellow-700">]</span>
+          </h2>
         </div>
       </div>
     </div>

@@ -82,7 +82,6 @@
       toast.success("Success", {
         description: CurrentLogOutputRef.message
       })
-      queryButtonState = false;
     } catch (/** @type {any} */ err) {
       ExceptionRef = err.message;
       toast.error("Exception", {
