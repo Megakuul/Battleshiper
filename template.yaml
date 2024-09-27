@@ -1541,10 +1541,17 @@ Resources:
 
             return request;
           } catch (err) {
-            // update the uri to /404.html page and add the error as query param
-            request.uri = "/404.html";
-            request.querystring = "error=" + err.message;
-            return request;
+            // exceptions are redirected to the battleshiper error page
+            const queryString = "type=EdgeRouter Error&message=" + err.message;
+            return {
+              statusCode: 302,
+              statusDescription: "Found",
+              headers: {
+                "location": {
+                  "value": "https://${ApplicationDomain}/error?" + queryString
+                }
+              }
+            };
           }
         }
 
@@ -1595,12 +1602,17 @@ Resources:
 
             return request;
           } catch (err) {
-            // ensure request is not further mutated and handled as static page request to /404.html
-            request.headers["battleshiper-project"] = "";
-            // update the uri to /404.html page and add the error as query param
-            request.uri = "/404.html";
-            request.querystring = "error=" + err.message;
-            return request;
+            // exceptions are redirected to the battleshiper error page
+            const queryString = "type=EdgeRouter Error&message=" + err.message;
+            return {
+              statusCode: 302,
+              statusDescription: "Found",
+              headers: {
+                "location": {
+                  "value": "https://${ApplicationDomain}/error?" + queryString
+                }
+              }
+            };
           }
         }
 

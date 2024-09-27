@@ -7,7 +7,7 @@ Alternatively, you can use the [Update Script](/scripts/update.sh) to guide you 
 The instructions below require the following software packages to be installed on your system:
 - `aws cli`
 - `aws sam cli`
-- `nodejs`
+- `bun`
 - `go`
 
 
@@ -28,7 +28,7 @@ sam deploy
 For updates on the battleshiper dashboard (code located under `/web`), you must also upload the static assets:
 ```bash
 cd web
-npm ci && npm run build
+bun install && bun run build
 
 # Upload 404 page to project bucket
 s3 cp 404.html s3://$BattleshiperProjectWebBucket/404.html

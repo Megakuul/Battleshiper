@@ -7,7 +7,7 @@ Alternatively, you can use the [Setup Script](/scripts/setup.sh) to guide you th
 The instructions below require the following software packages to be installed on your system:
 - `aws cli`
 - `aws sam cli`
-- `nodejs`
+- `bun`
 - `go`
 
 
@@ -76,10 +76,12 @@ Battleshiper can be deployed with the `aws sam cli`.
 
 ### Build
 
-First compile the lambda functions:
+First compile the lambda and web functions:
 ```bash
 sam build
 ```
+
+(data displayed on the frontend (e.g. link to the github app) can be customized in the `web/.env` file)
 
 
 ### Deploy
@@ -104,7 +106,7 @@ The following assets must be placed in the specified bucket location:
 This can be done by first generating the build files (if not existent) and then sending the files via s3:
 ```bash
 cd web
-npm ci && npm run build
+bun install && bun run build
 
 # Upload 404 page to project bucket
 s3 cp 404.html s3://$BattleshiperProjectWebBucket/404.html

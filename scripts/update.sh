@@ -20,7 +20,7 @@ confirm_action() {
 echo "Checking required software..."
 check_command "aws"
 check_command "sam"
-check_command "node"
+check_command "bun"
 check_command "go"
 echo "All required software is installed."
 
@@ -36,7 +36,7 @@ echo "IMPORTANT: Make sure that all updated properties can be managed by CloudFo
 confirm_action "Do you want to update the Battleshiper dashboard assets?"
 echo "Building the Battleshiper dashboard assets..."
 cd web
-npm ci && npm run build
+bun install && bun run build
 
 read -p "Enter BattleshiperWebBucket name: " web_bucket
 read -p "Enter BattleshiperProjectWebBucket name: " project_web_bucket

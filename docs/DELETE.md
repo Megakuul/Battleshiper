@@ -7,8 +7,6 @@ Alternatively, you can use the [Delete Script](/scripts/delete.sh) to guide you 
 The instructions below require the following software packages to be installed on your system:
 - `aws cli`
 - `aws sam cli`
-- `nodejs`
-- `go`
 
 
 ## Delete

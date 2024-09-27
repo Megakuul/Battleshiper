@@ -20,7 +20,7 @@ confirm_action() {
 echo "Checking required software..."
 check_command "aws"
 check_command "sam"
-check_command "node"
+check_command "bun"
 check_command "go"
 echo "All required software is installed."
 
@@ -81,7 +81,7 @@ sam deploy --parameter-overrides \
 # Step 4: Upload Static Assets
 echo "Uploading static assets..."
 cd web
-npm ci && npm run build
+bun install && bun run build
 
 read -p "Enter BattleshiperWebBucket name from SAM deploy output: " web_bucket
 read -p "Enter BattleshiperProjectWebBucket name from SAM deploy output: " project_web_bucket
