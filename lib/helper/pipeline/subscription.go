@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/lib/helper/database"
@@ -23,12 +24,11 @@ type CheckBuildSubscriptionLimitInput struct {
 // If the limit_counter values have expired, the pipeline_builds are reset and the expiration time is set to the next day.
 func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dynamodb.Client, input *CheckBuildSubscriptionLimitInput) error {
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
-		Table: input.SubscriptionTable,
-		Index: "",
+		Table: aws.String(input.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to fetch subscription: %v", err)
@@ -36,7 +36,7 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dyn
 
 	// Update pipeline_builds if the current counter has expired.
 	_, err = database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
-		Table: input.UserTable,
+		Table: aws.String(input.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
@@ -56,15 +56,15 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dyn
 				int(time.Now().Add(24 * time.Hour).Unix()),
 			)},
 		},
-		ConditionExpr: "#limit_counter.#pipeline_builds_exp < :current_timestamp",
-		UpdateExpr:    "SET #limit_counter.#pipeline_builds = :pipeline_builds, #limit_counter.#pipeline_builds_exp = :next_timestamp",
+		ConditionExpr: aws.String("#limit_counter.#pipeline_builds_exp < :current_timestamp"),
+		UpdateExpr:    aws.String("SET #limit_counter.#pipeline_builds = :pipeline_builds, #limit_counter.#pipeline_builds_exp = :next_timestamp"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to reset limit_counter: %v", err)
 	}
 
 	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
-		Table: input.UserTable,
+		Table: aws.String(input.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
@@ -77,7 +77,7 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dyn
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":increment": &dynamodbtypes.AttributeValueMemberN{Value: "1"},
 		},
-		UpdateExpr: "ADD #limit_counter.#pipeline_builds :increment",
+		UpdateExpr: aws.String("ADD #limit_counter.#pipeline_builds :increment"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update limit_counter: %v", err)
@@ -100,12 +100,11 @@ type CheckDeploySubscriptionLimitInput struct {
 // If the limit_counter values have expired, the pipeline_deployments are reset and the expiration time is set to the next day.
 func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dynamodb.Client, input *CheckBuildSubscriptionLimitInput) error {
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
-		Table: input.SubscriptionTable,
-		Index: "",
+		Table: aws.String(input.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to fetch subscription: %v", err)
@@ -113,7 +112,7 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dy
 
 	// Update pipeline_deployments if the current counter has expired.
 	_, err = database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
-		Table: input.UserTable,
+		Table: aws.String(input.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
@@ -133,15 +132,15 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dy
 				int(time.Now().Add(24 * time.Hour).Unix()),
 			)},
 		},
-		ConditionExpr: "#limit_counter.#pipeline_deployments_exp < :current_timestamp",
-		UpdateExpr:    "SET #limit_counter.#pipeline_deployments = :pipeline_deployments, #limit_counter.#pipeline_deployments_exp = :next_timestamp",
+		ConditionExpr: aws.String("#limit_counter.#pipeline_deployments_exp < :current_timestamp"),
+		UpdateExpr:    aws.String("SET #limit_counter.#pipeline_deployments = :pipeline_deployments, #limit_counter.#pipeline_deployments_exp = :next_timestamp"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to reset limit_counter: %v", err)
 	}
 
 	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
-		Table: input.UserTable,
+		Table: aws.String(input.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
 		},
@@ -154,7 +153,7 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dy
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":increment": &dynamodbtypes.AttributeValueMemberN{Value: "1"},
 		},
-		UpdateExpr: "ADD #limit_counter.#pipeline_deployments :increment",
+		UpdateExpr: aws.String("ADD #limit_counter.#pipeline_deployments :increment"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update limit_counter: %v", err)

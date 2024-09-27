@@ -25,14 +25,14 @@ sam deploy
 - If you update the system you must ensure that all updated properties can be "updated" by cloudformation.
 
 
-For updates on the battleshiper dashboard (code located under `/web`), you must also upload the static assets:
-```bash
-cd web
-bun install && bun run build
+Finally some static assets and prerendered pages of the internal battleshiper dashboard must be uploaded.
 
-# Remove previous static assets
-s3 rm s3://$BattleshiperWebBucket/
+Unfortunately, there is no really clean way to handle this situation with aws sam, for that reason, the assets are written to the sam output directory:
+```bash
 # Upload static assets for the battleshiper dashboard
-s3 cp --recursive build/prerendered/ s3://$BattleshiperWebBucket/
-s3 cp --recursive build/client/ s3://$BattleshiperWebBucket/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
 ```
+(The bucketname can be acquired from the sam deploy output).
+
+Note that when you deploy the app, the assets must be updated at the same time. Svelte adds hashes to the js chunks, so the server version must match the assets!

@@ -33,21 +33,13 @@ confirm_action "Do you want to proceed with deploying the updated SAM stack?"
 echo "Deploying the updated SAM stack..."
 sam deploy
 
-echo "IMPORTANT: Make sure that all updated properties can be managed by CloudFormation. Project stacks need to be updated manually if required."
-
-confirm_action "Do you want to update the Battleshiper dashboard assets?"
-echo "Building the Battleshiper dashboard assets..."
-cd web
-bun install && bun run build
-
-read -p "Enter BattleshiperWebBucket name: " web_bucket
-read -p "Enter BattleshiperProjectWebBucket name: " project_web_bucket
+web_bucket=$(aws cloudformation describe-stacks --stack-name battleshiper --query "Stacks[0].Outputs[?OutputKey=='BattleshiperWebBucket'].OutputValue" --output text)
 
 echo "Removing previous static assets from the web bucket..."
 aws s3 rm s3://"$web_bucket"/ --recursive
 
 echo "Uploading updated static assets for the Battleshiper dashboard..."
-aws s3 cp --recursive build/prerendered/ s3://"$web_bucket"/
-aws s3 cp --recursive build/client/ s3://"$web_bucket"/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
 
 echo "Update process complete."

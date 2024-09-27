@@ -2,6 +2,7 @@ package registeruser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/rbac"
@@ -73,6 +75,10 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 		ProtectionAttributeName: "id",
 	})
 	if err != nil {
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); ok {
+			return http.StatusOK, nil
+		}
 		return http.StatusInternalServerError, fmt.Errorf("failed to add user: %v", err)
 	}
 

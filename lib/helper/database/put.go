@@ -11,18 +11,18 @@ import (
 )
 
 type PutSingleInput[T any] struct {
-	Table                   string
+	Table                   *string
 	Item                    T
-	ProtectionAttributeName string
+	ProtectionAttributeName *string
 }
 
 // PutSingle inserts a single item to the database.
 // If you want to ensure no item is overwritten, you can set the ProtectionAttributeName
 // to an attribute key that must NOT alread exist (usually the partition key is used for this).
 func PutSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Client, input *PutSingleInput[T]) error {
-	conditionExpr := ""
-	if input.ProtectionAttributeName != "" {
-		conditionExpr = fmt.Sprintf("attribute_not_exists(%s)", input.ProtectionAttributeName)
+	var conditionExpr *string = nil
+	if input.ProtectionAttributeName != nil {
+		conditionExpr = aws.String(fmt.Sprintf("attribute_not_exists(%s)", *input.ProtectionAttributeName))
 	}
 
 	inputStructure, err := attributevalue.MarshalMap(&input.Item)
@@ -31,9 +31,9 @@ func PutSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Clien
 	}
 
 	_, err = dynamoClient.PutItem(transportCtx, &dynamodb.PutItemInput{
-		TableName:           aws.String(input.Table),
+		TableName:           input.Table,
 		Item:                inputStructure,
-		ConditionExpression: aws.String(conditionExpr),
+		ConditionExpression: conditionExpr,
 		ReturnValues:        dynamodbtypes.ReturnValueNone,
 	})
 	if err != nil {

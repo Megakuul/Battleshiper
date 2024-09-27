@@ -127,8 +127,8 @@ echo "Uploading static assets..."
 cd web
 bun install && bun run build
 
-aws s3 cp --recursive build/prerendered/ s3://"$web_bucket"/
-aws s3 cp --recursive build/client/ s3://"$web_bucket"/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
+aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
 
 # Step 5: Final DNS Setup
 echo "Add the following DNS records to your provider to finalize deployment:"

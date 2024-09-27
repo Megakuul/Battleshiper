@@ -112,7 +112,8 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		// TODO: Remove debug verbose error output
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database: %v", err)
 	}
 
 	if userDoc.SubscriptionId == "" {
@@ -139,7 +140,7 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("subscription not found")
 		}
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load subscription record from database")
 	}
 
 	return &fetchInfoOutput{

@@ -11,20 +11,20 @@ import (
 )
 
 type GetSingleInput struct {
-	Table           string
-	Index           string
+	Table           *string
+	Index           *string
 	AttributeValues map[string]dynamodbtypes.AttributeValue
-	ConditionExpr   string
+	ConditionExpr   *string
 }
 
 // GetSingle fetches a single item from the database and tries to deserialize it into the provided struct type.
 // Set the index to "" to query the main table.
 func GetSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Client, input *GetSingleInput) (*T, error) {
 	output, err := dynamoClient.Query(transportCtx, &dynamodb.QueryInput{
-		IndexName:                 aws.String(input.Index),
-		TableName:                 aws.String(input.Table),
+		IndexName:                 input.Index,
+		TableName:                 input.Table,
 		ExpressionAttributeValues: input.AttributeValues,
-		KeyConditionExpression:    aws.String(input.ConditionExpr),
+		KeyConditionExpression:    input.ConditionExpr,
 		Limit:                     aws.Int32(1),
 	})
 	if err != nil {
@@ -45,11 +45,11 @@ func GetSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Clien
 }
 
 type GetManyInput struct {
-	Table           string
-	Index           string
+	Table           *string
+	Index           *string
 	AttributeValues map[string]dynamodbtypes.AttributeValue
-	ConditionExpr   string
-	Limit           int32
+	ConditionExpr   *string
+	Limit           *int32
 }
 
 // GetMany fetches items from the database and tries to deserialize it into a list of the provided struct type.
@@ -57,11 +57,11 @@ type GetManyInput struct {
 // Set the limit to '-1' to fetch all items.
 func GetMany[T any](transportCtx context.Context, dynamoClient *dynamodb.Client, input *GetManyInput) ([]T, error) {
 	output, err := dynamoClient.Query(transportCtx, &dynamodb.QueryInput{
-		TableName:                 aws.String(input.Table),
-		IndexName:                 aws.String(input.Index),
+		IndexName:                 input.Index,
+		TableName:                 input.Table,
 		ExpressionAttributeValues: input.AttributeValues,
-		KeyConditionExpression:    aws.String(input.ConditionExpr),
-		Limit:                     aws.Int32(input.Limit),
+		KeyConditionExpression:    input.ConditionExpr,
+		Limit:                     input.Limit,
 	})
 	if err != nil {
 		return nil, err

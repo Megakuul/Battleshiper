@@ -60,7 +60,6 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: routeCtx.UserTable,
-		Index: "",
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
@@ -71,7 +70,8 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		// TODO: Remove debug verbose error output
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database: %v", err)
 	}
 
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
