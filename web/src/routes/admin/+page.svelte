@@ -3,28 +3,20 @@
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import CircleAlert from "lucide-svelte/icons/circle-alert";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Button, buttonVariants } from "$lib/components/ui/button";
+  import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import * as Avatar from "$lib/components/ui/avatar";
-  import * as Dialog from "$lib/components/ui/dialog";
   import Icon from '@iconify/svelte';
   import { onMount } from "svelte";
-  import { RegisterUser } from "$lib/adapter/user/registeruser";
   import { Authorize } from "$lib/adapter/auth/authorize";
   import { fade } from "svelte/transition";
   import { UserInfo } from "$lib/stores";
   import { 
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
-    import { Input } from "$lib/components/ui/input";
-    import { toast } from "svelte-sonner";
-    import { FindUser } from "$lib/adapter/admin/finduser";
-    import { cn } from "$lib/utils";
-    import { DeleteUser } from "$lib/adapter/admin/deleteuser";
-    import UserPanel from "./UserPanel.svelte";
-    import ProjectPanel from "./ProjectPanel.svelte";
-    import SubscriptionPanel from "./SubscriptionPanel.svelte";
-    import RolePanel from "./RolePanel.svelte";
+  import UserPanel from "./UserPanel.svelte";
+  import ProjectPanel from "./ProjectPanel.svelte";
+  import SubscriptionPanel from "./SubscriptionPanel.svelte";
+  import RolePanel from "./RolePanel.svelte";
 
   /** @type {string} */
   let Exception = "";

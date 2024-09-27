@@ -22,49 +22,7 @@
   export let UserRoles;
 
   /** @type {import("$lib/adapter/admin/listsubscription").listSubscriptionOutput}*/
-  let listSubscriptionOutput = {
-  message: "List of active subscriptions",
-  subscriptions: [
-    {
-      id: "sub_12345",
-      name: "Basic Plan",
-      pipeline_specs: {
-        daily_builds: 10,
-        daily_deployments: 5
-      },
-      project_specs: {
-        project_count: 3,
-        alias_count: 10,
-        prerender_routes: 50,
-        server_storage: 1024, // in MB
-        client_storage: 512,  // in MB
-        prerender_storage: 256 // in MB
-      },
-      cdn_specs: {
-        instance_count: 2
-      }
-    },
-    {
-      id: "sub_67890",
-      name: "Pro Plan",
-      pipeline_specs: {
-        daily_builds: 50,
-        daily_deployments: 25
-      },
-      project_specs: {
-        project_count: 10,
-        alias_count: 50,
-        prerender_routes: 100,
-        server_storage: 2048, // in MB
-        client_storage: 1024, // in MB
-        prerender_storage: 512  // in MB
-      },
-      cdn_specs: {
-        instance_count: 5
-      }
-    }
-  ]
-};
+  let listSubscriptionOutput;
 
   /** @type {import("$lib/adapter/admin/upsertsubscription").upsertSubscriptionInput}*/
   let upsertSubscriptionInput = {

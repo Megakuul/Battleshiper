@@ -12,7 +12,7 @@
   import { FindUser } from "$lib/adapter/admin/finduser";
   import { cn } from "$lib/utils";
   import { DeleteUser } from "$lib/adapter/admin/deleteuser";
-    import { UpdateUser } from "$lib/adapter/admin/updateuser";
+  import { UpdateUser } from "$lib/adapter/admin/updateuser";
 
 
   /** @type {string} */
@@ -27,19 +27,7 @@
   }
 
   /** @type {import("$lib/adapter/admin/finduser").findUserOutput}*/
-  let findUserOutput = {
-    message: "User found successfully",
-    user: {
-      id: "12345",
-      privileged: true,
-      provider: "google",
-      roles: {
-        admin: { accessLevel: "full" },
-        editor: { accessLevel: "partial" }
-      },
-      subscription_id: "sub_67890"
-    }
-  };
+  let findUserOutput;
 
   /** @type {import("$lib/adapter/admin/updateuser").updateUserInput}*/
   let updateUserInput = {
