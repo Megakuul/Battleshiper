@@ -1,7 +1,38 @@
 import { writable } from "svelte/store";
 
 /** @type {import("svelte/store").Writable<import("$lib/adapter/user/fetchinfo").fetchInfoOutput|undefined>} */
-export const UserInfo = writable(undefined); 
+export const UserInfo = writable({
+  id: "12345",
+  name: "Sample Project",
+  roles: {
+    USER: null,
+    SUPPORT: null,
+    MAINTAINER: null,
+    SUBSCRIPTION_MANAGER: null,
+    ROLE_MANAGER: null,
+  },
+  provider: "GitHub",
+  avatar_url: "https://example.com/avatar.jpg",
+  subscription: {
+    id: "sub_001",
+    name: "Premium Plan",
+    pipeline_specs: {
+      daily_builds: 10,
+      daily_deployments: 5,
+    },
+    project_specs: {
+      project_count: 3,
+      alias_count: 2,
+      prerender_routes: 100,
+      server_storage: 5000, // in MB
+      client_storage: 3000, // in MB
+      prerender_storage: 2000, // in MB
+    },
+    cdn_specs: {
+      instance_count: 1,
+    }
+  }
+}); 
 
 /** @type {import("svelte/store").Writable<import("$lib/adapter/resource/listrepository").listRepositoryOutput|undefined>} */
 export const RepositoryInfo = writable({

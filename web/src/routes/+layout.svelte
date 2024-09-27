@@ -38,6 +38,10 @@
 		</a>
 		<a 
 			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
+			href="/admin">Admin
+		</a>
+		<a 
+			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
 			href="/profile">Profile
 		</a>
 
@@ -65,6 +69,10 @@
 					<a 
 						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
 						href="/logs">Logs
+					</a>
+					<a 
+						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
+						href="/admin">Admin
 					</a>
 					<a 
 						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 

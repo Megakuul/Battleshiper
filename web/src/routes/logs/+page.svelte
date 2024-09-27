@@ -1,26 +1,15 @@
 <script>
   import { ListProject } from "$lib/adapter/resource/listproject";
   import * as Alert from "$lib/components/ui/alert";
-  import * as Select from "$lib/components/ui/select";
-  import * as Popover from "$lib/components/ui/popover";
-  import Input from "$lib/components/ui/input/input.svelte";
   import { ProjectInfo } from "$lib/stores";
   import { CircleAlert } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { crossfade, fade } from "svelte/transition";
-  import { toast } from "svelte-sonner";
-  import RangeCalendar from "$lib/components/ui/range-calendar/range-calendar.svelte";
-  import LoaderCircle from "lucide-svelte/icons/loader-circle";
-  import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
+  import { fade } from "svelte/transition";
   import Button from "$lib/components/ui/button/button.svelte";
-  import Icon from "@iconify/svelte";
-  import { cn } from "$lib/utils";
-  import { buttonVariants } from "$lib/components/ui/button";
-  import { FetchLog } from "$lib/adapter/resource/fetchlog";
   import ProjectQueryBar from "./ProjectQueryBar.svelte";
-    import { elasticIn, elasticOut } from "svelte/easing";
-    import AdminQueryBar from "./AdminQueryBar.svelte";
-    import LogPanel from "./LogPanel.svelte";
+  import AdminQueryBar from "./AdminQueryBar.svelte";
+  import LogPanel from "./LogPanel.svelte";
+  import { PUBLIC_SEO_DOMAIN } from "$env/static/public";
 
   /**
    * @typedef {"project" | "admin"} LOG_MODE
@@ -69,6 +58,17 @@
   // This is primarely for unexpected errors that cause the api to return an error page in html format.
   $: if (Exception && Exception.length > 250) Exception = "Unexpected error occured";
 </script>
+
+<svelte:head>
+	<title>Logs | Battleshiper</title>
+	<meta name="description" content="Query and analyze the logs of your system." />
+	<meta property="og:description" content="Query and analyze the logs of your system." />
+	<meta property="og:title" content="Logs - Battleshiper">
+  <meta property="og:type" content="website">
+	<meta property="og:image" content="https://{PUBLIC_SEO_DOMAIN}/favicon.png" />
+	<link rel="canonical" href="https://{PUBLIC_SEO_DOMAIN}/logs" />
+</svelte:head>
+
 
 {#if CurrentMode==="admin"}
 <div class="flex flex-col items-center w-full gap-4 my-10">
