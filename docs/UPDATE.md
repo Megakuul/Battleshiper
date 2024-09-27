@@ -30,9 +30,6 @@ For updates on the battleshiper dashboard (code located under `/web`), you must 
 cd web
 bun install && bun run build
 
-# Upload 404 page to project bucket
-s3 cp 404.html s3://$BattleshiperProjectWebBucket/404.html
-
 # Remove previous static assets
 s3 rm s3://$BattleshiperWebBucket/
 # Upload static assets for the battleshiper dashboard

@@ -101,15 +101,12 @@ Finally some static assets and prerendered pages of the internal battleshiper da
 The following assets must be placed in the specified bucket location:
 - `web/build/prerendered/*` -> `$BattleshiperWebBucket/`
 - `web/build/client/*` -> `$BattleshiperWebBucket/`
-- `web/404.html` -> `$BattleshiperProjectWebBucket/404.html`
 
 This can be done by first generating the build files (if not existent) and then sending the files via s3:
 ```bash
 cd web
 bun install && bun run build
 
-# Upload 404 page to project bucket
-s3 cp 404.html s3://$BattleshiperProjectWebBucket/404.html
 # Upload static assets for the battleshiper dashboard
 s3 cp --recursive build/prerendered/ s3://$BattleshiperWebBucket/
 s3 cp --recursive build/client/ s3://$BattleshiperWebBucket/
@@ -132,3 +129,5 @@ CNAME $DOMAIN <BATTLESHIPER-CDN-HOST>
 ```bash
 CNAME *.$DOMAIN <BATTLESHIPER-PROJECT-CDN-HOST>
 ```
+
+Don't worry if Battleshiper doesn't work as expected right away. As explained in [this](https://stackoverflow.com/questions/38735306/aws-cloudfront-redirecting-to-s3-bucket) article, it can take some time for S3 DNS settings to fully propagate. During this time, Cloudfront might incorrectly redirect requests to the S3 bucket instead of serving the content directly.

@@ -774,7 +774,30 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: !Ref BattleshiperCDNServerCachePolicy
           OriginRequestPolicyId: !Ref BattleshiperCDNServerOriginRequestPolicy
+        DefaultRootObject: index.html
         CacheBehaviors:
+          - PathPattern: "/"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
+          - PathPattern: "/errors"
+            TargetOriginId: "battleshiper-static-bucket"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-static-bucket"
             AllowedMethods:
@@ -1755,9 +1778,6 @@ Outputs:
   BattleshiperWebBucket:
     Description: "Bucketname of the internal battleshiper asset bucket"
     Value: !Ref BattleshiperStaticBucket
-  BattleshiperProjectWebBucket:
-    Description: "Bucketname of the battleshiper project asset bucket"
-    Value: !Ref BattleshiperProjectStaticBucket
   BattleshiperCDNHost:
     Description: "Hostname of the battleshiper-cdn."
     Value: !GetAtt BattleshiperCDN.DomainName

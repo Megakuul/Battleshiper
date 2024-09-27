@@ -2,6 +2,8 @@
 
 set -e
 
+cd "$(dirname "$0")/.."
+
 check_command() {
   if ! command -v $1 &> /dev/null; then
     echo "$1 is required but not installed. Please install it before proceeding."
@@ -33,7 +35,7 @@ else
   echo "$stacks"
   confirm_action "Do you want to delete these stacks?"
   
-  for stack in $stacks; Do
+  for stack in $stacks; do
     set +e
     aws cloudformation delete-stack --stack-name $stack
     if [[ $? -eq 0 ]]; then

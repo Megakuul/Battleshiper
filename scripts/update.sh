@@ -2,6 +2,8 @@
 
 set -e
 
+cd "$(dirname "$0")/.."
+
 check_command() {
   if ! command -v $1 &> /dev/null; then
     echo "$1 is required but not installed. Please install it before proceeding."
@@ -47,8 +49,5 @@ aws s3 rm s3://"$web_bucket"/ --recursive
 echo "Uploading updated static assets for the Battleshiper dashboard..."
 aws s3 cp --recursive build/prerendered/ s3://"$web_bucket"/
 aws s3 cp --recursive build/client/ s3://"$web_bucket"/
-
-echo "Uploading updated 404.html page to the project web bucket..."
-aws s3 cp 404.html s3://"$project_web_bucket"/404.html
 
 echo "Update process complete."
