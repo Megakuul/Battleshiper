@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -78,12 +79,11 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -103,7 +103,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: updateRoleInput.UserId},
 		},
@@ -115,7 +115,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 			":roles":      roles,
 			":privileged": &dynamodbtypes.AttributeValueMemberBOOL{Value: rbac.IsPrivileged(updateRoleInput.Roles)},
 		},
-		UpdateExpr: "SET #roles = :roles, #privileged = :privileged",
+		UpdateExpr: aws.String("SET #roles = :roles, #privileged = :privileged"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

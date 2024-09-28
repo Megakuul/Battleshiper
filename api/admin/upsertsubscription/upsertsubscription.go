@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -99,12 +100,11 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -120,7 +120,7 @@ func runHandleUpsertSubscription(request events.APIGatewayV2HTTPRequest, transpo
 
 	// MIG: Possible with update item and primary key
 	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[subscription.Subscription]{
-		Table: routeCtx.SubscriptionTable,
+		Table: aws.String(routeCtx.SubscriptionTable),
 		Item: subscription.Subscription{
 			Id:   upsertSubscriptionInput.Id,
 			Name: upsertSubscriptionInput.Name,

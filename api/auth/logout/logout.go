@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
 	"github.com/megakuul/battleshiper/lib/helper/auth"
@@ -50,7 +51,7 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
@@ -60,7 +61,7 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":refresh_token": &dynamodbtypes.AttributeValueMemberS{Value: ""},
 		},
-		UpdateExpr: "SET #refresh_token = :refresh_token",
+		UpdateExpr: aws.String("SET #refresh_token = :refresh_token"),
 	})
 	if err != nil {
 		// if the user is not registered, deleting the refresh token is simply skipped (no error is emitted).

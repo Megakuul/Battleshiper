@@ -81,7 +81,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	projectDoc, err := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.ProjectTable,
+		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
 		},
@@ -93,8 +93,8 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
-		ConditionExpr: "#owner_id = :owner_id",
-		UpdateExpr:    "SET #deleted = :deleted",
+		ConditionExpr: aws.String("#owner_id = :owner_id"),
+		UpdateExpr:    aws.String("SET #deleted = :deleted"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

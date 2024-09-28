@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
@@ -59,11 +60,11 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

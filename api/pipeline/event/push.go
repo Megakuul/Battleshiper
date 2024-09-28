@@ -33,12 +33,12 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	branch := strings.TrimPrefix(event.Ref, "refs/heads/")
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: user.GSI_INSTALLATION_ID,
+		Table: aws.String(routeCtx.UserTable),
+		Index: aws.String(user.GSI_INSTALLATION_ID),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":installation_id": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(event.Installation.ID)},
 		},
-		ConditionExpr: "installation_id = :installation_id",
+		ConditionExpr: aws.String("installation_id = :installation_id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -49,12 +49,12 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 	}
 
 	foundProjectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-		Table: routeCtx.ProjectTable,
-		Index: project.GSI_OWNER_ID,
+		Table: aws.String(routeCtx.ProjectTable),
+		Index: aws.String(project.GSI_OWNER_ID),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: "owner_id = :owner_id",
+		ConditionExpr: aws.String("owner_id = :owner_id"),
 	})
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to load projects from database")
@@ -85,7 +85,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			}
 
 			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-				Table: routeCtx.ProjectTable,
+				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 					"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 				},
@@ -97,7 +97,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 					":last_event_result": eventResultAttributes,
 					":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("EVENT FAILED: %v", err)},
 				},
-				UpdateExpr: "SET #last_event_result = :last_event_result, #status = :status",
+				UpdateExpr: aws.String("SET #last_event_result = :last_event_result, #status = :status"),
 			})
 			if err != nil {
 				return http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
@@ -113,7 +113,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			}
 
 			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-				Table: routeCtx.ProjectTable,
+				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 					"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 				},
@@ -123,7 +123,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				AttributeValues: map[string]dynamodbtypes.AttributeValue{
 					":last_event_result": eventResultAttributes,
 				},
-				UpdateExpr: "SET #last_event_result = :last_event_result",
+				UpdateExpr: aws.String("SET #last_event_result = :last_event_result"),
 			})
 			if err != nil {
 				return http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)

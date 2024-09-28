@@ -84,12 +84,11 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -100,12 +99,11 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.ProjectTable,
-		Index: "",
+		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":name": &dynamodbtypes.AttributeValueMemberS{Value: buildProjectInput.ProjectName},
 		},
-		ConditionExpr: "name = :name",
+		ConditionExpr: aws.String("name = :name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -139,7 +137,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: routeCtx.ProjectTable,
+			Table: aws.String(routeCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -151,7 +149,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 				":last_event_result": eventResultAttributes,
 				":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("EVENT FAILED: %v", err)},
 			},
-			UpdateExpr: "SET #last_event_result = :last_event_result, #status = :status",
+			UpdateExpr: aws.String("SET #last_event_result = :last_event_result, #status = :status"),
 		})
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
@@ -167,7 +165,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: routeCtx.ProjectTable,
+			Table: aws.String(routeCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -177,7 +175,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":last_event_result": eventResultAttributes,
 			},
-			UpdateExpr: "SET #last_event_result = :last_event_result",
+			UpdateExpr: aws.String("SET #last_event_result = :last_event_result"),
 		})
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)

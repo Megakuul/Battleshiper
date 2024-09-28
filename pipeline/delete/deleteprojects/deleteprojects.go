@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/lib/helper/database"
@@ -44,14 +45,13 @@ func runHandleDeleteProjects(request events.CloudWatchEvent, transportCtx contex
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
-		Table: eventCtx.ProjectTable,
-		Index: "",
+		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.Project},
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.UserID},
 			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
-		ConditionExpr: "name = :name AND owner_id = :owner_id AND deleted = :deleted",
+		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id AND deleted = :deleted"),
 	})
 	if err != nil {
 		// if the project is not existent, the deletion is considered successful.
@@ -64,7 +64,7 @@ func runHandleDeleteProjects(request events.CloudWatchEvent, transportCtx contex
 
 	if err := deleteProject(transportCtx, eventCtx, projectDoc); err != nil {
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -74,7 +74,7 @@ func runHandleDeleteProjects(request events.CloudWatchEvent, transportCtx contex
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":status": &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DELETION FAILED: %v", err)},
 			},
-			UpdateExpr: "SET #status = :status",
+			UpdateExpr: aws.String("SET #status = :status"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -103,7 +103,7 @@ func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	if err := database.DeleteSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.DeleteSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},

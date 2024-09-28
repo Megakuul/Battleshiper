@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -77,12 +78,11 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -97,12 +97,11 @@ func runHandleFindUser(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	foundUserDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: UserId},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

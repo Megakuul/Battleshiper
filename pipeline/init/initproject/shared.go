@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/lib/helper/database"
@@ -21,7 +22,7 @@ func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontex
 	}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -31,7 +32,7 @@ func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontex
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":shared_infrastructure": sharedInfrastructureAttributes,
 		},
-		UpdateExpr: "SET #shared_infrastructure = :shared_infrastructure",
+		UpdateExpr: aws.String("SET #shared_infrastructure = :shared_infrastructure"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update project: %v", err)

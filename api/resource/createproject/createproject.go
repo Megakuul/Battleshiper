@@ -97,12 +97,11 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -113,12 +112,11 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.SubscriptionTable,
-		Index: "",
+		Table: aws.String(routeCtx.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.SubscriptionId},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -129,13 +127,13 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	projectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-		Table: routeCtx.ProjectTable,
-		Index: project.GSI_OWNER_ID,
+		Table: aws.String(routeCtx.ProjectTable),
+		Index: aws.String(project.GSI_OWNER_ID),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: "owner_id = :owner_id",
-		Limit:         -1,
+		ConditionExpr: aws.String("owner_id = :owner_id"),
+		Limit:         aws.Int32(-1),
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to count projects on database")
@@ -159,7 +157,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[project.Project]{
-		Table: routeCtx.ProjectTable,
+		Table: aws.String(routeCtx.ProjectTable),
 		Item: project.Project{
 			Name:         createProjectInput.ProjectName,
 			OwnerId:      userDoc.Id,
@@ -177,7 +175,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			BuildCommand:    createProjectInput.BuildCommand,
 			OutputDirectory: createProjectInput.OutputDirectory,
 		},
-		ProtectionAttributeName: "name",
+		ProtectionAttributeName: aws.String("name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

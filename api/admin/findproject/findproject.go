@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -87,12 +88,11 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -109,26 +109,25 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	var foundProjectDocs []project.Project
 	if OwnerId != "" {
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-			Table: routeCtx.ProjectTable,
-			Index: project.GSI_OWNER_ID,
+			Table: aws.String(routeCtx.ProjectTable),
+			Index: aws.String(project.GSI_OWNER_ID),
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: OwnerId},
 			},
-			ConditionExpr: "owner_id = :owner_id",
-			Limit:         -1,
+			ConditionExpr: aws.String("owner_id = :owner_id"),
+			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
 		}
 	} else if ProjectName != "" {
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-			Table: routeCtx.ProjectTable,
-			Index: "",
+			Table: aws.String(routeCtx.ProjectTable),
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":name": &dynamodbtypes.AttributeValueMemberS{Value: ProjectName},
 			},
-			ConditionExpr: "name = :name",
-			Limit:         -1,
+			ConditionExpr: aws.String("name = :name"),
+			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")

@@ -82,12 +82,11 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -102,7 +101,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	projectDoc, err := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.ProjectTable,
+		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
 		},
@@ -112,7 +111,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":deleted": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
-		UpdateExpr: "SET #deleted = :deleted",
+		UpdateExpr: aws.String("SET #deleted = :deleted"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 
@@ -70,9 +71,9 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 	}
 
 	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[user.User]{
-		Table:                   routeCtx.UserTable,
+		Table:                   aws.String(routeCtx.UserTable),
 		Item:                    newDoc,
-		ProtectionAttributeName: "id",
+		ProtectionAttributeName: aws.String("id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

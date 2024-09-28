@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-playground/webhooks/v6/github"
@@ -33,7 +34,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: strconv.Itoa(int(userId))},
 		},
@@ -45,7 +46,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 			":installation_id": &dynamodbtypes.AttributeValueMemberN{Value: strconv.Itoa(int(event.Installation.ID))},
 			":repositories":    repositories,
 		},
-		UpdateExpr: "SET #installation_id = :installation_id, #repositories = :repositories",
+		UpdateExpr: aws.String("SET #installation_id = :installation_id, #repositories = :repositories"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

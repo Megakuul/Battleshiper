@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/megakuul/battleshiper/api/admin/routecontext"
 
@@ -77,12 +78,11 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -97,12 +97,11 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	deletionUserDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: deleteUserInput.UserId},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -117,13 +116,13 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	deletionUserProjectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-		Table: routeCtx.ProjectTable,
-		Index: project.GSI_OWNER_ID,
+		Table: aws.String(routeCtx.ProjectTable),
+		Index: aws.String(project.GSI_OWNER_ID),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deletionUserDoc.Id},
 		},
-		ConditionExpr: "owner_id = :owner_id",
-		Limit:         1,
+		ConditionExpr: aws.String("owner_id = :owner_id"),
+		Limit:         aws.Int32(1),
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")
@@ -134,7 +133,7 @@ func runHandleDeleteUser(request events.APIGatewayV2HTTPRequest, transportCtx co
 	}
 
 	err = database.DeleteSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.DeleteSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: deletionUserDoc.Id},
 		},

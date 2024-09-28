@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -86,12 +87,11 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -132,14 +132,14 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	updateAttributeValues[":deleted"] = &dynamodbtypes.AttributeValueMemberBOOL{Value: false}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.ProjectTable,
+		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: updateProjectInput.ProjectName},
 		},
 		AttributeNames:  updateAttributeNames,
 		AttributeValues: updateAttributeValues,
-		ConditionExpr:   "#owner_id = :owner_id AND #deleted = :deleted",
-		UpdateExpr:      updateExpression,
+		ConditionExpr:   aws.String("#owner_id = :owner_id AND #deleted = :deleted"),
+		UpdateExpr:      aws.String(updateExpression),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

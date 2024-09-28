@@ -86,12 +86,11 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -102,13 +101,12 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.ProjectTable,
-		Index: "",
+		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":name":     &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: "name = :name AND owner_id = :owner_id",
+		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -123,12 +121,11 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.SubscriptionTable,
-		Index: "",
+		Table: aws.String(routeCtx.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.SubscriptionId},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -152,7 +149,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.ProjectTable,
+		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -162,7 +159,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":aliases": aliasAttributes,
 		},
-		UpdateExpr: "#aliases = :aliases",
+		UpdateExpr: aws.String("#aliases = :aliases"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

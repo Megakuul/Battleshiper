@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -49,12 +50,11 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
-		Table: eventCtx.UserTable,
-		Index: "",
+		Table: aws.String(eventCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -65,14 +65,13 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
-		Table: eventCtx.ProjectTable,
-		Index: "",
+		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.Project},
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
 			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		ConditionExpr: "name = :name AND owner_id = :owner_id AND deleted = :deleted",
+		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id AND deleted = :deleted"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -96,7 +95,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -108,7 +107,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 				":last_build_result": buildResultAttributes,
 				":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("BUILD FAILED: %v", err)},
 			},
-			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status",
+			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -123,7 +122,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -133,7 +132,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":last_build_result": buildResultAttributes,
 			},
-			UpdateExpr: "SET #last_build_result = :last_build_result",
+			UpdateExpr: aws.String("SET #last_build_result = :last_build_result"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -141,7 +140,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	}
 
 	projectDoc, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -153,8 +152,8 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			":deleted":       &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
-		ConditionExpr: "#deleted = :deleted",
-		UpdateExpr:    "SET #pipeline_lock = :pipeline_lock",
+		ConditionExpr: aws.String("#deleted = :deleted"),
+		UpdateExpr:    aws.String("SET #pipeline_lock = :pipeline_lock"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -181,7 +180,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -195,7 +194,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DEPLOYMENT FAILED: %v", err)},
 				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			},
-			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock",
+			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -211,7 +210,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		}
 
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -225,7 +224,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: ""},
 				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			},
-			UpdateExpr: "SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock",
+			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -250,12 +249,11 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	cloudLogger.WriteLog("loading user subscription...")
 
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
-		Table: eventCtx.SubscriptionTable,
-		Index: "",
+		Table: aws.String(eventCtx.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: subscriptionId},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		cloudLogger.WriteLog("failed to fetch subscription from database")
@@ -331,7 +329,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -342,7 +340,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":prerender_page_keys": pageKeyAttributes,
 		},
-		UpdateExpr: "SET #shared_infrastructure.#prerender_page_keys = :prerender_page_keys",
+		UpdateExpr: aws.String("SET #shared_infrastructure.#prerender_page_keys = :prerender_page_keys"),
 	})
 	if err != nil {
 		cloudLogger.WriteLog("failed to update page keys on database")

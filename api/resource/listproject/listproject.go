@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -105,13 +106,13 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	foundProjectDocs, err := database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
-		Table: routeCtx.ProjectTable,
-		Index: project.GSI_OWNER_ID,
+		Table: aws.String(routeCtx.ProjectTable),
+		Index: aws.String(project.GSI_OWNER_ID),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "owner_id = :owner_id",
-		Limit:         -1,
+		ConditionExpr: aws.String("owner_id = :owner_id"),
+		Limit:         aws.Int32(-1),
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")

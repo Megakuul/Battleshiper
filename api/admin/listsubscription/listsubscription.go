@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -94,12 +95,11 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 	}
 
 	userDoc, err := database.GetSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
-		Table: routeCtx.UserTable,
-		Index: "",
+		Table: aws.String(routeCtx.UserTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
 		},
-		ConditionExpr: "id = :id",
+		ConditionExpr: aws.String("id = :id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -114,8 +114,8 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 	}
 
 	foundSubscriptionDocs, err := database.ScanMany[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.ScanManyInput{
-		Table: routeCtx.SubscriptionTable,
-		Limit: -1,
+		Table: aws.String(routeCtx.SubscriptionTable),
+		Limit: aws.Int32(-1),
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscriptions: %v", err)

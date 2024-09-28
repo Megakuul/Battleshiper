@@ -59,7 +59,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 	}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -69,7 +69,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":dedicated_infrastructure": dedicatedInfrastructureAttributes,
 		},
-		UpdateExpr: "SET #dedicated_infrastructure = :dedicated_infrastructure",
+		UpdateExpr: aws.String("SET #dedicated_infrastructure = :dedicated_infrastructure"),
 	})
 	if err != nil {
 		_, err := eventCtx.CloudformationClient.DeleteStack(transportCtx, &cloudformation.DeleteStackInput{

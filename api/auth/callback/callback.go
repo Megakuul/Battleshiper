@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-github/v63/github"
 	"github.com/megakuul/battleshiper/api/auth/routecontext"
@@ -58,7 +59,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: routeCtx.UserTable,
+		Table: aws.String(routeCtx.UserTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"id": &dynamodbtypes.AttributeValueMemberS{Value: strconv.Itoa(int(*githubUser.ID))},
 		},
@@ -68,7 +69,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":refresh_token": &dynamodbtypes.AttributeValueMemberS{Value: token.RefreshToken},
 		},
-		UpdateExpr: "SET #refresh_token = :refresh_token",
+		UpdateExpr: aws.String("SET #refresh_token = :refresh_token"),
 	})
 	if err != nil {
 		// if the user is not registered, setting the refresh token is simply skipped (no error is emitted).

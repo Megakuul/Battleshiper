@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
@@ -46,13 +47,12 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
-		Table: eventCtx.ProjectTable,
-		Index: "",
+		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":name":     &dynamodbtypes.AttributeValueMemberS{Value: initClaims.Project},
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: initClaims.UserID},
 		},
-		ConditionExpr: "name = :name AND owner_id = :owner_id",
+		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -65,7 +65,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	err = initProject(transportCtx, eventCtx, projectDoc)
 	if err != nil {
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-			Table: eventCtx.ProjectTable,
+			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 			},
@@ -77,7 +77,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 				":status":        &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("INITIALIZATION FAILED: %v", err)},
 				":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			},
-			UpdateExpr: "SET #pipeline_lock = :pipeline_lock, #status = :status",
+			UpdateExpr: aws.String("SET #pipeline_lock = :pipeline_lock, #status = :status"),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
@@ -86,7 +86,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	}
 
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
-		Table: eventCtx.ProjectTable,
+		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
 		},
@@ -100,7 +100,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 			":status":        &dynamodbtypes.AttributeValueMemberS{Value: ""},
 			":pipeline_lock": &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		UpdateExpr: "SET #initialized = :initialized, #pipeline_lock = :pipeline_lock, #status = :status",
+		UpdateExpr: aws.String("SET #initialized = :initialized, #pipeline_lock = :pipeline_lock, #status = :status"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update project: %v", err)
