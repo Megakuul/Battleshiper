@@ -1,0 +1,4 @@
+# hooks
+
+to smoothly rollout dashboard updates, the pre- / post-traffic hooks provided by codedeploy are used to upload the sveltekit assets to the static s3 bucket.
+the api web function uses the sam integration for codedeploy, this integration uses a lambda alias to shift traffic from the old to the new version, this is usually used to perform a gradual deployment (e.g. canary strat). in this system, the purpose of the integration is the usage of the pre- / post-traffic hooks, which are called before and after the traffic shift. when building the web function (makefile) the sveltekit assets are added to the lambda code, as the pre-hook has access to this data, it sends it to the static s3 bucket with a hashed tag, the old and new assets can coexist as the js chunks are assigned a new name on every sveltekit build. finally, after the traffic shift, the post-hook removes all data from the bucket that is not tagged with the previously assigned tag.
