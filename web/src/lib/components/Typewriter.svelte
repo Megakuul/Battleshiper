@@ -2,6 +2,7 @@
 	import { cn } from '$lib/utils';
   import { onMount } from 'svelte';
 	import { Motion } from 'svelte-motion';
+    import { fade } from 'svelte/transition';
 
 	/**
 	 * @typedef Word
@@ -75,46 +76,49 @@
 	};
 </script>
 
-<div class={cn('my-6 flex flex-row items-center space-x-2 text-xl md:text-2xl lg:text-4xl xl:text-6xl text-nowrap', className)}>
-	<Motion
-		let:motion
-		initial={{
-			width: 0
-		}}
-		variants={variants}
-		animate={animationState}
-		transition={{
-			duration: duration,
-			ease: 'linear',
-			delay: 0
-		}}
-	>
-    <span class={cn("py-2" ,prefix.className)}>{prefix.word}</span>
-		<span use:motion class="py-2 overflow-hidden text-nowrap">
-      <span>
-        {#each animatedText.words as word}
-          <span class="{word.className}">{word.word}{' '}</span>
-        {/each}
-      </span>
-		</span>
-	</Motion>
-	<Motion
-		let:motion
-		initial={{
-			opacity: 0
-		}}
-		animate={{
-			opacity: 1
-		}}
-		transition={{
-			duration: 0.8,
+<Motion
+	let:motion
+	initial={{
+		width: 0
+	}}
+	variants={variants}
+	animate={animationState}
+	transition={{
+		duration: duration,
+		ease: 'linear',
+		delay: 0
+	}}>
+	<div class="{cn("flex flex-col sm:flex-row gap-0 sm:gap-2 items-center justify-center text-3xl sm:text-5xl xl:text-6xl")}">
+		<span class={cn("text-nowrap py-2", prefix.className)}>{prefix.word}</span>
+		<div class="flex flex-row gap-1 items-center min-h-10">
+			<span use:motion class="overflow-hidden text-nowrap py-2">
+				{#each animatedText.words as word}
+					<span class="{word.className}">{word.word}{' '}</span>
+				{/each}
+			</span>
+			<Motion
+				let:motion
+				initial={{
+					opacity: 0
+				}}
+				animate={{
+					opacity: 1
+				}}
+				transition={{
+					duration: 0.8,
+		
+					repeat: Infinity,
+					repeatType: 'reverse'
+				}}>
+				<span
+					use:motion
+					class={cn("w-[4px] bg-black h-6 sm:h-10 xl:h-12", cursorClassName)}
+				></span>
+			</Motion>
+		</div>
+	</div>
+</Motion>
 
-			repeat: Infinity,
-			repeatType: 'reverse'
-		}}>
-		<span
-			use:motion
-			class={cn("h-4 w-[4px] bg-black sm:h-6 xl:h-12", cursorClassName)}
-		></span>
-	</Motion>
+<div class={cn('my-6 flex flex-row items-center space-x-2 ', className)}>
+
 </div>

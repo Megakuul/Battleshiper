@@ -74,9 +74,9 @@
 
 <Beam gradientStart="black" gradientVia="#757F9A" gradientEnd="#D7DDE8" className="flow-root z-0">
 	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
-		<h1 class="text-3xl lg:text-4xl font-bold">Deploy SvelteKit in Seconds</h1>
+		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">Deploy SvelteKit in Seconds</h1>
 		<PinContainer title="/kit.svelte.dev" href="https://kit.svelte.dev" containerClassName="my-16">
-			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">SvelteKit</h2>
 				<div class="text-base font-normal text-slate-500">
 					Battleshiper leverages Serverless Functions to power the GOAT framework.
@@ -90,7 +90,7 @@
 
 	<div class="flex flex-col-reverse lg:flex-row justify-evenly items-center my-64">
 		<PinContainer title="/project" href="/project" containerClassName="my-16">
-			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Edge Caching</h2>
 				<div class="text-base font-normal text-slate-500">
 					Assets and lazy-loaded chunks are cached directly at the Edge.
@@ -100,13 +100,13 @@
 				</div>
 			</div>
 		</PinContainer>
-		<h1 class="text-3xl lg:text-4xl font-bold">Profit from Global Edge Caching</h1>
+		<h1 class="text-xl lg:text-4xl text-nowrap text-center font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">Profit from Global Caching</h1>
 	</div>
 
 	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
-		<h1 class="text-3xl lg:text-4xl font-bold">CI/CD? Relax.</h1>
+		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">CI/CD? Relax.</h1>
 		<PinContainer title="/project" href="/project" containerClassName="my-16">
-			<div class="flex h-[20rem] w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Automated Deployment</h2>
 				<div class="text-base font-normal text-slate-500">
 					Your Application is automatically built and deployed to Battleshiper.

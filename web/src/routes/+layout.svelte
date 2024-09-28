@@ -13,6 +13,7 @@
 		PUBLIC_CONTACT_2,
 		PUBLIC_CONTACT_3
 	} from "$env/static/public";
+    import { goto } from "$app/navigation";
 </script>
 
 <Toaster />
@@ -58,26 +59,41 @@
 						<img src="{BattleshiperIcon}" alt="Battleshiper Icon" class="w-8" />
 					</Sheet.Title>
 				</Sheet.Header>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/">Home
-					</a>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/project">Projects
-					</a>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/logs">Logs
-					</a>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/admin">Admin
-					</a>
-					<a 
-						class="text-xl font-medium hover:bg-white hover:bg-opacity-5 px-3 py-2 rounded-xl transition-all duration-700" 
-						href="/profile">Profile
-					</a>
+					<Sheet.Close asChild let:builder>
+						<Button builders={[builder]} 
+							variant="ghost" 
+							class="text-xl font-medium hover:bg-slate-600/20 justify-start duration-700"
+							on:click={() => goto("/")}>Home
+						</Button>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button builders={[builder]} 
+							variant="ghost" 
+							class="text-xl font-medium hover:bg-slate-600/20 justify-start duration-700"
+							on:click={() => goto("/project")}>Projects
+						</Button>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button builders={[builder]} 
+							variant="ghost" 
+							class="text-xl font-medium hover:bg-slate-600/20 justify-start duration-700"
+							on:click={() => goto("/logs")}>Logs
+						</Button>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button builders={[builder]} 
+							variant="ghost" 
+							class="text-xl font-medium hover:bg-slate-600/20 justify-start duration-700"
+							on:click={() => goto("/admin")}>Admin
+						</Button>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button builders={[builder]} 
+							variant="ghost" 
+							class="text-xl font-medium hover:bg-slate-600/20 justify-start duration-700"
+							on:click={() => goto("/profile")}>Profile
+						</Button>
+					</Sheet.Close>
 			</Sheet.Content>
 		</Sheet.Root>
 	</nav>

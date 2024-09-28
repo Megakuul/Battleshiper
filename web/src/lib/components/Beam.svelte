@@ -57,11 +57,11 @@
 </script>
 
 <div class={cn("relative px-16 sm:px-20 lg:px-40", className)} bind:this={beamContainer}>
-  <svg class="beam absolute top-0 left-5 sm:left-10 lg:left-20 z-0 stroke-slate-600 opacity-20" width="29" height="{height}" viewBox="0 0 29 {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0 0L0 256L28 320L28 {height}L28" />
+  <svg class="beam absolute top-0 left-5 sm:left-10 lg:left-20 -z-20 stroke-slate-600 opacity-20" width="29" height="{height}" viewBox="0 0 29 {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0L0 256L28 320L28 {height}" />
   </svg>
 
-  <svg class="beam active absolute top-0 left-5 sm:left-10 lg:left-20 z-10 opacity-70" width="29" height="{height}" viewBox="0 0 29 {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg class="beam active absolute top-0 left-5 sm:left-10 lg:left-20 -z-10 opacity-70" width="29" height="{height}" viewBox="0 0 29 {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="beamGradient" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" style="stop-color: {gradientStart};" />
@@ -69,7 +69,7 @@
         <stop offset="100%" style="stop-color: {gradientEnd};" />
       </linearGradient>
     </defs>
-    <path d="M0 0L0 256L28 320L28 {height}L28" stroke-dasharray="{height}" stroke-dashoffset="{height - ($scrollProgressTween * height)}"/>
+    <path d="M0 0L0 256L28 320L28 {height}" stroke-dasharray="{height}" stroke-dashoffset="{height - ($scrollProgressTween * height)}"/>
   </svg>
   
   <slot />
