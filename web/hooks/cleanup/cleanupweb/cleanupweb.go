@@ -76,6 +76,10 @@ func runHandleCleanupWeb(event CodeDeployEvent, transportCtx context.Context, ev
 			}
 		}
 
+		if len(deleteObjects) < 1 {
+			return nil
+		}
+
 		_, err = eventCtx.S3Client.DeleteObjects(transportCtx, &s3.DeleteObjectsInput{
 			Bucket: aws.String(eventCtx.BucketConfiguration.StaticBucketName),
 			Delete: &s3types.Delete{

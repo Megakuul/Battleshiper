@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,12 +84,17 @@ func uploadDirectory(transportCtx context.Context, eventCtx eventcontext.Context
 				return err
 			}
 			defer file.Close()
-			s3Key := strings.TrimPrefix("/", strings.TrimPrefix(path, rootPath))
+			mimeType := mime.TypeByExtension(filepath.Ext(path))
+			if mimeType == "" {
+				mimeType = "application/octet-stream"
+			}
+			s3Key := strings.TrimPrefix(strings.TrimPrefix(path, rootPath), "/")
 			_, err = eventCtx.S3Client.PutObject(transportCtx, &s3.PutObjectInput{
-				Bucket:  aws.String(eventCtx.BucketConfiguration.StaticBucketName),
-				Key:     aws.String(s3Key),
-				Body:    file,
-				Tagging: aws.String(fmt.Sprintf("%s=%s", DEPLOYMENT_ID_TAG_KEY, deploymentId)),
+				Bucket:      aws.String(eventCtx.BucketConfiguration.StaticBucketName),
+				Key:         aws.String(s3Key),
+				Body:        file,
+				Tagging:     aws.String(fmt.Sprintf("%s=%s", DEPLOYMENT_ID_TAG_KEY, deploymentId)),
+				ContentType: aws.String(mimeType),
 			})
 			if err != nil {
 				return err
