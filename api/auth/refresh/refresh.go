@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"golang.org/x/oauth2"
 )
+
+var logger = log.New(os.Stderr, "AUTH REFRESH: ", 0)
 
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
 func HandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -71,8 +75,8 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
-		// TODO: Remove debug verbose error output
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database: %v", err)
+		logger.Printf("failed to load user record from database: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
@@ -97,7 +101,8 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 
 	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
+		logger.Printf("failed to create user_token: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")
 	}
 
 	userTokenCookie := &http.Cookie{
@@ -134,7 +139,8 @@ func refreshByAccessToken(transportCtx context.Context, routeCtx routecontext.Co
 
 	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
+		logger.Printf("failed to create user_token: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")
 	}
 
 	userTokenCookie := &http.Cookie{

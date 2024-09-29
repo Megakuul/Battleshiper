@@ -30,6 +30,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 
 	repositories, err := attributevalue.Marshal(&installedRepos)
 	if err != nil {
+		logger.Printf("failed to serialize repositories: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to serialize repositories")
 	}
 
@@ -53,6 +54,7 @@ func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.C
 		if ok := errors.As(err, &cErr); ok {
 			return http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to update user record on database: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to update user record on database")
 	}
 

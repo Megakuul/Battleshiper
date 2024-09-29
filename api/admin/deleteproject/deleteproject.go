@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,6 +26,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "ADMIN DELETEPROJECT: ", 0)
 
 type deleteProjectInput struct {
 	ProjectName string `json:"project_name"`
@@ -93,6 +97,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -118,11 +123,13 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
+		logger.Printf("failed to mark project as deleted on database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
 	}
 
 	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, projectDoc.OwnerId, projectDoc.Name)
 	if err != nil {
+		logger.Printf("failed to create pipeline ticket: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
 	deleteRequest := &event.DeleteRequest{
@@ -130,6 +137,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 	deleteRequestRaw, err := json.Marshal(deleteRequest)
 	if err != nil {
+		logger.Printf("failed to serialize deletion request: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize deletion request")
 	}
 	eventEntry := eventtypes.PutEventsRequestEntry{
@@ -142,6 +150,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
 	})
 	if err != nil || res.FailedEntryCount > 0 {
+		logger.Printf("failed to emit deletion event: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit deletion event")
 	}
 

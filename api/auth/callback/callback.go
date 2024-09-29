@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 	"golang.org/x/oauth2"
 )
+
+var logger = log.New(os.Stderr, "AUTH CALLBACK: ", 0)
 
 // HandleCallback is the route the user is redirected from after authorization.
 // It exchanges authCode, clientId and clientSecret with Access- and Refreshtoken.
@@ -75,13 +79,15 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		// if the user is not registered, setting the refresh token is simply skipped (no error is emitted).
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); !ok {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+			logger.Printf("failed to update user on database: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update user on database")
 		}
 	}
 
 	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token: %v", err)
+		logger.Printf("failed to create user_token: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")
 	}
 
 	userTokenCookie := &http.Cookie{

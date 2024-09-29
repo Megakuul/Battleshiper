@@ -43,7 +43,21 @@ Resources:
       LogGroupClass: INFREQUENT_ACCESS
       RetentionInDays: 14
 
-  BattleshiperRouterLogGroupWritePolicy:
+  BattleshiperRouterLogReadPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-router-log-read-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:FilterLogEvents"
+            Resource: !GetAtt BattleshiperRouterLogGroup.Arn
+      Roles:
+        - !Ref BattleshiperApiAdminFuncRole
+
+  BattleshiperRouterLogWritePolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: "battleshiper-router-log-write-access"
@@ -545,6 +559,7 @@ Resources:
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
           API_LOG_GROUP: !Ref BattleshiperApiLogGroup
           PIPELINE_LOG_GROUP: !Ref BattleshiperPipelineLogGroup
+          ROUTER_LOG_GROUP: !Ref BattleshiperRouterLogGroup
           DELETE_EVENTBUS_NAME: !Ref BattleshiperPipelineEventBus
           DELETE_EVENT_SOURCE: "ch.megakuul.battleshiper"
           DELETE_EVENT_ACTION: "battleshiper.delete"

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -23,11 +24,13 @@ import (
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
 )
 
+var logger = log.New(os.Stderr, "DEPLOY DEPLOYPROJECT: ", 0)
+
 func HandleDeployProject(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
 	return func(ctx context.Context, event events.CloudWatchEvent) error {
 		err := runHandleDeployProject(event, ctx, eventCtx)
 		if err != nil {
-			log.Printf("ERROR DEPLOYPROJECT: %v\n", err)
+			logger.Printf("%v\n", err)
 			return err
 		}
 		return nil

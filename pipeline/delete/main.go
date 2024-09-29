@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
-	"github.com/megakuul/battleshiper/pipeline/delete/deleteprojects"
+	"github.com/megakuul/battleshiper/pipeline/delete/deleteproject"
 	"github.com/megakuul/battleshiper/pipeline/delete/eventcontext"
 )
 
@@ -66,7 +66,7 @@ func run() error {
 		return fmt.Errorf("failed to parse DELETION_TIMEOUT environment variable")
 	}
 
-	lambda.Start(deleteprojects.HandleDeleteProjects(eventcontext.Context{
+	lambda.Start(deleteproject.HandleDeleteProject(eventcontext.Context{
 		DynamoClient:          dynamoClient,
 		ProjectTable:          PROJECTTABLE,
 		TicketOptions:         ticketOptions,

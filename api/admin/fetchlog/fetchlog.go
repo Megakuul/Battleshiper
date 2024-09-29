@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,6 +24,8 @@ import (
 )
 
 const MAX_LOG_EVENTS = 200
+
+var logger = log.New(os.Stderr, "ADMIN FETCHLOG: ", 0)
 
 type fetchLogInput struct {
 	LogType   string `json:"log_type"`
@@ -100,6 +104,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -113,9 +118,11 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		logGroup = routeCtx.LogConfiguration.ApiLogGroup
 	case "pipeline":
 		logGroup = routeCtx.LogConfiguration.PipelineLogGroup
+	case "router":
+		logGroup = routeCtx.LogConfiguration.RouterLogGroup
 	}
 	if logGroup == "" {
-		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'api' or 'pipeline'")
+		return nil, http.StatusBadRequest, fmt.Errorf("invalid logtype; expected 'api', 'pipeline' or 'router'")
 	}
 
 	logLimit := fetchLogInput.Count
@@ -130,6 +137,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Limit:        aws.Int32(logLimit),
 	})
 	if err != nil {
+		logger.Printf("failed to fetch log data from cloudwatch: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch log data from cloudwatch")
 	}
 

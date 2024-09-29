@@ -11,6 +11,7 @@ import (
 type LogConfiguration struct {
 	ApiLogGroup      string
 	PipelineLogGroup string
+	RouterLogGroup   string
 }
 
 // Context provides data to route handlers.

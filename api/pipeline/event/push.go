@@ -45,6 +45,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		if ok := errors.As(err, &cErr); ok {
 			return http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -57,6 +58,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 		ConditionExpr: aws.String("owner_id = :owner_id"),
 	})
 	if err != nil {
+		logger.Printf("failed to load projects from database: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to load projects from database")
 	}
 
@@ -81,6 +83,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 
 			eventResultAttributes, err := attributevalue.Marshal(&eventResult)
 			if err != nil {
+				logger.Printf("failed to serialize eventresult: %v\n", err)
 				return http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 			}
 
@@ -100,15 +103,18 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				UpdateExpr: aws.String("SET #last_event_result = :last_event_result, #status = :status"),
 			})
 			if err != nil {
-				return http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
+				logger.Printf("failed to update project: %v\n", err)
+				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
-			return http.StatusInternalServerError, fmt.Errorf("failed to initiate project build: %v", err)
+			logger.Printf("failed to initiate project build: %v\n", err)
+			return http.StatusInternalServerError, fmt.Errorf("failed to initiate project build")
 		} else {
 			eventResult.Successful = true
 			eventResult.Timepoint = time.Now().Unix()
 
 			eventResultAttributes, err := attributevalue.Marshal(&eventResult)
 			if err != nil {
+				logger.Printf("failed to serialize eventresult: %v\n", err)
 				return http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 			}
 
@@ -126,7 +132,8 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				UpdateExpr: aws.String("SET #last_event_result = :last_event_result"),
 			})
 			if err != nil {
-				return http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
+				logger.Printf("failed to update project: %v\n", err)
+				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
 		}
 	}

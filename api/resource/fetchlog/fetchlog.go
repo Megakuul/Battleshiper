@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,6 +23,8 @@ import (
 )
 
 const MAX_LOG_EVENTS = 50
+
+var logger = log.New(os.Stderr, "RESOURCE FETCHLOG: ", 0)
 
 type fetchLogInput struct {
 	ProjectName string `json:"project_name"`
@@ -102,6 +106,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
+		logger.Printf("failed load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load project from database")
 	}
 
@@ -132,6 +137,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Limit:        aws.Int32(logLimit),
 	})
 	if err != nil {
+		logger.Printf("failed to fetch logs from cloudwatch: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch logs from cloudwatch")
 	}
 

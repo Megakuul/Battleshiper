@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,11 +18,13 @@ import (
 	"github.com/megakuul/battleshiper/pipeline/init/eventcontext"
 )
 
+var logger = log.New(os.Stderr, "INIT INITPROJECT: ", 0)
+
 func HandleInitProject(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
 	return func(ctx context.Context, event events.CloudWatchEvent) error {
 		err := runHandleInitProject(event, ctx, eventCtx)
 		if err != nil {
-			log.Printf("ERROR INITPROJECT: %v\n", err)
+			logger.Printf("%v\n", err)
 			return err
 		}
 		return nil

@@ -1,4 +1,4 @@
-package deleteprojects
+package deleteproject
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,18 +19,20 @@ import (
 	"github.com/megakuul/battleshiper/pipeline/delete/eventcontext"
 )
 
-func HandleDeleteProjects(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
+var logger = log.New(os.Stderr, "DELETE DELETEPROJECT: ", 0)
+
+func HandleDeleteProject(eventCtx eventcontext.Context) func(context.Context, events.CloudWatchEvent) error {
 	return func(ctx context.Context, event events.CloudWatchEvent) error {
-		err := runHandleDeleteProjects(event, ctx, eventCtx)
+		err := runHandleDeleteProject(event, ctx, eventCtx)
 		if err != nil {
-			log.Printf("ERROR DELETEPROJECTS: %v\n", err)
+			logger.Printf("%v\n", err)
 			return err
 		}
 		return nil
 	}
 }
 
-func runHandleDeleteProjects(request events.CloudWatchEvent, transportCtx context.Context, eventCtx eventcontext.Context) error {
+func runHandleDeleteProject(request events.CloudWatchEvent, transportCtx context.Context, eventCtx eventcontext.Context) error {
 	deleteRequest := &event.DeleteRequest{}
 	if err := json.Unmarshal(request.Detail, &deleteRequest); err != nil {
 		return fmt.Errorf("failed to deserialize deploy request")

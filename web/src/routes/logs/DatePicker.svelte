@@ -28,12 +28,12 @@
     end: dateToTimeString(new Date(Date.now())),
   }
 
-    /**
+  /**
    * Converts Date to a HH:MM string
    * @param {Date} date
    * @returns {string}
    */
-   function dateToTimeString(date) {
+  function dateToTimeString(date) {
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${hours}:${minutes}`;
@@ -92,8 +92,8 @@
         const endTime = timeStringToUnix(
           logDayRange.end?.toDate(getLocalTimeZone()) ?? new Date(Date.now()), logTimeRange.end
         );
-        StartTimeRef = startTime / 1000;
-        EndTimeRef = endTime / 1000;
+        StartTimeRef = Math.floor(startTime / 1000);
+        EndTimeRef = Math.floor(endTime / 1000);
 
         toast("Success", {
           description: "Log range updated"

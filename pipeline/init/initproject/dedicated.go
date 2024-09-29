@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -77,8 +76,8 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 			DeletionMode: types.DeletionModeStandard,
 		})
 		if err != nil {
-			log.Printf(
-				"ERROR RUNTIME: failed to delete stack '%s'. failed to reference stack in database; stack is leaking.\n",
+			logger.Printf(
+				"CRITICAL: failed to delete stack '%s'. failed to reference stack in database; stack is leaking.\n",
 				projectDoc.DedicatedInfrastructure.StackName,
 			)
 		}

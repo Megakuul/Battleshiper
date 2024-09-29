@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +20,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "USER REGISTERUSER: ", 0)
 
 // HandleRegisterUser registers a user in the database (if not existent).
 func HandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -64,7 +69,8 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 	}
 
 	if routeCtx.UserConfiguration.AdminUsername != "" {
-		if userToken.Username == routeCtx.UserConfiguration.AdminUsername {
+		// Github usernames are case insensitive
+		if strings.EqualFold(userToken.Username, routeCtx.UserConfiguration.AdminUsername) {
 			newDoc.Privileged = true
 			newDoc.Roles = map[rbac.ROLE]struct{}{rbac.ROLE_MANAGER: {}}
 		}
@@ -80,7 +86,8 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 		if ok := errors.As(err, &cErr); ok {
 			return http.StatusOK, nil
 		}
-		return http.StatusInternalServerError, fmt.Errorf("failed to add user: %v", err)
+		logger.Printf("failed to add user to database: %v\n", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to add user to database")
 	}
 
 	return http.StatusOK, nil

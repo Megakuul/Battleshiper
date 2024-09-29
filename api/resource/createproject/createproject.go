@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -29,6 +31,8 @@ import (
 )
 
 const MIN_PROJECT_NAME_CHARACTERS = 3
+
+var logger = log.New(os.Stderr, "RESOURCE CREATEPROJECT: ", 0)
 
 type repositoryInput struct {
 	Id     int64  `json:"id"`
@@ -108,6 +112,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -123,6 +128,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusBadRequest, fmt.Errorf("user does not have a valid subscription associated")
 		}
+		logger.Printf("failed to load subscription from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load subscription from database")
 	}
 
@@ -136,6 +142,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		Limit:         aws.Int32(-1),
 	})
 	if err != nil {
+		logger.Printf("failed to count projects on database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to count projects on database")
 	}
 
@@ -182,15 +189,18 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusBadRequest, fmt.Errorf("project name is already registered")
 		}
+		logger.Printf("failed to insert project to database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to insert project to database")
 	}
 
 	if err := initAlias(transportCtx, routeCtx, createProjectInput.ProjectName); err != nil {
+		logger.Printf("%v\n", err)
 		return nil, http.StatusInternalServerError, err
 	}
 
 	initTicket, err := pipeline.CreateTicket(routeCtx.InitEventOptions.TicketOpts, userDoc.Id, createProjectInput.ProjectName)
 	if err != nil {
+		logger.Printf("failed to create pipeline ticket: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")
 	}
 	initRequest := &event.InitRequest{
@@ -198,6 +208,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	}
 	initRequestRaw, err := json.Marshal(initRequest)
 	if err != nil {
+		logger.Printf("failed to serialize init request: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize init request")
 	}
 	eventEntry := eventtypes.PutEventsRequestEntry{
@@ -210,6 +221,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
 	})
 	if err != nil || res.FailedEntryCount > 0 {
+		logger.Printf("failed to emit init event: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")
 	}
 

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +22,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/subscription"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "ADMIN LISTSUBSCRIPTIONS: ", 0)
 
 type pipelineSpecsOutput struct {
 	DailyBuilds      int64 `json:"daily_builds"`
@@ -106,6 +110,7 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -118,7 +123,8 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 		Limit: aws.Int32(-1),
 	})
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscriptions: %v", err)
+		logger.Printf("failed to fetch subscriptions: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch subscriptions")
 	}
 
 	foundSubscriptionOutput := []subscriptionOutput{}

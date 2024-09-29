@@ -1,4 +1,4 @@
-package deleteprojects
+package deleteproject
 
 import (
 	"context"

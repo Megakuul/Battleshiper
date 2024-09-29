@@ -10,7 +10,8 @@
 
   const ADMIN_LOG_TYPES = [
     "api",
-    "pipeline"
+    "pipeline",
+    "router"
   ];
 
   /** @type {import("$lib/adapter/admin/fetchlog").fetchLogInput}*/

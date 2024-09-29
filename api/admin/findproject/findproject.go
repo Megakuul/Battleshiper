@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +22,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "ADMIN FINDPROJECT: ", 0)
 
 type repositoryOutput struct {
 	Id     int64  `json:"id"`
@@ -99,6 +103,7 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -118,6 +123,7 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
+			logger.Printf("failed load projects on database: %v\n", err)
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
 		}
 	} else if ProjectName != "" {
@@ -130,7 +136,8 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects on database")
+			logger.Printf("failed load projects from database: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")
 		}
 	} else {
 		return nil, http.StatusBadRequest, fmt.Errorf("specify at least one query option")

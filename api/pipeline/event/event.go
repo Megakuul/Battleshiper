@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 
@@ -13,12 +15,19 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 )
 
+var logger = log.New(os.Stderr, "PIPELINE EVENT: ", 0)
+
 // HandleEvent receives events from github webhooks and handles them appropriately.
 func HandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	code, err := runHandleEvent(request, transportCtx, routeCtx)
 	if err != nil {
-		// Log with Printf like a real man
-		fmt.Printf("EVENT ERROR: %s", err.Error())
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: code,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: err.Error(),
+		}, nil
 	}
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: code,
@@ -41,6 +50,7 @@ func createPseudoRequest(body []byte, headers map[string]string) (*http.Request,
 func runHandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (int, error) {
 	httpRequest, err := createPseudoRequest([]byte(request.Body), request.Headers)
 	if err != nil {
+		logger.Printf("failed to create pseudo request: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to create pseudo request")
 	}
 

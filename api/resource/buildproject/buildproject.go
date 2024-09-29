@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -26,6 +28,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "RESOURCE BUILDPROJECT: ", 0)
 
 type buildProjectInput struct {
 	ProjectName string `json:"project_name"`
@@ -95,6 +99,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -110,6 +115,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
+		logger.Printf("failed to load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
@@ -133,6 +139,7 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 
 		eventResultAttributes, err := attributevalue.Marshal(&eventResult)
 		if err != nil {
+			logger.Printf("failed to serialize eventresult: %v\n", err)
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 		}
 
@@ -152,15 +159,18 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 			UpdateExpr: aws.String("SET #last_event_result = :last_event_result, #status = :status"),
 		})
 		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
+			logger.Printf("failed to update project: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project")
 		}
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to initiate project build: %v", err)
+		logger.Printf("failed to initiate project build: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to initiate project build")
 	} else {
 		eventResult.Successful = true
 		eventResult.Timepoint = time.Now().Unix()
 
 		eventResultAttributes, err := attributevalue.Marshal(&eventResult)
 		if err != nil {
+			logger.Printf("failed to serialize eventresult: %v\n", err)
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 		}
 
@@ -178,7 +188,8 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 			UpdateExpr: aws.String("SET #last_event_result = :last_event_result"),
 		})
 		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project: %v", err)
+			logger.Printf("failed to update project: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update project")
 		}
 	}
 

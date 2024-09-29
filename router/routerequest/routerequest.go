@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -18,6 +20,8 @@ import (
 
 	"github.com/megakuul/battleshiper/api/user/routecontext"
 )
+
+var logger = log.New(os.Stderr, "ROUTEREQUEST: ", 0)
 
 // HandleRouteRequest routes request either to s3 or to the corresponding server function.
 func HandleRouteRequest(routeCtx routecontext.Context) func(context.Context, events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -65,13 +69,15 @@ func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Co
 		if errors.As(err, &nsk) {
 			return nil, http.StatusNotFound, fmt.Errorf("static asset not found")
 		} else {
-			return nil, http.StatusInternalServerError, err
+			logger.Printf("failed to load static asset: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to load static asset")
 		}
 	}
 
 	body, err := io.ReadAll(objectOutput.Body)
 	if err != nil {
-		return nil, http.StatusInternalServerError, err
+		logger.Printf("failed to read static asset data: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to read static asset data")
 	}
 	return &events.APIGatewayV2HTTPResponse{
 		Headers: map[string]string{
@@ -85,7 +91,7 @@ func proxyStatic(request events.APIGatewayV2HTTPRequest, transportCtx context.Co
 func proxyServer(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context, projectName string) (*events.APIGatewayV2HTTPResponse, int, error) {
 	requestRaw, err := json.Marshal(request)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize api request")
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to serialize api request")
 	}
 
 	result, err := routeCtx.FunctionClient.Invoke(transportCtx, &lambda.InvokeInput{
@@ -97,12 +103,14 @@ func proxyServer(request events.APIGatewayV2HTTPRequest, transportCtx context.Co
 		return nil, http.StatusBadGateway, fmt.Errorf("failed to invoke origin server")
 	}
 	if result.FunctionError != nil && *result.FunctionError != "" {
-		return nil, http.StatusInternalServerError, fmt.Errorf(*result.FunctionError)
+		logger.Printf("origin server failed to handle request: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("origin server failed to handle request")
 	}
 
 	response := &events.APIGatewayV2HTTPResponse{}
 	err = json.Unmarshal(result.Payload, response)
 	if err != nil {
+		logger.Printf("failed to deserialize api response: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to deserialize api response")
 	}
 

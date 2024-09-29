@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -24,9 +26,9 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
 
-const (
-	MAX_ALIAS_SIZE = 30
-)
+const MAX_ALIAS_SIZE = 30
+
+var logger = log.New(os.Stderr, "RESOURCE UPDATEALIAS: ", 0)
 
 type updateAliasInput struct {
 	ProjectName string              `json:"project_name"`
@@ -97,7 +99,8 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
+		logger.Printf("failed to load user from database: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user from database")
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
@@ -113,6 +116,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
+		logger.Printf("failed to load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
@@ -132,6 +136,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusBadRequest, fmt.Errorf("user does not have a valid subscription associated")
 		}
+		logger.Printf("failed to load subscription from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load subscription from database")
 	}
 
@@ -140,11 +145,13 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	}
 
 	if err := updateAliases(transportCtx, routeCtx, projectDoc.Name, projectDoc.Aliases, updateAliasInput.Aliases); err != nil {
+		logger.Printf("%v\n", err)
 		return nil, http.StatusInternalServerError, err
 	}
 
 	aliasAttributes, err := attributevalue.Marshal(&updateAliasInput.Aliases)
 	if err != nil {
+		logger.Printf("failed to serialize alias attributes: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize alias attributes")
 	}
 
@@ -166,6 +173,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("project not found")
 		}
+		logger.Printf("failed to load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 

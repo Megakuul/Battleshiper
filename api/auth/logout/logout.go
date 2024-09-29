@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"os/user"
 	"time"
 
@@ -15,6 +17,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 )
+
+var logger = log.New(os.Stderr, "AUTH LOGOUT: ", 0)
 
 // HandleLogout logs the user out and revokes the used tokens.
 func HandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -67,6 +71,7 @@ func runHandleLogout(request events.APIGatewayV2HTTPRequest, transportCtx contex
 		// if the user is not registered, deleting the refresh token is simply skipped (no error is emitted).
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); !ok {
+			logger.Printf("failed to update user on database: %v\n", err)
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update user on database")
 		}
 	}

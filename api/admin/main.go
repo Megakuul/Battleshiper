@@ -40,6 +40,7 @@ var (
 	TICKET_CREDENTIAL_ARN   = os.Getenv("TICKET_CREDENTIAL_ARN")
 	API_LOG_GROUP           = os.Getenv("API_LOG_GROUP")
 	PIPELINE_LOG_GROUP      = os.Getenv("PIPELINE_LOG_GROUP")
+	ROUTER_LOG_GROUP        = os.Getenv("ROUTER_LOG_GROUP")
 	DELETE_EVENTBUS_NAME    = os.Getenv("DELETE_EVENTBUS_NAME")
 	DELETE_EVENT_SOURCE     = os.Getenv("DELETE_EVENT_SOURCE")
 	DELETE_EVENT_ACTION     = os.Getenv("DELETE_EVENT_ACTION")
@@ -100,6 +101,7 @@ func run() error {
 		LogConfiguration: &routecontext.LogConfiguration{
 			ApiLogGroup:      API_LOG_GROUP,
 			PipelineLogGroup: PIPELINE_LOG_GROUP,
+			RouterLogGroup:   ROUTER_LOG_GROUP,
 		},
 	})
 

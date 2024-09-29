@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +19,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
+
+var logger = log.New(os.Stderr, "RESOURCE LISTPROJECT: ", 0)
 
 type eventResultOutput struct {
 	ExecutionIdentifier string `json:"execution_identifier"`
@@ -94,7 +98,6 @@ func HandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx cont
 }
 
 func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (*listProjectOutput, int, error) {
-
 	userTokenCookie, err := (&http.Request{Header: http.Header{"Cookie": request.Cookies}}).Cookie("user_token")
 	if err != nil {
 		return nil, http.StatusUnauthorized, fmt.Errorf("no user_token provided")
@@ -115,6 +118,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		Limit:         aws.Int32(-1),
 	})
 	if err != nil {
+		logger.Printf("failed load projects from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load projects from database")
 	}
 

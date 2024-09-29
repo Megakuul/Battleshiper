@@ -31,6 +31,7 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 		if ok := errors.As(err, &cErr); ok {
 			return http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -52,6 +53,7 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 
 	repositories, err := attributevalue.Marshal(&userDoc.Repositories)
 	if err != nil {
+		logger.Printf("failed to serialize repositories: %v\n", err)
 		return http.StatusInternalServerError, fmt.Errorf("failed to serialize repositories")
 	}
 
@@ -69,7 +71,8 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 		UpdateExpr: aws.String("SET #repositories = :repositories"),
 	})
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("failed to update user: %v", err)
+		logger.Printf("failed to update user: %v\n", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to update user")
 	}
 
 	return http.StatusOK, nil

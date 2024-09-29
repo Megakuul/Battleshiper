@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +22,8 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/rbac"
 	"github.com/megakuul/battleshiper/lib/model/user"
 )
+
+var logger = log.New(os.Stderr, "ADMIN UPDATEROLE: ", 0)
 
 type updateRoleInput struct {
 	UserId string                 `json:"user_id"`
@@ -90,6 +94,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
@@ -99,7 +104,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 
 	roles, err := attributevalue.Marshal(&updateRoleInput.Roles)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to serialize roles")
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to serialize roles")
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
@@ -122,6 +127,7 @@ func runHandleUpdateRole(request events.APIGatewayV2HTTPRequest, transportCtx co
 		if ok := errors.As(err, &cErr); ok {
 			return nil, http.StatusNotFound, fmt.Errorf("user to update was not found")
 		}
+		logger.Printf("failed to load user record from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
