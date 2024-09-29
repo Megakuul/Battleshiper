@@ -33,13 +33,4 @@ confirm_action "Do you want to proceed with deploying the updated SAM stack?"
 echo "Deploying the updated SAM stack..."
 sam deploy
 
-web_bucket=$(aws cloudformation describe-stacks --stack-name battleshiper --query "Stacks[0].Outputs[?OutputKey=='BattleshiperWebBucket'].OutputValue" --output text)
-
-echo "Removing previous static assets from the web bucket..."
-aws s3 rm s3://"$web_bucket"/ --recursive
-
-echo "Uploading updated static assets for the Battleshiper dashboard..."
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
-
 echo "Update process complete."

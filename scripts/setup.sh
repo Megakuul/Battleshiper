@@ -118,19 +118,11 @@ sam build
 echo "Deploying the Battleshiper system to AWS..."
 sam deploy --parameter-overrides ApplicationDomain="$domain" ApplicationDomainCertificateArn="$cert_arn" ApplicationDomainWildcardCertificateArn="$cert_wild_arn" GithubOAuthClientCredentialArn="$github_cred_arn" GithubAdministratorUsername="$username"
 
-web_bucket=$(aws cloudformation describe-stacks --stack-name battleshiper --query "Stacks[0].Outputs[?OutputKey=='BattleshiperWebBucket'].OutputValue" --output text)
 cdn_host=$(aws cloudformation describe-stacks --stack-name battleshiper --query "Stacks[0].Outputs[?OutputKey=='BattleshiperCDNHost'].OutputValue" --output text)
 cdn_project_host=$(aws cloudformation describe-stacks --stack-name battleshiper --query "Stacks[0].Outputs[?OutputKey=='BattleshiperProjectCDNHost'].OutputValue" --output text)
 
-# Step 4: Upload Static Assets
-echo "Uploading static assets..."
-cd web
-bun install && bun run build
 
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
-
-# Step 5: Final DNS Setup
+# Step 4: Final DNS Setup
 echo "Add the following DNS records to your provider to finalize deployment:"
 echo "1. CNAME $domain $cdn_host"
 echo "2. CNAME *.$domain $cdn_project_host"

@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	cloudfronttypes "github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
 	codedeploytypes "github.com/aws/aws-sdk-go-v2/service/codedeploy/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -30,22 +35,21 @@ func HandleBootstrapWeb(eventCtx eventcontext.Context) func(context.Context, Cod
 	return func(ctx context.Context, event CodeDeployEvent) error {
 		err := runHandleBootstrapWeb(event, ctx, eventCtx)
 		if err != nil {
-			_, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
+			if _, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
 				DeploymentId:                  aws.String(event.DeploymentId),
 				LifecycleEventHookExecutionId: aws.String(event.LifecycleEventHookExecutionId),
 				Status:                        codedeploytypes.LifecycleEventStatusFailed,
-			})
-			if err != nil {
+			}); err != nil {
 				return fmt.Errorf("ERROR BOOTSTRAPWEB: %v", err)
 			}
+			log.Printf("ERROR BOOTSTRAPWEB: %v\n", err)
 			return nil
 		}
-		_, err = eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
+		if _, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
 			DeploymentId:                  aws.String(event.DeploymentId),
 			LifecycleEventHookExecutionId: aws.String(event.LifecycleEventHookExecutionId),
 			Status:                        codedeploytypes.LifecycleEventStatusSucceeded,
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("ERROR BOOTSTRAPWEB: %v", err)
 		}
 		return nil
@@ -53,6 +57,14 @@ func HandleBootstrapWeb(eventCtx eventcontext.Context) func(context.Context, Cod
 }
 
 func runHandleBootstrapWeb(event CodeDeployEvent, transportCtx context.Context, eventCtx eventcontext.Context) error {
+	clientPath, err := filepath.Abs(CLIENT_RELATIVE_PATH)
+	if err != nil {
+		return err
+	}
+	if err := uploadDirectory(transportCtx, eventCtx, clientPath, event.DeploymentId); err != nil {
+		return fmt.Errorf("failed to upload client assets: %v", err)
+	}
+
 	prerenderPath, err := filepath.Abs(PRERENDERED_RELATIVE_PATH)
 	if err != nil {
 		return err
@@ -61,12 +73,20 @@ func runHandleBootstrapWeb(event CodeDeployEvent, transportCtx context.Context, 
 		return fmt.Errorf("failed to upload prerendered assets: %v", err)
 	}
 
-	clientPath, err := filepath.Abs(CLIENT_RELATIVE_PATH)
+	_, err = eventCtx.CloudfrontClient.CreateInvalidation(transportCtx, &cloudfront.CreateInvalidationInput{
+		DistributionId: aws.String(eventCtx.CloudfrontConfiguration.DistributionId),
+		InvalidationBatch: &cloudfronttypes.InvalidationBatch{
+			CallerReference: aws.String(strconv.Itoa(int(time.Now().Unix()))),
+			Paths: &cloudfronttypes.Paths{
+				Quantity: aws.Int32(1),
+				Items: []string{
+					"/*",
+				},
+			},
+		},
+	})
 	if err != nil {
-		return err
-	}
-	if err := uploadDirectory(transportCtx, eventCtx, clientPath, event.DeploymentId); err != nil {
-		return fmt.Errorf("failed to upload client assets: %v", err)
+		return fmt.Errorf("failed to create cloudfront invalidation: %v", err)
 	}
 
 	return nil
@@ -83,7 +103,7 @@ func uploadDirectory(transportCtx context.Context, eventCtx eventcontext.Context
 				return err
 			}
 			defer file.Close()
-			s3Key := strings.TrimPrefix(path, rootPath)
+			s3Key := strings.TrimPrefix("/", strings.TrimPrefix(path, rootPath))
 			_, err = eventCtx.S3Client.PutObject(transportCtx, &s3.PutObjectInput{
 				Bucket:  aws.String(eventCtx.BucketConfiguration.StaticBucketName),
 				Key:     aws.String(s3Key),

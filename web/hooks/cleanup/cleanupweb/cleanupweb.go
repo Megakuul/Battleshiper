@@ -3,6 +3,7 @@ package cleanupweb
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
@@ -25,22 +26,21 @@ func HandleCleanupWeb(eventCtx eventcontext.Context) func(context.Context, CodeD
 	return func(ctx context.Context, event CodeDeployEvent) error {
 		err := runHandleCleanupWeb(event, ctx, eventCtx)
 		if err != nil {
-			_, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
+			if _, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
 				DeploymentId:                  aws.String(event.DeploymentId),
 				LifecycleEventHookExecutionId: aws.String(event.LifecycleEventHookExecutionId),
 				Status:                        codedeploytypes.LifecycleEventStatusFailed,
-			})
-			if err != nil {
+			}); err != nil {
 				return fmt.Errorf("ERROR CLEANUPWEB: %v", err)
 			}
+			log.Printf("ERROR CLEANUPWEB: %v\n", err)
 			return nil
 		}
-		_, err = eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
+		if _, err := eventCtx.CodeDeployClient.PutLifecycleEventHookExecutionStatus(ctx, &codedeploy.PutLifecycleEventHookExecutionStatusInput{
 			DeploymentId:                  aws.String(event.DeploymentId),
 			LifecycleEventHookExecutionId: aws.String(event.LifecycleEventHookExecutionId),
 			Status:                        codedeploytypes.LifecycleEventStatusSucceeded,
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("ERROR CLEANUPWEB: %v", err)
 		}
 		return nil

@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/megakuul/battleshiper/web/hooks/bootstrap/bootstrapweb"
@@ -16,9 +17,10 @@ import (
 )
 
 var (
-	REGION             = os.Getenv("AWS_REGION")
-	BOOTSTRAP_TIMEOUT  = os.Getenv("BOOTSTRAP_TIMEOUT")
-	STATIC_BUCKET_NAME = os.Getenv("STATIC_BUCKET_NAME")
+	REGION              = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT   = os.Getenv("BOOTSTRAP_TIMEOUT")
+	STATIC_BUCKET_NAME  = os.Getenv("STATIC_BUCKET_NAME")
+	CDN_DISTRIBUTION_ID = os.Getenv("CDN_DISTRIBUTION_ID")
 )
 
 func main() {
@@ -43,6 +45,8 @@ func run() error {
 
 	codeDeployClient := codedeploy.NewFromConfig(awsConfig)
 
+	cloudfrontClient := cloudfront.NewFromConfig(awsConfig)
+
 	s3Client := s3.NewFromConfig(awsConfig)
 
 	lambda.Start(bootstrapweb.HandleBootstrapWeb(eventcontext.Context{
@@ -50,6 +54,10 @@ func run() error {
 		S3Client:         s3Client,
 		BucketConfiguration: &eventcontext.BucketConfiguration{
 			StaticBucketName: STATIC_BUCKET_NAME,
+		},
+		CloudfrontClient: cloudfrontClient,
+		CloudfrontConfiguration: &eventcontext.CloudfrontConfiguration{
+			DistributionId: CDN_DISTRIBUTION_ID,
 		},
 	}))
 

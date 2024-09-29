@@ -96,15 +96,15 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 	return nil
 }
 
-// validateInfrastructureConfiguration validates infrastructure options that can, if in a invalid state,
-// interfer with the whole battleshiper system.
+// validateInfrastructureConfiguration validates infrastructure options that can, if in a invalid state, interfer with the whole battleshiper system.
+// This should never fail, it acts as an additional security and resource protection layer.
 func validateInfrastructureConfiguration(projectDoc *project.Project) error {
 	// if stack name is already present, overwriting can lead to a resource leak.
 	if projectDoc.DedicatedInfrastructure.StackName != "" {
 		return fmt.Errorf("project already holds a stack")
 	}
 
-	// if bucket path is empty, this can potentially lead to unintended behavior in the iam policy.
+	// if bucket path is empty, this can potentially lead to a bucket policy with excessive privileges.
 	if projectDoc.SharedInfrastructure.BuildAssetBucketPath == "" {
 		return fmt.Errorf("invalid build asset bucket path")
 	}

@@ -43,6 +43,21 @@ Resources:
       LogGroupClass: INFREQUENT_ACCESS
       RetentionInDays: 14
 
+  BattleshiperRouterLogGroupWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-router-log-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !GetAtt BattleshiperRouterLogGroup.Arn
+      Roles:
+        - !Ref BattleshiperRouterFuncRole
+
 
   BattleshiperRouterFuncRole:
     Type: AWS::IAM::Role
@@ -323,6 +338,28 @@ Resources:
             Resource: !GetAtt BattleshiperApiLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
+
+  BattleshiperApiLogWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-api-log-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !GetAtt BattleshiperApiLogGroup.Arn
+      Roles:
+        - !Ref BattleshiperApiAuthFuncRole
+        - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiPipelineFuncRole
+        - !Ref BattleshiperApiWebFuncRole
+        - !Ref BattleshiperApiWebBootstrapFuncRole
+        - !Ref BattleshiperApiWebCleanupFuncRole
 
 
   BattleshiperApiJwtCredentials:
@@ -632,6 +669,20 @@ Resources:
         LogGroup: !Ref BattleshiperApiLogGroup 
 
 
+  BattleshiperApiWebFuncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      # Policies are defined as separate policy objects and attached to the IAM role.
+
   BattleshiperApiWebFunc:
     Type: AWS::Serverless::Function
     Metadata:
@@ -649,11 +700,12 @@ Resources:
       # Even if this is not the primary purpose of those hooks, I see this as an excellent use case,
       # as it allows me to smoothly rollout updates to the Sveltekit dashboard without any interruptions.
       DeploymentPreference:
+        Enabled: True
         Type: AllAtOnce
-        PassthroughCondition: True
         Hooks:
           PreTraffic: !Ref BattleshiperApiWebBootstrapFunc
           PostTraffic: !Ref BattleshiperApiWebCleanupFunc
+      Role: !GetAtt BattleshiperApiWebFuncRole.Arn
       Events:
         Pipeline:
           Type: HttpApi
@@ -678,19 +730,23 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Policies:
-        - Version: "2012-10-17"
-          Statement:
-          - Effect: "Allow"
-            Action:
-              - "codedeploy:PutLifecycleEventHookExecutionStatus"
-            Resource:
-              !Sub 'arn:${AWS::Partition}:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
-        - Version: "2012-10-17"
-          Statement:
-          - Effect: "Allow"
-            Action:
-              - "lambda:InvokeFunction"
-            Resource: !GetAtt BattleshiperApiWebFunc.Arn
+        - PolicyName: "battleshiper-api-web-bootstrap-cdn-invalidation-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cloudfront:CreateInvalidation"
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${BattleshiperCDN.Id}"
+        - PolicyName: "battleshiper-api-web-bootstrap-codedeploy-exec-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "codedeploy:PutLifecycleEventHookExecutionStatus"
+                Resource: 
+                  - !Sub 'arn:${AWS::Partition}:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiWebBootstrapFunc:
@@ -698,6 +754,10 @@ Resources:
     Metadata:
       BuildMethod: go1.x
     Properties:
+      # FunctionName must be prefixed with "CodeDeployHook_" like poorly documented here:
+      # https://github.com/aws/serverless-application-model/issues/250
+      FunctionName: "CodeDeployHook_ApiWebBootstrapFunc"
+      Timeout: 30
       CodeUri: web/hooks/bootstrap
       Handler: bootstrap
       Runtime: provided.al2023
@@ -710,6 +770,9 @@ Resources:
         Variables:
           BOOTSTRAP_TIMEOUT: "1500ms"
           STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
+          CDN_DISTRIBUTION_ID: !GetAtt BattleshiperCDN.Id
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
 
 
   BattleshiperApiWebCleanupFuncRole:
@@ -725,19 +788,15 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Policies:
-        - Version: "2012-10-17"
-          Statement:
-          - Effect: "Allow"
-            Action:
-              - "codedeploy:PutLifecycleEventHookExecutionStatus"
-            Resource:
-              !Sub 'arn:${AWS::Partition}:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
-        - Version: "2012-10-17"
-          Statement:
-          - Effect: "Allow"
-            Action:
-              - "lambda:InvokeFunction"
-            Resource: !GetAtt BattleshiperApiWebFunc.Arn
+        - PolicyName: "battleshiper-api-web-cleanup-codedeploy-exec-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "codedeploy:PutLifecycleEventHookExecutionStatus"
+                Resource: 
+                  - !Sub 'arn:${AWS::Partition}:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
       # Policies are defined as separate policy objects and attached to the IAM role.
 
   BattleshiperApiWebCleanupFunc:
@@ -745,6 +804,10 @@ Resources:
     Metadata:
       BuildMethod: go1.x
     Properties:
+      # FunctionName must be prefixed with "CodeDeployHook_" like poorly documented here:
+      # https://github.com/aws/serverless-application-model/issues/250
+      FunctionName: "CodeDeployHook_ApiWebCleanupFunc"
+      Timeout: 30
       CodeUri: web/hooks/cleanup
       Handler: cleanup
       Runtime: provided.al2023
@@ -757,6 +820,8 @@ Resources:
         Variables:
           BOOTSTRAP_TIMEOUT: "1500ms"
           STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
+      LoggingConfig:
+        LogGroup: !Ref BattleshiperApiLogGroup 
 
   # ============================================
   # =========== S3 Static Bucket ===============
@@ -802,6 +867,11 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub "${BattleshiperStaticBucket.Arn}/*"
+          - Action:
+              - "s3:ListBucket"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperStaticBucket.Arn}"
       Roles: 
         - !Ref BattleshiperApiWebBootstrapFuncRole
         - !Ref BattleshiperApiWebCleanupFuncRole
@@ -1198,12 +1268,16 @@ Resources:
           - Action:
               - "s3:HeadObject"
               - "s3:GetObject"
-              - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:DeleteObject"
             Effect: Allow
             Resource:
               - !Sub "${BattleshiperPipelineBuildAssetBucket.Arn}/*"
+          - Action:
+              - "s3:ListBucket"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperPipelineBuildAssetBucket.Arn}"
       Roles:
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole
@@ -1299,6 +1373,23 @@ Resources:
             Resource: !GetAtt BattleshiperPipelineLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
+
+  BattleshiperPipelineLogWritePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-pipeline-log-write-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !GetAtt BattleshiperPipelineLogGroup.Arn
+      Roles:
+        - !Ref BattleshiperPipelineInitFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
+        - !Ref BattleshiperPipelineDeleteFuncRole
 
 
   BattleshiperPipelineInitFuncRole:
@@ -1605,12 +1696,16 @@ Resources:
           - Action:
               - "s3:HeadObject"
               - "s3:GetObject"
-              - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:DeleteObject"
             Effect: Allow
             Resource:
               - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
+          - Action:
+              - "s3:ListBucket"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}"
       Roles: 
         - !Ref BattleshiperPipelineDeployFuncRole
         - !Ref BattleshiperPipelineDeleteFuncRole

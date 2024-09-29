@@ -152,6 +152,24 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 				},
 			},
 		},
+		Policies: []iam.Role_Policy{
+			{
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.Name),
+				PolicyDocument: map[string]interface{}{
+					"Version": "2012-10-17",
+					"Statement": []map[string]interface{}{
+						{
+							"Effect": "Allow",
+							"Action": []string{
+								"logs:CreateLogStream",
+								"logs:PutLogEvents",
+							},
+							"Resource": goformation.GetAtt((SERVER_LOG_GROUP), "Arn"),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	const SERVER_FUNCTION string = "ServerFunction"
