@@ -730,14 +730,6 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Policies:
-        - PolicyName: "battleshiper-api-web-bootstrap-cdn-invalidation-access"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "cloudfront:CreateInvalidation"
-                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${BattleshiperCDN.Id}"
         - PolicyName: "battleshiper-api-web-bootstrap-codedeploy-exec-access"
           PolicyDocument:
             Version: "2012-10-17"
@@ -770,7 +762,6 @@ Resources:
         Variables:
           BOOTSTRAP_TIMEOUT: "1500ms"
           STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
-          CDN_DISTRIBUTION_ID: !GetAtt BattleshiperCDN.Id
       LoggingConfig:
         LogGroup: !Ref BattleshiperApiLogGroup 
 

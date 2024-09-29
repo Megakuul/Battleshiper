@@ -39,6 +39,21 @@ The internal system primarily consists of the Battleshiper API, which serves as 
 In addition to the API, the system includes a DynamoDB database (painfully migrated from DocumentDB), which stores all user, subscription, and project data. To provide a dashboard, the internal system uses a custom CloudFront instance in combination with an S3 bucket to host the web dashboard (which is controlled by a catch-all API SvelteKit server function).
 
 
+![internal web pipeline architecture](/docs/assets/battleshiper_internal_web_pipeline.png)
+(example is illustrative and not fully comprehensive)
+
+The pipeline to update the web-dashboard is rather exotic, as it leverages pre- and post-traffic hooks to perform a smooth update.
+
+When Cloudformation encounters a Lambda function it needs to update, it gives control to the CodeDeploy service, which then handles the Lambda update.
+
+In this setup, the primary function of the CodeDeploy integration is to execute the pre- and post-traffic hooks during traffic shifts. When the web api function is built locally, SvelteKit assets are embedded into the pre-hook (bootstrap) Lambda code. The pre-traffic hook then uploads these assets to the S3 bucket, tagging them with the deployment ID. As SvelteKit assigns unique chunk names on every build, the old and new assets can coexist without conflict.
+
+In the next step, CodeDeploy shifts the traffic (updating the alias pointer) from the old Lambda version to the new version.
+
+Once the traffic shift is complete, the post-traffic hook removes any assets from the S3 bucket that are not tagged with the current deployment ID, ensuring that only the latest assets remain.
+
+
+
 ### Project System
 
 ![project system architecture](/docs/assets/battleshiper_project.png)
@@ -57,6 +72,7 @@ Traffic for non-static content is sent to a custom router Lambda function, which
 To inform the router about which project it must route to, another CloudFront Function (ServerRouteFunc) adds the requested project as a custom header to the request.
 
 Finally, there are specific considerations for prerendered pages. If a user requests a prerendered page without specifying the `.html` extension, CloudFront cannot identify it as prerendered. To resolve this, entries for all prerendered pages are stored in a CloudFront edge cache (Route Cache). The function checks these entries and, on a match, manually adds the .html extension.
+
 
 
 ### Pipeline System

@@ -1,0 +1,156 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" version="24.7.16">
+  <diagram name="Page-1" id="M9QxyWFYpgSIv8vZqBbD">
+    <mxGraphModel dx="1195" dy="660" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-30" value="" style="swimlane;startSize=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="830" y="330" width="120.24" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-169" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-30">
+          <mxGeometry x="5.46229728115577e-14" y="9.999999999999972" width="120" height="110.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-170" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;WebFunc Alias&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-169">
+          <mxGeometry y="70.44" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-171" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-169">
+          <mxGeometry x="24.779999999999973" width="70.44" height="70.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-91" value="" style="swimlane;startSize=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="330" width="410" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-98" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-91">
+          <mxGeometry x="150" y="22" width="110" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-165" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="WLPZHSz0VlsXdByjmZgw-98" source="WLPZHSz0VlsXdByjmZgw-90">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="32.08333333333326" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-166" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=Ubuntu&quot; face=&quot;Ubuntu&quot; style=&quot;font-size: 11px;&quot;&gt;2.) Update WebFunc Alias &lt;br&gt;to the new lambda version&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-165">
+          <mxGeometry x="-0.2653" y="-1" relative="1" as="geometry">
+            <mxPoint x="17" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-90" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.codedeploy;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-98">
+          <mxGeometry x="23.375" width="64.16666666666666" height="64.16666666666666" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-97" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;CodeDeploy&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-98">
+          <mxGeometry x="0.4583333333333333" y="70.00254237288138" width="110" height="36.610169491525404" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-83" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-91">
+          <mxGeometry x="79.78" y="161" width="90.22000000000003" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-140" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-83">
+          <mxGeometry x="-39.77999999999997" width="120" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-80" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-140">
+          <mxGeometry x="29.779999999999973" width="60.44" height="60.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-82" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://cdn.icon-icons.com/icons2/2699/PNG/512/golang_logo_icon_171073.png;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-140">
+          <mxGeometry x="49.77999999999997" y="30" width="52" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-139" value="Pretraffic Hook (Bootstrap)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-140">
+          <mxGeometry y="70" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-141" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-91">
+          <mxGeometry x="250" y="162" width="120" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-142" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-141">
+          <mxGeometry x="29.779999999999973" width="60.44" height="60.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-143" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://cdn.icon-icons.com/icons2/2699/PNG/512/golang_logo_icon_171073.png;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-141">
+          <mxGeometry x="49.77999999999997" y="30" width="52" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-144" value="Posttraffic Hook&lt;br&gt;(Cleanup)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-141">
+          <mxGeometry y="70" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-155" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="WLPZHSz0VlsXdByjmZgw-91" source="WLPZHSz0VlsXdByjmZgw-97" target="WLPZHSz0VlsXdByjmZgw-142">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-161" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=Ubuntu&quot; face=&quot;Ubuntu&quot;&gt;3.) Call posttraffic hook&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-155">
+          <mxGeometry x="0.4385" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="WLPZHSz0VlsXdByjmZgw-91" source="WLPZHSz0VlsXdByjmZgw-97" target="WLPZHSz0VlsXdByjmZgw-80">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-160" value="&lt;font face=&quot;Ubuntu&quot;&gt;1.) Call pretraffic hook&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-156">
+          <mxGeometry x="0.4462" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-99" value="" style="swimlane;startSize=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="400" y="170" width="410" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-100" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-99">
+          <mxGeometry x="150" y="12" width="110" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-102" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;Cloudformation&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-100">
+          <mxGeometry y="71.38508474576274" width="110" height="36.61016949152541" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-89" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudformation;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-100">
+          <mxGeometry x="20" y="1.39" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-50" value="" style="swimlane;startSize=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="610" width="410" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-51" value="" style="group;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-50">
+          <mxGeometry x="150" y="10" width="110" height="113.78" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-52" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-51">
+          <mxGeometry x="20" y="10" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-53" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;Static S3 Bucket&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-51">
+          <mxGeometry y="84.22" width="110" height="29.56" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-130" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="830" y="468" width="120" height="132" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-103" value="" style="swimlane;startSize=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;fillColor=#ffe6cc;strokeColor=#d79b00;container=0;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-130">
+          <mxGeometry width="120" height="132" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-129" value="" style="group" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-130">
+          <mxGeometry y="20" width="120" height="110.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-106" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;WebFunc &lt;br&gt;New Version&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-129">
+          <mxGeometry y="70.44" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-107" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-129">
+          <mxGeometry x="24.779999999999973" width="70.44" height="70.44" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-108" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://kit.svelte.dev/_app/immutable/assets/svelte-kit-machine.D9RaRv8H.png;clipPath=inset(27.33% 15.67% 30.67% 25.33%);fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" parent="WLPZHSz0VlsXdByjmZgw-129">
+          <mxGeometry x="60" y="40" width="56.19" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-157" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="WLPZHSz0VlsXdByjmZgw-139" target="WLPZHSz0VlsXdByjmZgw-52">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-164" value="&lt;font face=&quot;Ubuntu&quot; style=&quot;font-size: 10px;&quot;&gt;Upload assets &lt;br&gt;(included in hook code)&lt;br&gt;tag them with deploy id&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-157">
+          <mxGeometry x="-0.3932" y="3" relative="1" as="geometry">
+            <mxPoint x="-13" y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-158" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="WLPZHSz0VlsXdByjmZgw-144" target="WLPZHSz0VlsXdByjmZgw-52">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-162" value="&lt;font style=&quot;font-size: 10px;&quot; data-font-src=&quot;https://fonts.googleapis.com/css?family=Ubuntu&quot;&gt;Remove assets NOT tagged&lt;br&gt;with the current deploy id&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Ubuntu;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DUbuntu;" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-158">
+          <mxGeometry x="-0.3558" y="-2" relative="1" as="geometry">
+            <mxPoint x="12" y="-5" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-167" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="WLPZHSz0VlsXdByjmZgw-102" target="WLPZHSz0VlsXdByjmZgw-90">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-168" value="When deploying the WebFunc, hand over control to CodeDeploy" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="WLPZHSz0VlsXdByjmZgw-167">
+          <mxGeometry x="-0.1527" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WLPZHSz0VlsXdByjmZgw-173" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="WLPZHSz0VlsXdByjmZgw-170" target="WLPZHSz0VlsXdByjmZgw-107">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

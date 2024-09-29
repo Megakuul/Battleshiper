@@ -95,20 +95,10 @@ Specify your Github username as `GithubAdministratorUsername`. Doing so will gra
 This is the highest privilege role, allowing you to assign all other roles to your account.
 
 
-### Upload Assets
-
-Finally some static assets and prerendered pages of the internal battleshiper dashboard must be uploaded.
-
-Unfortunately, there is no really clean way to handle this situation with aws sam, for that reason, the assets are written to the sam output directory:
+Uploading the Sveltekit assets of the webdashboard is integrated into the CodeDeploy process. Initially, the assets are not uploaded because Cloudformation skips the CodeDeploy pipeline. For this reason, you must once redeploy the application to correctly build and upload the full web dashboard (note that this step only updates the web components and does not redeploy the entire application):
 ```bash
-# Upload static assets for the battleshiper dashboard
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/prerendered/ s3://"$web_bucket"/
-aws s3 cp --recursive .aws-sam/build/BattleshiperApiWebFunc/client/ s3://"$web_bucket"/
-```
-(The bucketname can be acquired from the sam deploy output).
-
-Note that when you deploy the app, the assets must be updated at the same time. Svelte adds hashes to the js chunks, so the server version must match the assets!
-
+sam build && sam deploy
+``` 
 
 ## Finalize
 ---

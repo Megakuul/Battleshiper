@@ -7,13 +7,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
-	cloudfronttypes "github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
 	codedeploytypes "github.com/aws/aws-sdk-go-v2/service/codedeploy/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -71,22 +67,6 @@ func runHandleBootstrapWeb(event CodeDeployEvent, transportCtx context.Context, 
 	}
 	if err := uploadDirectory(transportCtx, eventCtx, prerenderPath, event.DeploymentId); err != nil {
 		return fmt.Errorf("failed to upload prerendered assets: %v", err)
-	}
-
-	_, err = eventCtx.CloudfrontClient.CreateInvalidation(transportCtx, &cloudfront.CreateInvalidationInput{
-		DistributionId: aws.String(eventCtx.CloudfrontConfiguration.DistributionId),
-		InvalidationBatch: &cloudfronttypes.InvalidationBatch{
-			CallerReference: aws.String(strconv.Itoa(int(time.Now().Unix()))),
-			Paths: &cloudfronttypes.Paths{
-				Quantity: aws.Int32(1),
-				Items: []string{
-					"/*",
-				},
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create cloudfront invalidation: %v", err)
 	}
 
 	return nil
