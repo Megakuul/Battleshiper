@@ -49,7 +49,7 @@ Finally, create and extract the following credentials:
 - `client_id`
 - `client_secret`
 - `app_id`
-- `app_secret`
+- `app_secret` (labelled as "private key")
 - `webhook_secret`
 
 
@@ -64,6 +64,11 @@ export GITHUB_CRED_ARN=$(aws secretsmanager create-secret \
     --secret-string '{"client_id":"1234","client_secret":"1234","app_id":"12345","app_secret":"12345","webhook_secret":"1234"}' \
     --query 'ARN' --output text)
 ```
+
+Notice that the `app_secret` must be in the base64 pem format, **OMITTING** the "-----BEGIN RSA PRIVATE KEY-----" and "-----END RSA PRIVATE KEY-----" specifiers, as AWS Secrets Manager cannot handle newline characters (\n).
+
+
+
 
 Finally extract the ARN, which will be used later for deployment.
 

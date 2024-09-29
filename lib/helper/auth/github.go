@@ -39,7 +39,12 @@ func CreateGithubAppClient(awsConfig aws.Config, transportCtx context.Context, g
 		return nil, fmt.Errorf("failed to decode github credential secret string: %v", err)
 	}
 
-	appSecret, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(githubCredentials.AppSecret))
+	pemAppSecret := fmt.Sprintf("%s\n%s\n%s\n",
+		"-----BEGIN RSA PRIVATE KEY-----",
+		githubCredentials.AppSecret,
+		"-----END RSA PRIVATE KEY-----",
+	)
+	appSecret, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(pemAppSecret))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse github credential app secret")
 	}
