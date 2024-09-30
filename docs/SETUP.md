@@ -41,9 +41,11 @@ Create the application via the GitHub interface. If you need guidance, refer to 
 
 While creating the app, it's important to configure the following parameters:
 - Set Callback URL to https://$DOMAIN/api/auth/callback.
+- Enable "User-to-server token expiration" feature.
+- Set permission of "Repository->Contents" to "read-only".
+- Subscribe to "Push" and "Repository" events.
 - Enable Webhook and set the URL to https://$DOMAIN/api/pipeline/event.
 - Create a strong Webhook secret and remember it for the next step.
-- 
 
 Finally, create and extract the following credentials:
 - `client_id`

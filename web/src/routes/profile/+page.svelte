@@ -26,7 +26,9 @@
   onMount(async () => {
     try {
       if (!$UserInfo) {
-        await Refresh(); // Refresh user token
+        // Github suffers a major issue with refresh token (https://github.com/orgs/community/discussions/24745)
+        // Therefore the refresh process is currently not employed, as it would run into errors very oftens.
+        // await Refresh(); 
         $UserInfo = await FetchInfo();
       }
     } catch (/** @type {any} */ err) {
@@ -87,6 +89,7 @@
             description: "Successfully logged out"
           })
           $UserInfo = undefined;
+          Exception = "User not logged in";
         } catch (/** @type {any} */ err) {
           Exception = err.message;
           toast.error("Error", {

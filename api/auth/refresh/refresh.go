@@ -21,6 +21,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// IMPORTANT: Github suffers a major issue with refresh token (https://github.com/orgs/community/discussions/24745)
+// Because of that, the refresh process will often fail ("failed to acquire new token").
+// As this seems to be an issue purely caused by the Github refresh_token implementation (which was btw escalated 4 years ago and is still not fixed)
+// the frontend does not use the refresh process at all. The route is still in place and should work correctly without Githubs inability to implement OAuth.
+
 var logger = log.New(os.Stderr, "AUTH REFRESH: ", 0)
 
 // HandleRefresh acquires a new access_token in tradeoff to the refresh_token.
@@ -84,7 +89,8 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 
 	token, err := tokenSource.Token()
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to acquire new token")
+		logger.Printf("failed to acquire new token: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to acquire new token")
 	}
 
 	// The refresh token is intentionally not processed further;
