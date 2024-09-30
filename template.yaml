@@ -160,7 +160,9 @@ Resources:
               - dynamodb:Query
               - dynamodb:Scan
               - dynamodb:DescribeTable
-            Resource: !GetAtt BattleshiperUserTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperUserTable.Arn
+              - !Sub "${BattleshiperUserTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAuthFuncRole
         - !Ref BattleshiperApiUserFuncRole
@@ -183,7 +185,9 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:DeleteItem
               - dynamodb:BatchWriteItem
-            Resource: !GetAtt BattleshiperUserTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperUserTable.Arn
+              - !Sub "${BattleshiperUserTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAuthFuncRole
         - !Ref BattleshiperApiUserFuncRole
@@ -233,7 +237,9 @@ Resources:
               - dynamodb:Query
               - dynamodb:Scan
               - dynamodb:DescribeTable
-            Resource: !GetAtt BattleshiperProjectTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperProjectTable.Arn
+              - !Sub "${BattleshiperProjectTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
         - !Ref BattleshiperApiResourceFuncRole
@@ -255,7 +261,9 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:DeleteItem
               - dynamodb:BatchWriteItem
-            Resource: !GetAtt BattleshiperProjectTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperProjectTable.Arn
+              - !Sub "${BattleshiperProjectTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
         - !Ref BattleshiperApiResourceFuncRole
@@ -296,7 +304,9 @@ Resources:
               - dynamodb:Query
               - dynamodb:Scan
               - dynamodb:DescribeTable
-            Resource: !GetAtt BattleshiperSubscriptionTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperSubscriptionTable.Arn
+              - !Sub "${BattleshiperSubscriptionTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAuthFuncRole
         - !Ref BattleshiperApiUserFuncRole
@@ -319,7 +329,9 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:DeleteItem
               - dynamodb:BatchWriteItem
-            Resource: !GetAtt BattleshiperSubscriptionTable.Arn
+            Resource: 
+              - !GetAtt BattleshiperSubscriptionTable.Arn
+              - !Sub "${BattleshiperSubscriptionTable.Arn}/*"
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
 

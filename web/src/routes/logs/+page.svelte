@@ -23,8 +23,8 @@
     project_name: "",
     log_type: "",
     count: 10,
-    start_time: new Date(Date.now() - 1000 * 60 * 60).getTime() / 1000, // 1 hour before now
-    end_time: Date.now() / 1000, // Now
+    start_time: Math.floor(new Date(Date.now() - 1000 * 60 * 60).getTime() / 1000), // 1 hour before now
+    end_time: Math.floor(Date.now() / 1000), // Now
   };
 
   /** @type {import("$lib/adapter/resource/fetchlog").fetchLogOutput|undefined}*/
@@ -34,8 +34,8 @@
   let CurrentAdminLogInput = {
     log_type: "",
     count: 10,
-    start_time: new Date(Date.now() - 1000 * 60 * 60).getTime() / 1000, // 1 hour before now
-    end_time: Date.now() / 1000, // Now
+    start_time: Math.floor(new Date(Date.now() - 1000 * 60 * 60).getTime() / 1000), // 1 hour before now
+    end_time: Math.floor(Date.now() / 1000), // Now
   };
 
   /** @type {import("$lib/adapter/admin/fetchlog").fetchLogOutput|undefined}*/
