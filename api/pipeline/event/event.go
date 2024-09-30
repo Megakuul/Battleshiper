@@ -21,6 +21,7 @@ var logger = log.New(os.Stderr, "PIPELINE EVENT: ", 0)
 func HandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
 	code, err := runHandleEvent(request, transportCtx, routeCtx)
 	if err != nil {
+		logger.Printf("warning: pipeline request rejected: %v\n", err)
 		return events.APIGatewayV2HTTPResponse{
 			StatusCode: code,
 			Headers: map[string]string{
@@ -54,13 +55,14 @@ func runHandleEvent(request events.APIGatewayV2HTTPRequest, transportCtx context
 		return http.StatusInternalServerError, fmt.Errorf("failed to create pseudo request")
 	}
 
-	payload, err := routeCtx.WebhookClient.Parse(httpRequest)
+	payload, err := routeCtx.WebhookClient.Parse(httpRequest, github.InstallationEvent, github.InstallationRepositoriesEvent, github.PushEvent)
 	if err == github.ErrHMACVerificationFailed {
 		return http.StatusForbidden, fmt.Errorf("failed to parse event: invalid signature")
 	} else if err == github.ErrEventNotFound {
 		return http.StatusNotFound, fmt.Errorf("failed to parse event: event not found")
 	} else if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("failed to parse event")
+		logger.Printf("failed to parse event: %v\n", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to parse event")
 	}
 
 	status := http.StatusOK

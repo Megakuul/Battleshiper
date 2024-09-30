@@ -42,7 +42,6 @@
       if (!$RepositoryInfo) {
         $RepositoryInfo = await ListRepository();
       }
-      $RepositoryInfo.repositories[0].full_name
     } catch (/** @type {any} */ err) {
       Exception = err.message;
       toast("Error", {
