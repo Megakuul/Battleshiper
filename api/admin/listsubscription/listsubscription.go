@@ -32,7 +32,7 @@ type pipelineSpecsOutput struct {
 
 type projectSpecsOutput struct {
 	ProjectCount     int64 `json:"project_count"`
-	AliasCount       int64 `bson:"alias_count"`
+	AliasCount       int64 `json:"alias_count"`
 	PrerenderRoutes  int64 `json:"prerender_routes"`
 	ServerStorage    int64 `json:"server_storage"`
 	ClientStorage    int64 `json:"client_storage"`

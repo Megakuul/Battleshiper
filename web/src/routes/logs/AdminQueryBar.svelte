@@ -25,6 +25,17 @@
 
   /** @type {boolean}*/
   let queryButtonState;
+
+  /**
+   * @param {Event} e 
+   * @returns {number}
+  */
+  function parseInputNumber(e) {
+    if (e.target instanceof HTMLInputElement) {
+      return parseInt(e.target.value);
+    }
+    return NaN;
+  }
 </script>
 
 <div class="flex flex-col w-10/12 bg-slate-700/20 rounded-lg">
@@ -48,7 +59,10 @@
       </Select.Content>
     </Select.Root>
 
-    <Input bind:value={CurrentLogInputRef.count} type="number" placeholder="limit" class="w-full lg:w-[70px] mr-auto" />
+    <Input type="number" placeholder="limit" class="w-full lg:w-[70px] mr-auto"
+      value={CurrentLogInputRef.count}
+      on:input={(e) => CurrentLogInputRef.count = parseInputNumber(e)}>
+    </Input>
 
     <DatePicker bind:StartTimeRef={CurrentLogInputRef.start_time} bind:EndTimeRef={CurrentLogInputRef.end_time} />
   </div>

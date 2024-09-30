@@ -119,7 +119,7 @@
 		</PinContainer>
 	</div>
 
-	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
+	<div class="flex flex-col-reverse lg:flex-row justify-evenly items-center my-64">
 		<PinContainer title="/logs" href="/logs" containerClassName="my-16">
 			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Managed Logging</h2>

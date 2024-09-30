@@ -56,7 +56,18 @@
    * @returns {number}
   */
   function bytesToGigabytes(bytes) {
-    return parseFloat((bytes / 1000000).toFixed(2))
+    return parseFloat((bytes / 1000000000).toFixed(2))
+  }
+
+  /**
+   * @param {Event} e 
+   * @returns {number}
+  */
+  function parseInputNumber(e) {
+    if (e.target instanceof HTMLInputElement) {
+      return parseInt(e.target.value);
+    }
+    return NaN;
   }
 </script>
 
@@ -74,21 +85,48 @@
             <h1 class="text-sm sm:text-lg font-bold">
               Project Specs: 
             </h1>
-            <Input bind:value={upsertSubscriptionInput.project_specs.project_count} type="number" placeholder="Projects" />
-            <Input bind:value={upsertSubscriptionInput.project_specs.alias_count} type="number" placeholder="Aliases" />
-            <Input bind:value={upsertSubscriptionInput.project_specs.prerender_routes} type="number" placeholder="Prerender Routes" />
-            <Input bind:value={upsertSubscriptionInput.project_specs.prerender_storage} type="number" placeholder="Prerender Storage (bytes)" />
-            <Input bind:value={upsertSubscriptionInput.project_specs.client_storage} type="number" placeholder="Client Storage (bytes)" />
-            <Input bind:value={upsertSubscriptionInput.project_specs.server_storage} type="number" placeholder="Server Storage (bytes)" />
+            <Input type="number" placeholder="Projects"
+              value={upsertSubscriptionInput.project_specs.project_count} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.project_count = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Aliases"
+              value={upsertSubscriptionInput.project_specs.alias_count} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.alias_count = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Prerender Routes"
+              value={upsertSubscriptionInput.project_specs.prerender_routes} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.prerender_routes = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Prerender Storage (bytes)"
+              value={upsertSubscriptionInput.project_specs.prerender_storage} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.prerender_storage = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Client Storage (bytes)"
+              value={upsertSubscriptionInput.project_specs.client_storage} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.client_storage = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Server Storage (bytes)"
+              value={upsertSubscriptionInput.project_specs.server_storage} 
+              on:input={(e) => upsertSubscriptionInput.project_specs.server_storage = parseInputNumber(e)}>
+            </Input>
             <h1 class="text-sm sm:text-lg font-bold">
               Pipeline Specs:
             </h1>
-            <Input bind:value={upsertSubscriptionInput.pipeline_specs.daily_builds} type="number" placeholder="Daily Builds" />
-            <Input bind:value={upsertSubscriptionInput.pipeline_specs.daily_deployments} type="number" placeholder="Daily Deployments" />
+            <Input type="number" placeholder="Daily Builds"
+              value={upsertSubscriptionInput.pipeline_specs.daily_builds} 
+              on:input={(e) => upsertSubscriptionInput.pipeline_specs.daily_builds = parseInputNumber(e)}>
+            </Input>
+            <Input type="number" placeholder="Daily Deployments"
+              value={upsertSubscriptionInput.pipeline_specs.daily_deployments} 
+              on:input={(e) => upsertSubscriptionInput.pipeline_specs.daily_deployments = parseInputNumber(e)}>
+            </Input>
             <h1 class="text-sm sm:text-lg font-bold">
               CDN Specs:
             </h1>
-            <Input disabled bind:value={upsertSubscriptionInput.cdn_specs.instance_count} type="number" placeholder="CDN Instances (not implemented)" />
+            <Input disabled type="number" placeholder="CDN Instances (not implemented)"
+              value={upsertSubscriptionInput.cdn_specs.instance_count} 
+              on:input={(e) => upsertSubscriptionInput.cdn_specs.instance_count = parseInputNumber(e)}>
+            </Input>
             
             <Button class="w-full mt-6" type="submit" on:click={async () => {
               try {

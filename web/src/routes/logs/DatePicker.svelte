@@ -7,7 +7,7 @@
   import Icon from "@iconify/svelte";
   import { cn } from "$lib/utils";
   import { buttonVariants } from "$lib/components/ui/button";
-    import { toast } from "svelte-sonner";
+  import { toast } from "svelte-sonner";
 
 
   /** @type {number}*/
@@ -53,7 +53,7 @@
 
 <div class="flex flex-row gap-1 w-full lg:w-[300px]">
   <div class="flex flex-row items-center justify-center gap-2 p-1 w-full text-sm bg-black border-[1px] border-slate-200/15 rounded-lg">
-    <span class="text-nowrap">{new Date(StartTimeRef * 1000).toLocaleTimeString("en-US", {
+    <span class="text-nowrap">{new Date(StartTimeRef).toLocaleTimeString("en-US", {
       month: "2-digit",
       day: "2-digit",
       hour12: false,
@@ -61,7 +61,7 @@
       minute: "2-digit",
     })}</span>
     <span class="font-bold">-</span>
-    <span class="text-nowrap">{new Date(EndTimeRef * 1000).toLocaleTimeString("en-US", {
+    <span class="text-nowrap">{new Date(EndTimeRef).toLocaleTimeString("en-US", {
       month: "2-digit",
       day: "2-digit",
       hour12: false,
@@ -86,14 +86,12 @@
           return;
         }
 
-        const startTime = timeStringToUnix(
+        StartTimeRef = timeStringToUnix(
           logDayRange.start?.toDate(getLocalTimeZone()) ?? new Date(Date.now()), logTimeRange.start
         );
-        const endTime = timeStringToUnix(
+        EndTimeRef = timeStringToUnix(
           logDayRange.end?.toDate(getLocalTimeZone()) ?? new Date(Date.now()), logTimeRange.end
         );
-        StartTimeRef = Math.floor(startTime / 1000);
-        EndTimeRef = Math.floor(endTime / 1000);
 
         toast("Success", {
           description: "Log range updated"

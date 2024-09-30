@@ -24,6 +24,35 @@ check_command "aws"
 check_command "sam"
 echo "All required software is installed."
 
+# Function to create GitHub credentials in AWS Secrets Manager
+delete_github_secrets() {
+  secret_name="battleshiper-github-credentials"
+
+  echo "Checking if GitHub secret exists..."
+
+  set +e
+  github_cred_arn=$(aws secretsmanager describe-secret --secret-id $secret_name --query 'ARN' --output text)
+  set -e
+
+  if [ -z "$github_cred_arn" ]; then
+    echo "GitHub secret does not exist."
+    return 0
+  fi
+
+  echo "GitHub secret found: $github_cred_arn"
+  read -p "Do you want to delete the GitHub secret? (y/N): " choice
+  case "$choice" in
+    y|Y )
+      echo "Deleting GitHub secret..."
+      aws secretsmanager delete-secret --secret-id $secret_name --force-delete-without-recovery
+      echo "GitHub secret deleted."
+      ;;
+    * )
+      echo "Skipping deletion..."
+      ;;
+  esac
+}
+
 
 echo "Finding CloudFormation stacks with prefix 'battleshiper-'..."
 stacks=$(aws cloudformation list-stacks --query "StackSummaries[?starts_with(StackName, 'battleshiper-') && StackStatus != 'DELETE_COMPLETE'].StackName" --output text)
@@ -61,5 +90,7 @@ fi
 confirm_action "Do you want to delete the internal Battleshiper system?"
 echo "Deleting the internal Battleshiper system..."
 sam delete --stack-name battleshiper
+
+create_github_secrets
 
 echo "Battleshiper system deletion process complete."
