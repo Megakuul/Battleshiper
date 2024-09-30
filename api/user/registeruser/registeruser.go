@@ -72,7 +72,7 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 		// Github usernames are case insensitive
 		if strings.EqualFold(userToken.Username, routeCtx.UserConfiguration.AdminUsername) {
 			newDoc.Privileged = true
-			newDoc.Roles = map[rbac.ROLE]struct{}{rbac.ROLE_MANAGER: {}}
+			newDoc.Roles = map[rbac.ROLE]struct{}{rbac.USER: {}, rbac.ROLE_MANAGER: {}}
 		}
 	}
 

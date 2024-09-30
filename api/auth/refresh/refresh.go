@@ -101,7 +101,7 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to acquire user information from github")
 	}
 
-	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
+	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Login, *githubUser.AvatarURL)
 	if err != nil {
 		logger.Printf("failed to create user_token: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")
@@ -139,7 +139,7 @@ func refreshByAccessToken(transportCtx context.Context, routeCtx routecontext.Co
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
 	}
 
-	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
+	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Login, *githubUser.AvatarURL)
 	if err != nil {
 		logger.Printf("failed to create user_token: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")

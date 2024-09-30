@@ -1,6 +1,4 @@
 .svelte-kit
 node_modules
 build
-
-# Checkout .env file for more information.
-!.env
+.env

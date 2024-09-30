@@ -85,7 +85,7 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		}
 	}
 
-	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
+	userToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Login, *githubUser.AvatarURL)
 	if err != nil {
 		logger.Printf("failed to create user_token: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create user_token")

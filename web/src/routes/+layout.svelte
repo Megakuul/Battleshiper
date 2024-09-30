@@ -127,10 +127,10 @@
 					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
 				{/if}
 				{#if PUBLIC_CONTACT_2}
-					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
+					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_2}</p>
 				{/if}
 				{#if PUBLIC_CONTACT_3}
-					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_1}</p>
+					<p class="text-slate-400 text-sm">{PUBLIC_CONTACT_3}</p>
 				{/if}
 			</section>
 		</div>

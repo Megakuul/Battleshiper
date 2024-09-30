@@ -17,7 +17,8 @@
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
   import { Refresh } from "$lib/adapter/auth/refresh";
-    import { toast } from "svelte-sonner";
+  import { toast } from "svelte-sonner";
+  import { Logout } from "$lib/adapter/auth/logout";
 
   /** @type {string} */
   let Exception = "";
@@ -57,7 +58,7 @@
 </svelte:head>
 
 {#if $UserInfo}
-  <div transition:fade class="flex flex-col gap-8 lg:flex-row my-20 min-h-[80vh] mx-6 md:mx-12">
+  <div transition:fade class="flex flex-col lg:flex-row gap-8 my-20 min-h-[80vh] mx-6 md:mx-12">
     <div class="w-full bg-slate-800 bg-opacity-55 p-6 md:p-12 rounded-lg overflow-hidden flex flex-col justify-center items-center gap-4">
       <div class="flex flex-row justify-start items-start gap-4">
         <Avatar.Root class="h-16 md:h-20 w-16 md:w-20">
@@ -79,6 +80,22 @@
           </h2>
         </div>
       </div>
+      <Button variant="secondary" class="text-xl md:text-2xl" on:click={async () => {
+        try {
+          await Logout();
+          toast.success("Success", {
+            description: "Successfully logged out"
+          })
+          $UserInfo = undefined;
+        } catch (/** @type {any} */ err) {
+          Exception = err.message;
+          toast.error("Error", {
+            description: "Failed to log out",
+          })
+        }
+      }}>
+        LOGOUT <Icon icon="line-md:logout" class="ml-2" />
+      </Button>
     </div>
 
     <div class="w-full bg-slate-800 bg-opacity-55 rounded-lg p-12 max-h-[80vh] overflow-scroll-hidden flex flex-col items-center gap-4"> 
@@ -185,6 +202,7 @@
             toast.success("Success", {
               description: "User registered"
             })
+            $UserInfo = await FetchInfo();
           } catch (/** @type {any} */ err) {
             Exception = err.message;
             toast.error("Error", {
