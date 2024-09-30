@@ -5,7 +5,6 @@ import { Authorize } from "../auth/authorize";
  * @throws {Error}
  */
 export const RegisterUser = async () => {
-  const devUrl = import.meta.env.VITE_DEV_API_URL;
   const res = await fetch("/api/user/registeruser", {
     method: "POST",
   })

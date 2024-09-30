@@ -120,7 +120,6 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: OwnerId},
 			},
 			ConditionExpr: aws.String("owner_id = :owner_id"),
-			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
 			logger.Printf("failed load projects on database: %v\n", err)
@@ -133,7 +132,6 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 				":name": &dynamodbtypes.AttributeValueMemberS{Value: ProjectName},
 			},
 			ConditionExpr: aws.String("name = :name"),
-			Limit:         aws.Int32(-1),
 		})
 		if err != nil {
 			logger.Printf("failed load projects from database: %v\n", err)

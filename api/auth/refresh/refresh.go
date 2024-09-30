@@ -57,7 +57,6 @@ func runHandleRefresh(request events.APIGatewayV2HTTPRequest, transportCtx conte
 }
 
 func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Context, userTokenRaw string) ([]string, int, error) {
-
 	userToken, err := auth.ParseJWT(routeCtx.JwtOptions, userTokenRaw)
 	if err != nil {
 		return nil, http.StatusUnauthorized, fmt.Errorf("user_token is invalid: %v", err)
@@ -79,7 +78,7 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+	tokenSource := routeCtx.OAuthConfig.TokenSource(transportCtx, &oauth2.Token{
 		RefreshToken: userDoc.RefreshToken,
 	})
 
@@ -91,12 +90,15 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 	// The refresh token is intentionally not processed further;
 	// after the refresh token expires, the user is forced to log in again.
 
-	oauthClient := oauth2.NewClient(transportCtx, oauth2.StaticTokenSource(token))
+	oauthClient := oauth2.NewClient(transportCtx, oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: token.AccessToken,
+	}))
 	githubClient := github.NewClient(oauthClient)
 
 	githubUser, _, err := githubClient.Users.Get(transportCtx, "")
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
+		logger.Printf("failed to acquire user information from github: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to acquire user information from github")
 	}
 
 	newUserToken, err := auth.CreateJWT(routeCtx.JwtOptions, strconv.Itoa(int(*githubUser.ID)), "github", *githubUser.Name, *githubUser.AvatarURL)
@@ -123,7 +125,7 @@ func refreshByUserToken(transportCtx context.Context, routeCtx routecontext.Cont
 		Expires:  token.Expiry,
 	}
 
-	return []string{userTokenCookie.String(), accessTokenCookie.String()}, http.StatusFound, nil
+	return []string{userTokenCookie.String(), accessTokenCookie.String()}, http.StatusOK, nil
 }
 
 func refreshByAccessToken(transportCtx context.Context, routeCtx routecontext.Context, accessTokenRaw string) ([]string, int, error) {

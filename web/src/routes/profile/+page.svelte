@@ -17,6 +17,7 @@
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
   import { Refresh } from "$lib/adapter/auth/refresh";
+    import { toast } from "svelte-sonner";
 
   /** @type {string} */
   let Exception = "";
@@ -178,7 +179,19 @@
 
     <Tooltip.Root>
       <Tooltip.Trigger asChild let:builder>
-        <Button builders={[builder]} variant="outline" class="text-2xl h-20" on:click={RegisterUser}>
+        <Button builders={[builder]} variant="outline" class="text-2xl h-20" on:click={async () => {
+          try {
+            await RegisterUser()
+            toast.success("Success", {
+              description: "User registered"
+            })
+          } catch (/** @type {any} */ err) {
+            Exception = err.message;
+            toast.error("Error", {
+              description: "Failed register user",
+            })
+          }
+        }}>
           REGISTER <Icon icon="line-md:person-add-twotone" class="ml-2" />
         </Button>
       </Tooltip.Trigger>

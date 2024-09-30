@@ -12,6 +12,7 @@
 	import {
 		PUBLIC_SEO_DOMAIN
 	} from "$env/static/public";
+    import LogIcon from "$lib/components/LogIcon.svelte";
 </script>
 
 <svelte:head>
@@ -74,7 +75,7 @@
 
 <Beam gradientStart="black" gradientVia="#757F9A" gradientEnd="#D7DDE8" className="flow-root z-0">
 	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
-		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">Deploy SvelteKit in Seconds</h1>
+		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/90 sm:bg-slate-700/20 rounded-lg p-4">Deploy SvelteKit in Seconds</h1>
 		<PinContainer title="/kit.svelte.dev" href="https://kit.svelte.dev" containerClassName="my-16">
 			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">SvelteKit</h2>
@@ -100,11 +101,11 @@
 				</div>
 			</div>
 		</PinContainer>
-		<h1 class="text-xl lg:text-4xl text-nowrap text-center font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">Profit from Global Caching</h1>
+		<h1 class="text-xl lg:text-4xl text-nowrap text-center font-bold bg-slate-900/90 sm:bg-slate-700/20 rounded-lg p-4">Profit from Global Caching</h1>
 	</div>
 
 	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
-		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/80 sm:bg-slate-700/20 rounded-lg p-4">CI/CD? Relax.</h1>
+		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/90 sm:bg-slate-700/20 rounded-lg p-4">CI/CD? Relax.</h1>
 		<PinContainer title="/project" href="/project" containerClassName="my-16">
 			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
 				<h2 class="max-w-xs text-base font-bold text-slate-100">Automated Deployment</h2>
@@ -118,6 +119,20 @@
 		</PinContainer>
 	</div>
 
+	<div class="flex flex-col lg:flex-row justify-evenly items-center my-64">
+		<PinContainer title="/logs" href="/logs" containerClassName="my-16">
+			<div class="flex h-[20rem] w-[18rem] sm:w-[20rem] basis-full flex-col p-4 text-slate-100/50 sm:basis-1/2">
+				<h2 class="max-w-xs text-base font-bold text-slate-100">Managed Logging</h2>
+				<div class="text-base font-normal text-slate-500">
+					Application Logs are automatically collected and stored in the Cloud.
+				</div>
+				<div class="mt-4 flex w-full h-full justify-center items-center bg-slate-900 brightness-75 rounded-lg">
+					<LogIcon class="w-2/3 h-2/3"></LogIcon>
+				</div>
+			</div>
+		</PinContainer>
+		<h1 class="text-xl lg:text-4xl text-center text-nowrap font-bold bg-slate-900/90 sm:bg-slate-700/20 rounded-lg p-4">Effortless Logging</h1>
+	</div>
 </Beam>
 
 <style>

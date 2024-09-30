@@ -120,7 +120,6 @@ func runHandleListSubscription(request events.APIGatewayV2HTTPRequest, transport
 
 	foundSubscriptionDocs, err := database.ScanMany[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.ScanManyInput{
 		Table: aws.String(routeCtx.SubscriptionTable),
-		Limit: aws.Int32(-1),
 	})
 	if err != nil {
 		logger.Printf("failed to fetch subscriptions: %v\n", err)

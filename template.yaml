@@ -463,7 +463,7 @@ Resources:
           USER_TOKEN_TTL: 172800 # 2 days
           GITHUB_CLIENT_CREDENTIAL_ARN: !Ref GithubOAuthClientCredentialArn
           REDIRECT_URI: !Sub "https://${ApplicationDomain}/api/auth/callback"
-          FRONTEND_REDIRECT_URI: !Sub "https://${ApplicationDomain}"
+          FRONTEND_REDIRECT_URI: !Sub "https://${ApplicationDomain}/profile"
           USERTABLE: !Ref BattleshiperUserTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
       LoggingConfig:

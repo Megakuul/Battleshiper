@@ -59,7 +59,8 @@ func runHandleCallback(request events.APIGatewayV2HTTPRequest, transportCtx cont
 
 	githubUser, _, err := githubClient.Users.Get(transportCtx, "")
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to acquire user information from github")
+		logger.Printf("failed to acquire user information from github: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to acquire user information from github")
 	}
 
 	_, err = database.UpdateSingle[user.User](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{

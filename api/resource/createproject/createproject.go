@@ -139,7 +139,6 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
 		ConditionExpr: aws.String("owner_id = :owner_id"),
-		Limit:         aws.Int32(-1),
 	})
 	if err != nil {
 		logger.Printf("failed to count projects on database: %v\n", err)
