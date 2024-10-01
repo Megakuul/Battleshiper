@@ -38,7 +38,11 @@ func GetSingle[T any](transportCtx context.Context, dynamoClient *dynamodb.Clien
 	}
 
 	if len(outputStructureList) < 1 {
-		return nil, fmt.Errorf("item not found")
+		// Return a ConditionalCheckFailedException, as GetSingle is designed to find one item.
+		// If the item is not present, the keyCondition "check" is considered to be failed.
+		return nil, &dynamodbtypes.ConditionalCheckFailedException{
+			Message: aws.String("item not found"),
+		}
 	}
 
 	return &outputStructureList[0], nil

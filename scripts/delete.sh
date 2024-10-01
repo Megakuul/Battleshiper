@@ -91,6 +91,6 @@ confirm_action "Do you want to delete the internal Battleshiper system?"
 echo "Deleting the internal Battleshiper system..."
 sam delete --stack-name battleshiper
 
-create_github_secrets
+delete_github_secrets
 
 echo "Battleshiper system deletion process complete."
