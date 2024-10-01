@@ -54,8 +54,8 @@ delete_github_secrets() {
 }
 
 
-echo "Finding CloudFormation stacks with prefix 'battleshiper-'..."
-stacks=$(aws cloudformation list-stacks --query "StackSummaries[?starts_with(StackName, 'battleshiper-') && StackStatus != 'DELETE_COMPLETE'].StackName" --output text)
+echo "Finding CloudFormation stacks with prefix 'battleshiper-project-stack-'..."
+stacks=$(aws cloudformation list-stacks --query "StackSummaries[?starts_with(StackName, 'battleshiper-project-stack-') && StackStatus != 'DELETE_COMPLETE'].StackName" --output text)
 
 if [[ -z "$stacks" ]]; then
   echo "No stacks found with prefix 'battleshiper-'."

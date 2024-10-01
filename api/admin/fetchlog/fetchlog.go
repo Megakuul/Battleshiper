@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -147,9 +148,8 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		LogGroupName: aws.String(logGroup),
 		StartTime:    aws.Int64(fetchLogInput.StartTime),
 		EndTime:      aws.Int64(fetchLogInput.EndTime),
-		Limit:        aws.Int32(logLimit),
 		QueryString: aws.String(fmt.Sprintf(
-			"fields @timestamp, @message %s | sort @timestamp desc | limit %d",
+			"fields @timestamp, @message, tomillis(@timestamp) as timestamp %s | sort @timestamp desc | limit %d",
 			lambdaFilter,
 			logLimit,
 		)),
@@ -183,8 +183,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	return nil, http.StatusBadRequest, fmt.Errorf("cloudwatch query timed out: try reducing the log timeframe")
 }
 
-// extractLogEvents converts the aws crap result field interface into an eventOutput slice
-// it also converts the ISO 8601 timestamp of the logs (who came up with that idea... wtf???) into a unix timestamp (ms).
+// extractLogEvents converts the aws crap result field interface into an eventOutput slice.
 // what the fuck am I even doing here... this is called enterprise software, I kipp from se stuhl.
 func extractLogEvents(results [][]cloudwatchtypes.ResultField) ([]eventOutput, error) {
 	logEvents := []eventOutput{}
@@ -192,15 +191,14 @@ func extractLogEvents(results [][]cloudwatchtypes.ResultField) ([]eventOutput, e
 		logEvent := eventOutput{}
 		for _, field := range event {
 			switch *field.Field {
-			case "@timestamp":
-				// timestamp uses ISO 8601 format (RFC3339)
-				fieldTimestamp, err := time.Parse(time.RFC3339, *field.Value)
+			case "@message":
+				logEvent.Message = *field.Value
+			case "timestamp":
+				fieldTimestamp, err := strconv.ParseFloat(*field.Value, 64)
 				if err != nil {
 					return nil, err
 				}
-				logEvent.Timestamp = fieldTimestamp.UnixMilli()
-			case "@message":
-				logEvent.Message = *field.Value
+				logEvent.Timestamp = int64(fieldTimestamp)
 			}
 		}
 		logEvents = append(logEvents, logEvent)

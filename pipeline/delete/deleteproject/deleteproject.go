@@ -100,6 +100,10 @@ func deleteProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
+	if err := deleteAliases(transportCtx, eventCtx, projectDoc.Aliases); err != nil {
+		return err
+	}
+
 	if err := deleteStaticPageKeys(transportCtx, eventCtx, projectDoc.SharedInfrastructure.PrerenderPageKeys); err != nil {
 		return err
 	}

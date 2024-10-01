@@ -222,8 +222,8 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		logger.Printf("failed to emit init event: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")
-	} else if res.FailedEntryCount > 0 {
-		logger.Printf("failed to ingest init event: %v\n", res.Entries[0].ErrorMessage)
+	} else if res.FailedEntryCount > 0 && len(res.Entries) > 0 {
+		logger.Printf("failed to ingest init event: %v\n", *res.Entries[0].ErrorMessage)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to ingest init event")
 	}
 

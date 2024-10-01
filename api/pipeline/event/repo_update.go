@@ -47,6 +47,7 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 		for i, installedRepo := range userDoc.Repositories {
 			if installedRepo.Id == removedRepo.ID {
 				userDoc.Repositories = append(userDoc.Repositories[:i], userDoc.Repositories[i+1:]...)
+				break
 			}
 		}
 	}

@@ -134,9 +134,9 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	if err != nil {
 		logger.Printf("failed to emit deletion event: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit deletion event")
-	} else if res.FailedEntryCount > 0 {
-		logger.Printf("failed to ingest deletion event: %v\n", res.Entries[0].ErrorMessage)
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to deletion init event")
+	} else if res.FailedEntryCount > 0 && len(res.Entries) > 0 {
+		logger.Printf("failed to ingest deletion event: %v\n", *res.Entries[0].ErrorMessage)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to ingest deletion event")
 	}
 
 	return &deleteProjectOutput{

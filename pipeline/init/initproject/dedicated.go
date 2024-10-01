@@ -117,7 +117,7 @@ func generateDedicatedInfrastructure(eventCtx eventcontext.Context, projectName 
 
 	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.EventLogPrefix, projectName)
 	infrastructure.BuildLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.BuildLogPrefix, projectName)
-	infrastructure.EventLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.DeployLogPrefix, projectName)
+	infrastructure.DeployLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.DeployLogPrefix, projectName)
 	infrastructure.ServerLogGroup = fmt.Sprintf("%s/%s", eventCtx.ProjectConfiguration.ServerLogPrefix, projectName)
 
 	infrastructure.StackName = fmt.Sprintf("battleshiper-project-stack-%s", projectName)

@@ -41,6 +41,10 @@ func deleteStaticAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 			return fmt.Errorf("failed to list objects: %v", err)
 		}
 
+		if len(page.Contents) < 1 {
+			continue
+		}
+
 		deleteObjects := []s3types.ObjectIdentifier{}
 		for _, object := range page.Contents {
 			deleteObjects = append(deleteObjects, s3types.ObjectIdentifier{
@@ -58,6 +62,35 @@ func deleteStaticAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 		if err != nil {
 			return fmt.Errorf("failed to delete objects in static bucket: %v", err)
 		}
+	}
+
+	return nil
+}
+
+func deleteAliases(transportCtx context.Context, eventCtx eventcontext.Context, aliases map[string]struct{}) error {
+	if len(aliases) < 1 {
+		return nil
+	}
+	deleteAliasKeys := []cloudfrontkeyvaluetypes.DeleteKeyRequestListItem{}
+	for key := range aliases {
+		deleteAliasKeys = append(deleteAliasKeys, cloudfrontkeyvaluetypes.DeleteKeyRequestListItem{
+			Key: aws.String(key),
+		})
+	}
+
+	storeMetadata, err := eventCtx.CloudfrontCacheClient.DescribeKeyValueStore(transportCtx, &cloudfrontkeyvaluestore.DescribeKeyValueStoreInput{
+		KvsARN: aws.String(eventCtx.CloudfrontConfiguration.CacheArn),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to describe cdn store: %v", err)
+	}
+	_, err = eventCtx.CloudfrontCacheClient.UpdateKeys(transportCtx, &cloudfrontkeyvaluestore.UpdateKeysInput{
+		KvsARN:  aws.String(eventCtx.CloudfrontConfiguration.CacheArn),
+		Deletes: deleteAliasKeys,
+		IfMatch: storeMetadata.ETag,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update cdn store keys: %v", err)
 	}
 
 	return nil
