@@ -203,7 +203,7 @@ Resources:
       TableName: battleshiper-projects
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: "name"
+        - AttributeName: "project_name"
           AttributeType: "S"
         - AttributeName: "owner_id"
           AttributeType: "S"
@@ -218,7 +218,7 @@ Resources:
             MaxReadRequestUnits: 100
             MaxWriteRequestUnits: 100
       KeySchema:
-        - AttributeName: "name"
+        - AttributeName: "project_name"
           KeyType: "HASH"
       OnDemandThroughput:
         MaxReadRequestUnits: 100

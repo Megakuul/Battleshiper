@@ -48,7 +48,7 @@ type CDNInfrastructure struct {
 }
 
 type Project struct {
-	Name        string `dynamodbav:"name"`
+	ProjectName string `dynamodbav:"project_name"`
 	OwnerId     string `dynamodbav:"owner_id"`
 	Deleted     bool   `dynamodbav:"deleted"`
 	Initialized bool   `dynamodbav:"initialized"`
