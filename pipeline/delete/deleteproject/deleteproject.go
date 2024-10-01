@@ -51,10 +51,8 @@ func runHandleDeleteProject(request events.CloudWatchEvent, transportCtx context
 		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.Project},
-			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: deleteClaims.UserID},
-			":deleted":      &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		},
-		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id AND deleted = :deleted"),
+		ConditionExpr: aws.String("project_name = :project_name"),
 	})
 	if err != nil {
 		// if the project is not existent, the deletion is considered successful.
@@ -62,11 +60,17 @@ func runHandleDeleteProject(request events.CloudWatchEvent, transportCtx context
 		if ok := errors.As(err, &cErr); ok {
 			return nil
 		}
-		return fmt.Errorf("failed to load project from database")
+		return fmt.Errorf("failed to load project from database: %v", err)
+	}
+	if projectDoc.OwnerId != deleteClaims.UserID {
+		return fmt.Errorf("user '%s' is not authorized to delete this project", deleteClaims.UserID)
+	}
+	if !projectDoc.Deleted {
+		return fmt.Errorf("project is not marked for deletion")
 	}
 
 	if err := deleteProject(transportCtx, eventCtx, projectDoc); err != nil {
-		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		if _, err := database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -78,8 +82,7 @@ func runHandleDeleteProject(request events.CloudWatchEvent, transportCtx context
 				":status": &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DELETION FAILED: %v", err)},
 			},
 			UpdateExpr: aws.String("SET #status = :status"),
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("failed to update project: %v", err)
 		}
 		return err

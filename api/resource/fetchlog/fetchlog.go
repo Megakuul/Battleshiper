@@ -8,11 +8,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
+	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/megakuul/battleshiper/api/resource/routecontext"
@@ -22,16 +24,21 @@ import (
 	"github.com/megakuul/battleshiper/lib/model/project"
 )
 
-const MAX_LOG_EVENTS = 50
+const (
+	MAX_LOG_EVENTS             = 50
+	LOG_RETRIEVE_RETRY_COUNT   = 2
+	LOG_RETRIEVE_RETRY_TIMEOUT = time.Millisecond * 200
+)
 
 var logger = log.New(os.Stderr, "RESOURCE FETCHLOG: ", 0)
 
 type fetchLogInput struct {
-	ProjectName string `json:"project_name"`
-	LogType     string `json:"log_type"`
-	StartTime   int64  `json:"start_time"`
-	EndTime     int64  `json:"end_time"`
-	Count       int32  `json:"count"`
+	ProjectName  string `json:"project_name"`
+	LogType      string `json:"log_type"`
+	StartTime    int64  `json:"start_time"`
+	EndTime      int64  `json:"end_time"`
+	Count        int32  `json:"count"`
+	FilterLambda bool   `json:"filter_lambda"`
 }
 
 type eventOutput struct {
@@ -96,10 +103,8 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: fetchLogInput.ProjectName},
-			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
-			":deleted":      &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id AND deleted = :deleted"),
+		ConditionExpr: aws.String("project_name = :project_name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -108,6 +113,9 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		}
 		logger.Printf("failed load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed load project from database")
+	}
+	if specifiedProject.OwnerId != userToken.Id {
+		return nil, http.StatusForbidden, fmt.Errorf("unauthorized to retrieve logs from this project")
 	}
 
 	var logGroup string
@@ -130,27 +138,73 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 		logLimit = MAX_LOG_EVENTS
 	}
 
-	logFilterOutput, err := routeCtx.CloudwatchClient.FilterLogEvents(transportCtx, &cloudwatchlogs.FilterLogEventsInput{
+	lambdaFilter := ""
+	if fetchLogInput.FilterLambda {
+		// filters out the lambda generated START, END, REPORT and INIT_START messages
+		lambdaFilter = "| filter @message not like /^(?:START|END|REPORT|INIT_START)/"
+	}
+
+	queryRequestOutput, err := routeCtx.CloudwatchClient.StartQuery(transportCtx, &cloudwatchlogs.StartQueryInput{
 		LogGroupName: aws.String(logGroup),
 		StartTime:    aws.Int64(fetchLogInput.StartTime),
 		EndTime:      aws.Int64(fetchLogInput.EndTime),
 		Limit:        aws.Int32(logLimit),
+		QueryString: aws.String(fmt.Sprintf(
+			"fields @timestamp, @message %s | sort @timestamp desc | limit %d",
+			lambdaFilter,
+			logLimit,
+		)),
 	})
 	if err != nil {
-		logger.Printf("failed to fetch logs from cloudwatch: %v\n", err)
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to fetch logs from cloudwatch")
+		logger.Printf("failed to start cloudwatch query: %v\n", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to start cloudwatch query")
 	}
 
-	logEvents := []eventOutput{}
-	for _, event := range logFilterOutput.Events {
-		logEvents = append(logEvents, eventOutput{
-			Timestamp: *event.Timestamp,
-			Message:   *event.Message,
+	for retries := 0; retries < LOG_RETRIEVE_RETRY_COUNT; retries++ {
+		queryResultOutput, err := routeCtx.CloudwatchClient.GetQueryResults(transportCtx, &cloudwatchlogs.GetQueryResultsInput{
+			QueryId: queryRequestOutput.QueryId,
 		})
+		if err != nil {
+			logger.Printf("failed to retrieve cloudwatch query result: %v\n", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve cloudwatch query result")
+		}
+		if queryResultOutput.Status == cloudwatchtypes.QueryStatusComplete {
+			logEvents, err := extractLogEvents(queryResultOutput.Results)
+			if err != nil {
+				logger.Printf("failed to deserialize cloudwatch query result: %v\n", err)
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to deserialize cloudwatch query result")
+			}
+			return &fetchLogOutput{
+				Message: "logs fetched",
+				Events:  logEvents,
+			}, http.StatusOK, nil
+		}
+		time.Sleep(LOG_RETRIEVE_RETRY_TIMEOUT)
 	}
+	return nil, http.StatusBadRequest, fmt.Errorf("cloudwatch query timed out: try reducing the log timeframe")
+}
 
-	return &fetchLogOutput{
-		Message: "logs fetched",
-		Events:  logEvents,
-	}, http.StatusOK, nil
+// extractLogEvents converts the aws crap result field interface into an eventOutput slice
+// it also converts the ISO 8601 timestamp of the logs (who came up with that idea... wtf???) into a unix timestamp (ms).
+// what the fuck am I even doing here... this is called enterprise software, I kipp from se stuhl.
+func extractLogEvents(results [][]cloudwatchtypes.ResultField) ([]eventOutput, error) {
+	logEvents := []eventOutput{}
+	for _, event := range results {
+		logEvent := eventOutput{}
+		for _, field := range event {
+			switch *field.Field {
+			case "@timestamp":
+				// timestamp uses ISO 8601 format (RFC3339)
+				fieldTimestamp, err := time.Parse(time.RFC3339, *field.Value)
+				if err != nil {
+					return nil, err
+				}
+				logEvent.Timestamp = fieldTimestamp.UnixMilli()
+			case "@message":
+				logEvent.Message = *field.Value
+			}
+		}
+		logEvents = append(logEvents, logEvent)
+	}
+	return logEvents, nil
 }

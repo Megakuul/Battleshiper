@@ -25,6 +25,7 @@
     count: 10,
     start_time: new Date(Date.now() - 1000 * 60 * 60).getTime(), // 1 hour before now
     end_time: Date.now(), // Now
+    filter_lambda: true,
   };
 
   /** @type {import("$lib/adapter/resource/fetchlog").fetchLogOutput|undefined}*/
@@ -36,6 +37,7 @@
     count: 10,
     start_time: new Date(Date.now() - 1000 * 60 * 60).getTime(), // 1 hour before now
     end_time: Date.now(), // Now
+    filter_lambda: true,
   };
 
   /** @type {import("$lib/adapter/admin/fetchlog").fetchLogOutput|undefined}*/

@@ -53,16 +53,18 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: initClaims.Project},
-			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: initClaims.UserID},
 		},
-		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id"),
+		ConditionExpr: aws.String("project_name = :project_name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); ok {
 			return fmt.Errorf("project not found")
 		}
-		return fmt.Errorf("failed to load project from database")
+		return fmt.Errorf("failed to load project from database: %v", err)
+	}
+	if projectDoc.OwnerId != initClaims.UserID {
+		return fmt.Errorf("user '%s' is not authorized to initialize this project", initClaims.UserID)
 	}
 
 	err = initProject(transportCtx, eventCtx, projectDoc)

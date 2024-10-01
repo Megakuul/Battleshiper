@@ -118,7 +118,6 @@ func runHandleBuildProject(request events.APIGatewayV2HTTPRequest, transportCtx 
 		logger.Printf("failed to load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
-
 	if projectDoc.OwnerId != userDoc.Id {
 		return nil, http.StatusForbidden, fmt.Errorf("you are not the owner of this project")
 	}

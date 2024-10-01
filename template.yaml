@@ -52,7 +52,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !GetAtt BattleshiperRouterLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
@@ -361,7 +362,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !GetAtt BattleshiperApiLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
@@ -1006,17 +1008,6 @@ Resources:
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
             CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
-          - PathPattern: "/error"
-            TargetOriginId: "battleshiper-static-bucket"
-            AllowedMethods:
-              - GET
-              - HEAD
-            CachedMethods:
-              - GET
-              - HEAD
-            Compress: true
-            ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-static-bucket"
             AllowedMethods:
@@ -1199,7 +1190,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
@@ -1228,7 +1220,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/build/*"
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
@@ -1242,7 +1235,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
@@ -1394,7 +1388,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !GetAtt BattleshiperPipelineLogGroup.Arn
       Roles:
         - !Ref BattleshiperApiAdminFuncRole
@@ -1663,7 +1658,8 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "logs:FilterLogEvents"
+              - "logs:StartQuery"
+              - "logs:GetQueryResults"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/server/*"
       Roles:
         - !Ref BattleshiperApiResourceFuncRole

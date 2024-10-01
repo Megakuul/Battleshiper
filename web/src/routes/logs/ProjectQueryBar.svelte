@@ -2,6 +2,9 @@
   import * as Select from "$lib/components/ui/select";
   import Input from "$lib/components/ui/input/input.svelte";
   import { ProjectInfo } from "$lib/stores";
+  import { Toggle } from "$lib/components/ui/toggle";
+  import * as Tooltip from "$lib/components/ui/tooltip";
+  import Icon from "@iconify/svelte";
   import { toast } from "svelte-sonner";
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import Button from "$lib/components/ui/button/button.svelte";
@@ -88,6 +91,17 @@
       value={CurrentLogInputRef.count}
       on:input={(e) => CurrentLogInputRef.count = parseInputNumber(e)}>
     </Input>
+
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <Toggle class="w-full lg:w-max" aria-label="toggle" bind:pressed={CurrentLogInputRef.filter_lambda}>
+          <Icon icon="simple-icons:awslambda" class="h-4 w-4"></Icon>
+        </Toggle>
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        <p>Filter <span class="text-orange-600">lambda</span> generated info logs</p>
+      </Tooltip.Content>
+    </Tooltip.Root>
 
     <DatePicker bind:StartTimeRef={CurrentLogInputRef.start_time} bind:EndTimeRef={CurrentLogInputRef.end_time} bind:FetchLatestRef={fetchLatest} />
   </div>

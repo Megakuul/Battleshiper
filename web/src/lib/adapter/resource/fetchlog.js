@@ -5,6 +5,7 @@
  * @property {number} start_time
  * @property {number} end_time
  * @property {number} count
+ * @property {boolean} filter_lambda
  */
 
 /**

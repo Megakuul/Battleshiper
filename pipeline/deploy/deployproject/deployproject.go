@@ -64,24 +64,28 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		if ok := errors.As(err, &cErr); ok {
 			return fmt.Errorf("user not found")
 		}
-		return fmt.Errorf("failed to load user record from database")
+		return fmt.Errorf("failed to load user record from database: %v", err)
 	}
 
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.Project},
-			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
-			":deleted":      &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id AND deleted = :deleted"),
+		ConditionExpr: aws.String("project_name = :project_name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
 		if ok := errors.As(err, &cErr); ok {
 			return fmt.Errorf("project not found")
 		}
-		return fmt.Errorf("failed to load project from database")
+		return fmt.Errorf("failed to load project from database: %v", err)
+	}
+	if projectDoc.OwnerId != deployClaims.UserID {
+		return fmt.Errorf("user '%s' is not authorized to deploy this project", deployClaims.UserID)
+	}
+	if projectDoc.Deleted {
+		return fmt.Errorf("project cannot be deployed: it is marked for deletion")
 	}
 
 	// Finish build step
@@ -163,7 +167,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		if ok := errors.As(err, &cErr); ok {
 			return fmt.Errorf("project not found")
 		}
-		return fmt.Errorf("failed to lock project on database")
+		return fmt.Errorf("failed to lock project on database: %v", err)
 	}
 	if projectDoc.PipelineLock {
 		return fmt.Errorf("project locked")

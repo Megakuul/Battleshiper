@@ -81,7 +81,7 @@
       </Toggle>
     </Tooltip.Trigger>
     <Tooltip.Content>
-      <p>Always set end time to <span class="font-bold text-[rgba(132,62,35,1)]">$now</span></p>
+      <p>Always update end time to <span class="font-bold text-[rgba(132,62,35,1)]">$now</span></p>
     </Tooltip.Content>
   </Tooltip.Root>
   <Popover.Root>
