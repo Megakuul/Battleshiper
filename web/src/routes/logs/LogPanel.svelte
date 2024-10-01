@@ -23,8 +23,8 @@
   }
 </script>
 
-<div class="flex flex-col-reverse gap-2 w-10/12 p-4 h-[60vh] bg-slate-700/20 rounded-lg overflow-scroll-hidden text-xs sm:text-base">
-  {#each LogEvents as event}
+<div class="flex flex-col gap-2 w-10/12 p-4 h-[60vh] bg-slate-700/20 rounded-lg overflow-scroll-hidden text-xs sm:text-base">
+  {#each LogEvents.reverse() as event}
     {@const level = getMessageLevel(event.message)}
     <div class="flex flex-row justify-start items-start gap-2">
       <p class="text-slate-200/70 font-bold text-nowrap">{new Date(event.timestamp).toLocaleDateString("en-US", {

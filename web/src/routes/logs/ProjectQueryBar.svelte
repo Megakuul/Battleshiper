@@ -24,6 +24,9 @@
   /** @type {string} */
   export let ExceptionRef;
 
+  /** @type {boolean} */
+  let fetchLatest;
+
   /** @type {boolean}*/
   let queryButtonState;
 
@@ -86,12 +89,13 @@
       on:input={(e) => CurrentLogInputRef.count = parseInputNumber(e)}>
     </Input>
 
-    <DatePicker bind:StartTimeRef={CurrentLogInputRef.start_time} bind:EndTimeRef={CurrentLogInputRef.end_time} />
+    <DatePicker bind:StartTimeRef={CurrentLogInputRef.start_time} bind:EndTimeRef={CurrentLogInputRef.end_time} bind:FetchLatestRef={fetchLatest} />
   </div>
 
   <Button class="m-4" variant="secondary" type="submit" on:click={async () => {
     try {
       queryButtonState = true;
+      if (fetchLatest) CurrentLogInputRef.end_time = Date.now();
       CurrentLogOutputRef = await FetchLog(CurrentLogInputRef);
       toast.success("Success", {
         description: CurrentLogOutputRef.message

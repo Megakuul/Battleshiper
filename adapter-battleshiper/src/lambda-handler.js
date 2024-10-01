@@ -13,7 +13,8 @@ export const handler = async (event, context) => {
   await server.init({ env: process.env });
 
   try {
-    const url = new URL(`https://${event.requestContext.domainName}${event.rawPath}${event.rawQueryString}`);
+    const url = new URL(`https://${event.requestContext.domainName}${event.rawPath}`);
+    url.search = event.rawQueryString;
 
     /** @type {Request} */
     const req = new Request(url, {

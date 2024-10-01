@@ -1006,7 +1006,7 @@ Resources:
             Compress: true
             ViewerProtocolPolicy: redirect-to-https
             CachePolicyId: !Ref BattleshiperCDNWebCachePolicy
-          - PathPattern: "/errors"
+          - PathPattern: "/error"
             TargetOriginId: "battleshiper-static-bucket"
             AllowedMethods:
               - GET
@@ -1330,6 +1330,7 @@ Resources:
       Roles:
         - !Ref BattleshiperApiPipelineFuncRole
         - !Ref BattleshiperApiResourceFuncRole
+        - !Ref BattleshiperApiAdminFuncRole
 
 
   # ============================================

@@ -225,8 +225,10 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
 		Entries: []eventbridgetypes.PutEventsRequestEntry{eventEntry},
 	})
-	if err != nil || res.FailedEntryCount > 0 {
+	if err != nil {
 		return fmt.Errorf("failed to emit build event to the pipeline")
+	} else if res.FailedEntryCount > 0 {
+		return fmt.Errorf("failed to ingest build event")
 	}
 
 	return nil

@@ -4,9 +4,8 @@
   import * as Dialog from "$lib/components/ui/dialog";
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import { toast } from "svelte-sonner";
-  import { UpdateProject } from "$lib/adapter/resource/updateproject";
   import { BuildProject } from "$lib/adapter/resource/buildproject";
-  import { DeleteProject } from "$lib/adapter/admin/deleteproject";
+  import { DeleteProject } from "$lib/adapter/resource/deleteproject";
     import { cn } from "$lib/utils";
 
   /** @type {import("$lib/adapter/resource/listproject").projectOutput}*/

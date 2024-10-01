@@ -4,6 +4,8 @@
   import RangeCalendar from "$lib/components/ui/range-calendar/range-calendar.svelte";
   import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
   import Button from "$lib/components/ui/button/button.svelte";
+  import { Toggle } from "$lib/components/ui/toggle";
+  import * as Tooltip from "$lib/components/ui/tooltip";
   import Icon from "@iconify/svelte";
   import { cn } from "$lib/utils";
   import { buttonVariants } from "$lib/components/ui/button";
@@ -15,6 +17,9 @@
 
   /** @type {number}*/
   export let EndTimeRef;
+
+  /** @type {boolean} */
+  export let FetchLatestRef;
 
   /** @type {{start: CalendarDate, end: CalendarDate}}*/
   let logDayRange = {
@@ -69,6 +74,16 @@
       minute: "2-digit",
     })}</span>
   </div>
+  <Tooltip.Root>
+    <Tooltip.Trigger>
+      <Toggle aria-label="toggle" bind:pressed={FetchLatestRef}>
+        <Icon icon="mdi:latest" class="h-4 w-4"></Icon>
+      </Toggle>
+    </Tooltip.Trigger>
+    <Tooltip.Content>
+      <p>Always set end time to <span class="font-bold text-[rgba(132,62,35,1)]">$now</span></p>
+    </Tooltip.Content>
+  </Tooltip.Root>
   <Popover.Root>
     <Popover.Trigger class="{cn(buttonVariants({variant: "ghost"}))}"><Icon icon="uiw:date" /></Popover.Trigger>
     <Popover.Content class="flex flex-col gap-2 items-center w-max">

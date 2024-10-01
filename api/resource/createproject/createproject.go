@@ -219,9 +219,12 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	res, err := routeCtx.EventClient.PutEvents(transportCtx, &eventbridge.PutEventsInput{
 		Entries: []eventtypes.PutEventsRequestEntry{eventEntry},
 	})
-	if err != nil || res.FailedEntryCount > 0 {
+	if err != nil {
 		logger.Printf("failed to emit init event: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to emit init event")
+	} else if res.FailedEntryCount > 0 {
+		logger.Printf("failed to ingest init event: %v\n", res.Entries[0].ErrorMessage)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to ingest init event")
 	}
 
 	return &createProjectOutput{

@@ -9,7 +9,7 @@
     "sveltekit",
     "battleshiper"
   ],
-  "version": "0.5.6",
+  "version": "0.5.7",
   "author": "Megakuul",
   "license": "MIT",
   "private": false,
