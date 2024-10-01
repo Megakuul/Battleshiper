@@ -137,7 +137,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
 	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
+			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.ProjectName)},
 		},
 		Description: aws.String("role associated with the battleshiper server function"),
 		AssumeRolePolicyDocument: map[string]interface{}{
@@ -154,7 +154,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.Name),
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.ProjectName),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -174,8 +174,8 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 
 	const SERVER_FUNCTION string = "ServerFunction"
 	stackTemplate.Resources[SERVER_FUNCTION] = &lambda.Function{
-		FunctionName:  aws.String(fmt.Sprintf("%s%s", eventCtx.ProjectConfiguration.ServerNamePrefix, projectDoc.Name)),
-		Description:   aws.String(fmt.Sprintf("Server backend for battleshiper project %s", projectDoc.Name)),
+		FunctionName:  aws.String(fmt.Sprintf("%s%s", eventCtx.ProjectConfiguration.ServerNamePrefix, projectDoc.ProjectName)),
+		Description:   aws.String(fmt.Sprintf("Server backend for battleshiper project %s", projectDoc.ProjectName)),
 		Architectures: []string{"x86_64"},
 		Runtime:       aws.String(eventCtx.ProjectConfiguration.ServerRuntime),
 		MemorySize:    aws.Int(eventCtx.ProjectConfiguration.ServerMemory),

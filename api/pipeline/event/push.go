@@ -90,7 +90,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-					"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+					"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 				},
 				AttributeNames: map[string]string{
 					"#last_event_result": "last_event_result",
@@ -121,7 +121,7 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-					"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+					"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 				},
 				AttributeNames: map[string]string{
 					"#last_event_result": "last_event_result",
@@ -190,7 +190,7 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 		return err
 	}
 
-	deployTicket, err := pipeline.CreateTicket(routeCtx.DeployTicketOptions, userDoc.Id, projectDoc.Name)
+	deployTicket, err := pipeline.CreateTicket(routeCtx.DeployTicketOptions, userDoc.Id, projectDoc.ProjectName)
 	if err != nil {
 		return fmt.Errorf("failed to create pipeline ticket")
 	}

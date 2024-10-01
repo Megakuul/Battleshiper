@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.35.3
 	github.com/megakuul/battleshiper/lib/helper v1.2.1
-	github.com/megakuul/battleshiper/lib/model v1.1.0
+	github.com/megakuul/battleshiper/lib/model v1.2.0
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 )
 

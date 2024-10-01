@@ -70,7 +70,7 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 		ClientObjects:      clientObjects,
 		PrerenderedObjects: prerenderObjects,
 		ServerObject:       *serverObject,
-		PageKeys:           extractPageKeys(prerenderObjects, projectDoc.Name),
+		PageKeys:           extractPageKeys(prerenderObjects, projectDoc.ProjectName),
 	}, nil
 }
 

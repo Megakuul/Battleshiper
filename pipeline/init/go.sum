@@ -63,8 +63,8 @@ github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGw
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/megakuul/battleshiper/lib/helper v1.2.1 h1:fufm/2LQLyqZzZlZmE7v44QKYo4yt3meiCAALCbsEBI=
 github.com/megakuul/battleshiper/lib/helper v1.2.1/go.mod h1:PAQ69EqcxUNMsZelHoQ70Gia5f9Na584tacf+bXrap0=
-github.com/megakuul/battleshiper/lib/model v1.1.0 h1:T27x/mggsAGYZ6pcrT4ngHpp0leZqGB+06TNI4u6bFg=
-github.com/megakuul/battleshiper/lib/model v1.1.0/go.mod h1:kFAFYlXJelYE0RX6foW3DJWV9xQxswY7/6MHSGC/A7g=
+github.com/megakuul/battleshiper/lib/model v1.2.0 h1:rAm0fTZ1u90dK5QEfyLgBhhcwml97OY7W8eQ/iVAbOY=
+github.com/megakuul/battleshiper/lib/model v1.2.0/go.mod h1:kFAFYlXJelYE0RX6foW3DJWV9xQxswY7/6MHSGC/A7g=
 github.com/onsi/ginkgo/v2 v2.17.1 h1:V++EzdbhI4ZV4ev0UTIj0PzhzOcReJFyJaLjtSF55M8=
 github.com/onsi/ginkgo/v2 v2.17.1/go.mod h1:llBI3WDLL9Z6taip6f33H76YcWtJv+7R3HigUjbIBOs=
 github.com/onsi/gomega v1.33.0 h1:snPCflnZrpMsy94p4lXVEkHo12lmPnc3vY5XBbreexE=

@@ -29,7 +29,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 		return fmt.Errorf("failed to validate: %v", err)
 	}
 
-	projectDoc.DedicatedInfrastructure = generateDedicatedInfrastructure(eventCtx, projectDoc.Name)
+	projectDoc.DedicatedInfrastructure = generateDedicatedInfrastructure(eventCtx, projectDoc.ProjectName)
 
 	stackBody := goformation.NewTemplate()
 	attachLogSystem(stackBody, eventCtx, projectDoc)
@@ -60,7 +60,7 @@ func createStack(transportCtx context.Context, eventCtx eventcontext.Context, pr
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#dedicated_infrastructure": "dedicated_infrastructure",
@@ -171,7 +171,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
 	stackTemplate.Resources[BUILD_JOB_EXEC_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.Name)},
+			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.ProjectName)},
 		},
 		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
@@ -188,7 +188,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.Name),
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.ProjectName),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -209,7 +209,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 	const BUILD_JOB_ROLE string = "BuildJobRole"
 	stackTemplate.Resources[BUILD_JOB_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.Name)},
+			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.ProjectName)},
 		},
 		Description: aws.String("role associated with the project build job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
@@ -226,7 +226,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-asset-bucket-%s-write-access", projectDoc.Name),
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-asset-bucket-%s-write-access", projectDoc.ProjectName),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -243,7 +243,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_JOB_DEFINITION string = "BuildJobDefinition"
 	stackTemplate.Resources[BUILD_JOB_DEFINITION] = &batch.JobDefinition{
-		JobDefinitionName: aws.String(fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.Name)),
+		JobDefinitionName: aws.String(fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.ProjectName)),
 		Type:              "container",
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
 			Image:            projectDoc.BuildImage,
@@ -282,7 +282,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 	const BUILD_RULE_ROLE string = "BuildRuleRole"
 	stackTemplate.Resources[BUILD_RULE_ROLE] = &iam.Role{
 		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.Name)},
+			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.ProjectName)},
 		},
 		Description: aws.String("role to invoke the targets specified in the associated build rule"),
 		AssumeRolePolicyDocument: map[string]interface{}{
@@ -299,7 +299,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-queue-%s-exec-access", projectDoc.Name),
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-queue-%s-exec-access", projectDoc.ProjectName),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
@@ -361,7 +361,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 	const BUILD_RULE string = "BuildRule"
 	stackTemplate.Resources[BUILD_RULE] = &events.Rule{
 		EventBusName: aws.String(eventCtx.ProjectConfiguration.BuildEventbusName),
-		Name:         aws.String(fmt.Sprintf("battleshiper-project-build-rule-%s", projectDoc.Name)),
+		Name:         aws.String(fmt.Sprintf("battleshiper-project-build-rule-%s", projectDoc.ProjectName)),
 		Description:  aws.String("triggers the associated build targets"),
 		State:        aws.String("ENABLED"),
 		EventPattern: map[string]interface{}{
@@ -369,7 +369,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 				eventCtx.ProjectConfiguration.BuildEventSource,
 			},
 			"detail-type": []string{
-				fmt.Sprintf("%s.%s", eventCtx.ProjectConfiguration.BuildEventAction, projectDoc.Name),
+				fmt.Sprintf("%s.%s", eventCtx.ProjectConfiguration.BuildEventAction, projectDoc.ProjectName),
 			},
 		},
 		Targets: []events.Rule_Target{
@@ -383,7 +383,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 				},
 				BatchParameters: &events.Rule_BatchParameters{
 					JobDefinition: goformation.Ref(BUILD_JOB_DEFINITION),
-					JobName:       fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.Name),
+					JobName:       fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.ProjectName),
 				},
 				InputTransformer: &events.Rule_InputTransformer{
 					InputPathsMap: inputPathsMap,

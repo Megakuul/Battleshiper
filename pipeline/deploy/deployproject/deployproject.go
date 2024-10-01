@@ -70,11 +70,11 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":name":     &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.Project},
-			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
-			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.Project},
+			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: deployClaims.UserID},
+			":deleted":      &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id AND deleted = :deleted"),
+		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id AND deleted = :deleted"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -100,7 +100,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 			},
 			AttributeNames: map[string]string{
 				"#last_build_result": "last_build_result",
@@ -127,7 +127,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 			},
 			AttributeNames: map[string]string{
 				"#last_build_result": "last_build_result",
@@ -145,7 +145,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	projectDoc, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#deleted":       "deleted",
@@ -185,7 +185,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 			},
 			AttributeNames: map[string]string{
 				"#last_deployment_result": "last_deployment_result",
@@ -215,7 +215,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 			},
 			AttributeNames: map[string]string{
 				"#last_deployment_result": "last_deployment_result",
@@ -334,7 +334,7 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#shared_infrastructure": "shared_infrastructure",

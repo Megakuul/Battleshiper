@@ -165,7 +165,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	err = database.PutSingle(transportCtx, routeCtx.DynamoClient, &database.PutSingleInput[project.Project]{
 		Table: aws.String(routeCtx.ProjectTable),
 		Item: project.Project{
-			Name:         createProjectInput.ProjectName,
+			ProjectName:  createProjectInput.ProjectName,
 			OwnerId:      userDoc.Id,
 			Deleted:      false,
 			Initialized:  false,
@@ -181,7 +181,7 @@ func runHandleCreateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 			BuildCommand:    createProjectInput.BuildCommand,
 			OutputDirectory: createProjectInput.OutputDirectory,
 		},
-		ProtectionAttributeName: aws.String("name"),
+		ProtectionAttributeName: aws.String("project_name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

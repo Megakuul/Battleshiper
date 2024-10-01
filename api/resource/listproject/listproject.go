@@ -124,7 +124,7 @@ func runHandleListProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	foundProjectOutput := []projectOutput{}
 	for _, project := range foundProjectDocs {
 		foundProjectOutput = append(foundProjectOutput, projectOutput{
-			Name:            project.Name,
+			Name:            project.ProjectName,
 			Deleted:         project.Deleted,
 			Initialized:     project.Initialized,
 			Status:          project.Status,

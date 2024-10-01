@@ -95,11 +95,11 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	specifiedProject, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":name":     &dynamodbtypes.AttributeValueMemberS{Value: fetchLogInput.ProjectName},
-			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
-			":deleted":  &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: fetchLogInput.ProjectName},
+			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: userToken.Id},
+			":deleted":      &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 		},
-		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id AND deleted = :deleted"),
+		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id AND deleted = :deleted"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

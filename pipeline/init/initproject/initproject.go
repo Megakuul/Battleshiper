@@ -52,10 +52,10 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":name":     &dynamodbtypes.AttributeValueMemberS{Value: initClaims.Project},
-			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: initClaims.UserID},
+			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: initClaims.Project},
+			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: initClaims.UserID},
 		},
-		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id"),
+		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -70,7 +70,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-				"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 			},
 			AttributeNames: map[string]string{
 				"#status":        "status",
@@ -91,7 +91,7 @@ func runHandleInitProject(request events.CloudWatchEvent, transportCtx context.C
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#initialized":   "initialized",

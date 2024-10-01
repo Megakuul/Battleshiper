@@ -106,10 +106,10 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	projectDoc, err := database.GetSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":name":     &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
-			":owner_id": &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
+			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
+			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: aws.String("name = :name AND owner_id = :owner_id"),
+		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -120,7 +120,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
 	}
 
-	if err := validateAliases(projectDoc.Name, updateAliasInput.Aliases); err != nil {
+	if err := validateAliases(projectDoc.ProjectName, updateAliasInput.Aliases); err != nil {
 		return nil, http.StatusBadRequest, err
 	}
 
@@ -144,7 +144,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		return nil, http.StatusBadRequest, fmt.Errorf("subscription limit reached; no additional aliases can be created")
 	}
 
-	if err := updateAliases(transportCtx, routeCtx, projectDoc.Name, projectDoc.Aliases, updateAliasInput.Aliases); err != nil {
+	if err := updateAliases(transportCtx, routeCtx, projectDoc.ProjectName, projectDoc.Aliases, updateAliasInput.Aliases); err != nil {
 		logger.Printf("%v\n", err)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -158,7 +158,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#aliases": "aliases",

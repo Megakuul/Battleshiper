@@ -108,7 +108,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	projectDoc, err := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: deleteProjectInput.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#deleted": "deleted",
@@ -127,7 +127,7 @@ func runHandleDeleteProject(request events.APIGatewayV2HTTPRequest, transportCtx
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to mark project as deleted on database")
 	}
 
-	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, projectDoc.OwnerId, projectDoc.Name)
+	deleteTicket, err := pipeline.CreateTicket(routeCtx.DeleteEventOptions.TicketOpts, projectDoc.OwnerId, projectDoc.ProjectName)
 	if err != nil {
 		logger.Printf("failed to create pipeline ticket: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create pipeline ticket")

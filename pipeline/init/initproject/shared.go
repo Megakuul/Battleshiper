@@ -14,7 +14,7 @@ import (
 
 // initSharedInfrastructure initializes the shared infrastructure components required by the project.
 func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project) error {
-	projectDoc.SharedInfrastructure = generateSharedInfrastructure(eventCtx, projectDoc.Name)
+	projectDoc.SharedInfrastructure = generateSharedInfrastructure(eventCtx, projectDoc.ProjectName)
 
 	sharedInfrastructureAttributes, err := attributevalue.Marshal(&projectDoc.SharedInfrastructure)
 	if err != nil {
@@ -24,7 +24,7 @@ func initSharedInfrastructure(transportCtx context.Context, eventCtx eventcontex
 	_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(eventCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.Name},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
 		},
 		AttributeNames: map[string]string{
 			"#shared_infrastructure": "shared_infrastructure",

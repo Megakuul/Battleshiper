@@ -129,9 +129,9 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 		foundProjectDocs, err = database.GetMany[project.Project](transportCtx, routeCtx.DynamoClient, &database.GetManyInput{
 			Table: aws.String(routeCtx.ProjectTable),
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
-				":name": &dynamodbtypes.AttributeValueMemberS{Value: ProjectName},
+				":project_name": &dynamodbtypes.AttributeValueMemberS{Value: ProjectName},
 			},
-			ConditionExpr: aws.String("name = :name"),
+			ConditionExpr: aws.String("project_name = :project_name"),
 		})
 		if err != nil {
 			logger.Printf("failed load projects from database: %v\n", err)
@@ -144,7 +144,7 @@ func runHandleFindProject(request events.APIGatewayV2HTTPRequest, transportCtx c
 	foundProjectOutput := []projectOutput{}
 	for _, project := range foundProjectDocs {
 		foundProjectOutput = append(foundProjectOutput, projectOutput{
-			Name:        project.Name,
+			Name:        project.ProjectName,
 			Deleted:     project.Deleted,
 			Initialized: project.Initialized,
 			Status:      project.Status,

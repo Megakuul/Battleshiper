@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.8
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.34.3
 	github.com/megakuul/battleshiper/lib/helper v1.2.1
-	github.com/megakuul/battleshiper/lib/model v1.1.0
+	github.com/megakuul/battleshiper/lib/model v1.2.0
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 )
 
