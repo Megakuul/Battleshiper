@@ -62,8 +62,8 @@ github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9Y
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGwWFoC7ycTf1rcQZHOlsJ6N8=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
-github.com/megakuul/battleshiper/lib/helper v1.2.3 h1:FP/hD+PZsiLo/llRmE2U5IKdnVFCsDlW/qUK/9npuC8=
-github.com/megakuul/battleshiper/lib/helper v1.2.3/go.mod h1:PAQ69EqcxUNMsZelHoQ70Gia5f9Na584tacf+bXrap0=
+github.com/megakuul/battleshiper/lib/helper v1.2.4 h1:WIxTaQfs465l+ZcpaFZ9yKQCkqNApcwDiZYrgY691Hs=
+github.com/megakuul/battleshiper/lib/helper v1.2.4/go.mod h1:/tE6rnFDX1DqenVM318LfDgTEx4nTRghRoem3gYIH9k=
 github.com/megakuul/battleshiper/lib/model v1.2.1 h1:cwQEs+334typ8aTOGgMz5lhEuHh00ZPZ5pfq3xPKdAs=
 github.com/megakuul/battleshiper/lib/model v1.2.1/go.mod h1:kFAFYlXJelYE0RX6foW3DJWV9xQxswY7/6MHSGC/A7g=
 github.com/megakuul/battleshiper/lib/router v0.1.0 h1:gbVsSiiIkzkbZE/SlVBSU9zUaiV5XHaeertVCV6uTDo=

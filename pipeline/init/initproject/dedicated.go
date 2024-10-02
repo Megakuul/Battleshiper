@@ -211,14 +211,14 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		Tags: []tags.Tag{
 			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.ProjectName)},
 		},
-		Description: aws.String("role associated with the project build job"),
+		Description: aws.String("role associated with the actual project build job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
 				{
 					"Effect": "Allow",
 					"Principal": map[string]interface{}{
-						"Service": "batch.amazonaws.com",
+						"Service": "ecs-tasks.amazonaws.com",
 					},
 					"Action": "sts:AssumeRole",
 				},
@@ -248,7 +248,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		PlatformCapabilities: []string{"FARGATE"},
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
 			Image:            projectDoc.BuildImage,
-			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
+			JobRoleArn:       aws.String(goformation.GetAtt(BUILD_JOB_ROLE, "Arn")),
 			ExecutionRoleArn: aws.String(goformation.GetAtt(BUILD_JOB_EXEC_ROLE, "Arn")),
 			ResourceRequirements: []batch.JobDefinition_ResourceRequirement{
 				// MEMORY and VCPU must be a supported combination: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-batch-jobdefinition-resourcerequirement.html
@@ -315,9 +315,12 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
 						{
-							"Effect":   "Allow",
-							"Action":   "batch:SubmitJob",
-							"Resource": eventCtx.ProjectConfiguration.BuildJobQueueArn,
+							"Effect": "Allow",
+							"Action": "batch:SubmitJob",
+							"Resource": []string{
+								goformation.Ref(BUILD_JOB_DEFINITION),
+								eventCtx.ProjectConfiguration.BuildJobQueueArn,
+							},
 						},
 					},
 				},
