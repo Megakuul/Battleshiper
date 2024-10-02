@@ -276,10 +276,12 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			},
 			Command: []string{
 				"/bin/sh", "-c",
-				"echo \"START BUILD $EXECUTION_IDENTIFIER\" &&",
-				"git clone --branch $REPOSITORY_BRANCH $REPOSITORY_URL . &&",
-				"$BUILD_COMMAND &&",
-				"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH/$EXECUTION_IDENTIFIER --recursive",
+				fmt.Sprintf("%s && %s && %s && %s",
+					"echo \"START BUILD $EXECUTION_IDENTIFIER\"",
+					"git clone --branch $REPOSITORY_BRANCH $REPOSITORY_URL .",
+					"$BUILD_COMMAND",
+					"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH/$EXECUTION_IDENTIFIER --recursive",
+				),
 			},
 			NetworkConfiguration: &batch.JobDefinition_NetworkConfiguration{
 				AssignPublicIp: aws.String("ENABLED"),

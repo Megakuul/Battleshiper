@@ -171,7 +171,7 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":aliases": aliasAttributes,
 		},
-		UpdateExpr: aws.String("#aliases = :aliases"),
+		UpdateExpr: aws.String("SET #aliases = :aliases"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException

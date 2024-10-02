@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -14,15 +15,20 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type GithubAppOptions struct {
+	AppId     string
+	AppSecret *rsa.PrivateKey
+}
+
 type githubCredentials struct {
 	AppId         string `json:"app_id"`
 	AppSecret     string `json:"app_secret"`
 	WebhookSecret string `json:"webhook_secret"`
 }
 
-// CreateGithubAppClient fetches the githubSecret containing "app_id" and "app_secret" from SecretsManager and creates a github app client.
+// CreateGithubAppOptions fetches the githubSecret containing "app_id" and "app_secret" from SecretsManager and creates github app options.
 // The calling instance needs to have IAM access to the action "secretsmanager:GetSecretValue" on the provided githubSecret.
-func CreateGithubAppClient(awsConfig aws.Config, transportCtx context.Context, githubSecretARN string) (*github.Client, error) {
+func CreateGithubAppOptions(awsConfig aws.Config, transportCtx context.Context, githubSecretARN string) (*GithubAppOptions, error) {
 	secretManagerClient := secretsmanager.NewFromConfig(awsConfig)
 
 	secretRequest := &secretsmanager.GetSecretValueInput{
@@ -49,14 +55,23 @@ func CreateGithubAppClient(awsConfig aws.Config, transportCtx context.Context, g
 		return nil, fmt.Errorf("failed to parse github credential app secret")
 	}
 
+	return &GithubAppOptions{
+		AppId:     githubCredentials.AppId,
+		AppSecret: appSecret,
+	}, nil
+}
+
+// CreateGithubAppClient creates a one time github app client from the provided app options.
+// The client works for 10 minutes, afterwards the jwt expires and a new one must be created.
+func CreateGithubAppClient(transportCtx context.Context, options *GithubAppOptions) (*github.Client, error) {
 	claims := jwt.MapClaims{
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Minute * 10).Unix(),
-		"iss": githubCredentials.AppId,
+		"exp": time.Now().Add(time.Minute * 10).Unix(), // cannot exceed 10 minutes
+		"iss": options.AppId,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signedToken, err := token.SignedString(appSecret)
+	signedToken, err := token.SignedString(options.AppSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign github app token")
 	}
