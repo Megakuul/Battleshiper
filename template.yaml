@@ -1209,6 +1209,7 @@ Resources:
               - "logs:PutLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
       Roles:
+        - !Ref BattleshiperApiResourceFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
 
   BattleshiperPipelineProjectBuildLogReadPolicy:

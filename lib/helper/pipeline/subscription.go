@@ -26,7 +26,7 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dyn
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
 		Table: aws.String(input.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.SubscriptionId},
 		},
 		ConditionExpr: aws.String("id = :id"),
 	})
@@ -102,7 +102,7 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dy
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, dynamoClient, &database.GetSingleInput{
 		Table: aws.String(input.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
-			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.Id},
+			":id": &dynamodbtypes.AttributeValueMemberS{Value: input.UserDoc.SubscriptionId},
 		},
 		ConditionExpr: aws.String("id = :id"),
 	})

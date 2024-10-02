@@ -107,9 +107,8 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		Table: aws.String(routeCtx.ProjectTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{
 			":project_name": &dynamodbtypes.AttributeValueMemberS{Value: updateAliasInput.ProjectName},
-			":owner_id":     &dynamodbtypes.AttributeValueMemberS{Value: userDoc.Id},
 		},
-		ConditionExpr: aws.String("project_name = :project_name AND owner_id = :owner_id"),
+		ConditionExpr: aws.String("project_name = :project_name"),
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -118,6 +117,12 @@ func runHandleUpdateAlias(request events.APIGatewayV2HTTPRequest, transportCtx c
 		}
 		logger.Printf("failed to load project from database: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load project from database")
+	}
+	if projectDoc.OwnerId != userDoc.Id {
+		return nil, http.StatusForbidden, fmt.Errorf("unauthorized to build this project")
+	}
+	if projectDoc.Deleted {
+		return nil, http.StatusBadRequest, fmt.Errorf("project was already deleted")
 	}
 
 	if err := validateAliases(projectDoc.ProjectName, updateAliasInput.Aliases); err != nil {

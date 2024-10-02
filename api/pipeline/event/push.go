@@ -81,13 +81,13 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			eventResult.Successful = false
 			eventResult.Timepoint = time.Now().Unix()
 
-			eventResultAttributes, err := attributevalue.Marshal(&eventResult)
-			if err != nil {
-				logger.Printf("failed to serialize eventresult: %v\n", err)
+			eventResultAttributes, sErr := attributevalue.Marshal(&eventResult)
+			if sErr != nil {
+				logger.Printf("failed to serialize eventresult: %v\n", sErr)
 				return http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 			}
 
-			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+			_, uErr := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 					"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -102,8 +102,8 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				},
 				UpdateExpr: aws.String("SET #last_event_result = :last_event_result, #status = :status"),
 			})
-			if err != nil {
-				logger.Printf("failed to update project: %v\n", err)
+			if uErr != nil {
+				logger.Printf("failed to update project: %v\n", uErr)
 				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
 			logger.Printf("failed to initiate project build: %v\n", err)
@@ -112,13 +112,13 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 			eventResult.Successful = true
 			eventResult.Timepoint = time.Now().Unix()
 
-			eventResultAttributes, err := attributevalue.Marshal(&eventResult)
-			if err != nil {
-				logger.Printf("failed to serialize eventresult: %v\n", err)
+			eventResultAttributes, sErr := attributevalue.Marshal(&eventResult)
+			if sErr != nil {
+				logger.Printf("failed to serialize eventresult: %v\n", sErr)
 				return http.StatusInternalServerError, fmt.Errorf("failed to serialize eventresult")
 			}
 
-			_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
+			_, uErr := database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 				Table: aws.String(routeCtx.ProjectTable),
 				PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 					"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -131,8 +131,8 @@ func handleRepoPush(transportCtx context.Context, routeCtx routecontext.Context,
 				},
 				UpdateExpr: aws.String("SET #last_event_result = :last_event_result"),
 			})
-			if err != nil {
-				logger.Printf("failed to update project: %v\n", err)
+			if uErr != nil {
+				logger.Printf("failed to update project: %v\n", uErr)
 				return http.StatusInternalServerError, fmt.Errorf("failed to update project")
 			}
 		}

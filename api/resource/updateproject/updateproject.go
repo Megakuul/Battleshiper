@@ -140,7 +140,7 @@ func runHandleUpdateProject(request events.APIGatewayV2HTTPRequest, transportCtx
 	_, err = database.UpdateSingle[project.Project](transportCtx, routeCtx.DynamoClient, &database.UpdateSingleInput{
 		Table: aws.String(routeCtx.ProjectTable),
 		PrimaryKey: map[string]dynamodbtypes.AttributeValue{
-			"name": &dynamodbtypes.AttributeValueMemberS{Value: updateProjectInput.ProjectName},
+			"project_name": &dynamodbtypes.AttributeValueMemberS{Value: updateProjectInput.ProjectName},
 		},
 		AttributeNames:  updateAttributeNames,
 		AttributeValues: updateAttributeValues,

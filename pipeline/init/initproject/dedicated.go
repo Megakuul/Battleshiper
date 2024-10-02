@@ -249,7 +249,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
 			Image:            projectDoc.BuildImage,
 			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
-			ExecutionRoleArn: aws.String(goformation.Ref(BUILD_JOB_EXEC_ROLE)),
+			ExecutionRoleArn: aws.String(goformation.GetAtt(BUILD_JOB_EXEC_ROLE, "Arn")),
 			ResourceRequirements: []batch.JobDefinition_ResourceRequirement{
 				// MEMORY and VCPU must be a supported combination: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-batch-jobdefinition-resourcerequirement.html
 				{Type: aws.String("MEMORY"), Value: aws.String(eventCtx.ProjectConfiguration.BuildJobMemory)},
