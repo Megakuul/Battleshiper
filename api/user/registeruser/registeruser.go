@@ -65,7 +65,7 @@ func runHandleRegisterUser(request events.APIGatewayV2HTTPRequest, transportCtx 
 			PipelineDeployments:           0,
 		},
 		InstallationId: 0,
-		Repositories:   []user.Repository{},
+		Repositories:   map[int64]user.Repository{},
 	}
 
 	if routeCtx.UserConfiguration.AdminUsername != "" {

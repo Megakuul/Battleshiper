@@ -1484,8 +1484,10 @@ Resources:
           BUILD_EVENT_ACTION: "battleshiper.build"
           BUILD_QUEUE_ARN: !Ref BattleshiperPipelineBuildQueue
           BUILD_JOB_TIMEOUT: "600s"
-          BUILD_JOB_VCPUS: 1
-          BUILD_JOB_MEMORY: 1024
+          # VCPU and MEMORY values must be a supported fargate combination
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-batch-jobdefinition-resourcerequirement.html
+          BUILD_JOB_VCPUS: "0.5"
+          BUILD_JOB_MEMORY: "1024"
       LoggingConfig:
         LogGroup: !Ref BattleshiperPipelineLogGroup 
 

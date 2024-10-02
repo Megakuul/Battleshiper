@@ -243,14 +243,25 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_JOB_DEFINITION string = "BuildJobDefinition"
 	stackTemplate.Resources[BUILD_JOB_DEFINITION] = &batch.JobDefinition{
-		JobDefinitionName: aws.String(fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.ProjectName)),
-		Type:              "container",
+		JobDefinitionName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-%s", projectDoc.ProjectName)),
+		Type:                 "container",
+		PlatformCapabilities: []string{"FARGATE"},
 		ContainerProperties: &batch.JobDefinition_ContainerProperties{
 			Image:            projectDoc.BuildImage,
-			Vcpus:            aws.Int(eventCtx.ProjectConfiguration.BuildJobVCPUS),
-			Memory:           aws.Int(eventCtx.ProjectConfiguration.BuildJobMemory),
 			JobRoleArn:       aws.String(goformation.Ref(BUILD_JOB_ROLE)),
 			ExecutionRoleArn: aws.String(goformation.Ref(BUILD_JOB_EXEC_ROLE)),
+			ResourceRequirements: []batch.JobDefinition_ResourceRequirement{
+				// MEMORY and VCPU must be a supported combination: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-batch-jobdefinition-resourcerequirement.html
+				{Type: aws.String("MEMORY"), Value: aws.String(eventCtx.ProjectConfiguration.BuildJobMemory)},
+				{Type: aws.String("VCPU"), Value: aws.String(eventCtx.ProjectConfiguration.BuildJobVCPUS)},
+			},
+			FargatePlatformConfiguration: &batch.JobDefinition_FargatePlatformConfiguration{
+				PlatformVersion: aws.String("LATEST"),
+			},
+			RuntimePlatform: &batch.JobDefinition_RuntimePlatform{
+				CpuArchitecture:       aws.String("X86_64"),
+				OperatingSystemFamily: aws.String("LINUX"),
+			},
 			LogConfiguration: &batch.JobDefinition_LogConfiguration{
 				LogDriver: "awslogs",
 				Options: map[string]string{

@@ -29,8 +29,8 @@ type ProjectConfiguration struct {
 	BuildEventAction  string
 	BuildJobQueueArn  string
 	BuildJobTimeout   time.Duration
-	BuildJobVCPUS     int
-	BuildJobMemory    int
+	BuildJobVCPUS     string
+	BuildJobMemory    string
 }
 
 // Context provides data to event handlers.

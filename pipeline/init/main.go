@@ -81,16 +81,6 @@ func run() error {
 		return fmt.Errorf("failed to parse BUILD_JOB_TIMEOUT environment variable")
 	}
 
-	buildJobVcpus, err := strconv.Atoi(BUILD_JOB_VCPUS)
-	if err != nil {
-		return fmt.Errorf("failed to parse BUILD_JOB_VCPUS environment variable")
-	}
-
-	buildJobMemory, err := strconv.Atoi(BUILD_JOB_MEMORY)
-	if err != nil {
-		return fmt.Errorf("failed to parse BUILD_JOB_MEMORY environment variable")
-	}
-
 	ticketOptions, err := pipeline.CreateTicketOptions(awsConfig, bootstrapContext, TICKET_CREDENTIAL_ARN, "", "", 0)
 	if err != nil {
 		return err
@@ -122,8 +112,8 @@ func run() error {
 			BuildEventAction:  BUILD_EVENT_ACTION,
 			BuildJobQueueArn:  BUILD_QUEUE_ARN,
 			BuildJobTimeout:   buildJobTimeout,
-			BuildJobVCPUS:     buildJobVcpus,
-			BuildJobMemory:    buildJobMemory,
+			BuildJobVCPUS:     BUILD_JOB_VCPUS,
+			BuildJobMemory:    BUILD_JOB_MEMORY,
 		},
 	}))
 

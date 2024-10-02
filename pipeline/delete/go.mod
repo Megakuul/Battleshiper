@@ -10,8 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore v1.7.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.35.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.63.3
+	github.com/aws/smithy-go v1.21.0
 	github.com/megakuul/battleshiper/lib/helper v1.2.2
-	github.com/megakuul/battleshiper/lib/model v1.2.0
+	github.com/megakuul/battleshiper/lib/model v1.2.1
 )
 
 require (
@@ -34,7 +35,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.23.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.27.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.31.3 // indirect
-	github.com/aws/smithy-go v1.21.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
