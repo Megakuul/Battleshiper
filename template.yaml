@@ -1587,6 +1587,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - "cloudformation:DescribeStacks"
                   - "cloudformation:DeleteStack"
                 Resource: "*"
               - Effect: Allow

@@ -19,13 +19,13 @@ import (
 func handleAppInstallation(transportCtx context.Context, routeCtx routecontext.Context, event github.InstallationPayload) (int, error) {
 	userId := event.Installation.Account.ID
 
-	installedRepos := []user.Repository{}
+	installedRepos := map[int64]user.Repository{}
 	for _, repo := range event.Repositories {
-		installedRepos = append(installedRepos, user.Repository{
+		installedRepos[repo.ID] = user.Repository{
 			Id:       repo.ID,
 			Name:     repo.Name,
 			FullName: repo.FullName,
-		})
+		}
 	}
 
 	repositories, err := attributevalue.Marshal(&installedRepos)

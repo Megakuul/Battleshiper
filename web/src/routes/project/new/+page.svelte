@@ -99,7 +99,7 @@
         <Select.Trigger class="w-full sm:w-[500px]">
           <Select.Value  placeholder="Repository" />
         </Select.Trigger>
-        <Select.Content>
+        <Select.Content class="overflow-scroll overflow-scroll-hidden max-h-[20vh]">
           {#if $RepositoryInfo && $RepositoryInfo.repositories}
             {#each $RepositoryInfo.repositories as repo}
               <Select.Item class="text-xs" value="{repo}">{repo?.full_name}</Select.Item>

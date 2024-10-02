@@ -27,5 +27,5 @@ type User struct {
 	LimitCounter   ExecutionLimitCounter  `dynamodbav:"limit_counter"`
 	SubscriptionId string                 `dynamodbav:"subscription_id"`
 	InstallationId int64                  `dynamodbav:"installation_id"`
-	Repositories   []Repository           `dynamodbav:"repositories"`
+	Repositories   map[int64]Repository   `dynamodbav:"repositories"`
 }

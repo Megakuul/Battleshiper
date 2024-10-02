@@ -35,21 +35,15 @@ func handleRepoUpdate(transportCtx context.Context, routeCtx routecontext.Contex
 		return http.StatusInternalServerError, fmt.Errorf("failed to load user record from database")
 	}
 
-	for _, addedRepo := range event.RepositoriesAdded {
-		userDoc.Repositories = append(userDoc.Repositories, user.Repository{
-			Id:       addedRepo.ID,
-			Name:     addedRepo.Name,
-			FullName: addedRepo.FullName,
-		})
-	}
-
-	for _, removedRepo := range event.RepositoriesRemoved {
-		for i, installedRepo := range userDoc.Repositories {
-			if installedRepo.Id == removedRepo.ID {
-				userDoc.Repositories = append(userDoc.Repositories[:i], userDoc.Repositories[i+1:]...)
-				break
-			}
+	for _, repo := range event.RepositoriesAdded {
+		userDoc.Repositories[repo.ID] = user.Repository{
+			Id:       repo.ID,
+			Name:     repo.Name,
+			FullName: repo.FullName,
 		}
+	}
+	for _, repo := range event.RepositoriesRemoved {
+		delete(userDoc.Repositories, repo.ID)
 	}
 
 	repositories, err := attributevalue.Marshal(&userDoc.Repositories)
