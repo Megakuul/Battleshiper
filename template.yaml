@@ -192,8 +192,10 @@ Resources:
       Roles:
         - !Ref BattleshiperApiAuthFuncRole
         - !Ref BattleshiperApiUserFuncRole
+        - !Ref BattleshiperApiResourceFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
         - !Ref BattleshiperApiAdminFuncRole
+        - !Ref BattleshiperPipelineDeployFuncRole
 
 
   BattleshiperProjectTable:

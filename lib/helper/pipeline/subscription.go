@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -60,7 +61,10 @@ func CheckBuildSubscriptionLimit(transportCtx context.Context, dynamoClient *dyn
 		UpdateExpr:    aws.String("SET #limit_counter.#pipeline_builds = :pipeline_builds, #limit_counter.#pipeline_builds_exp = :next_timestamp"),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to reset limit_counter: %v", err)
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); !ok {
+			return fmt.Errorf("failed to reset limit_counter: %v", err)
+		}
 	}
 
 	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{
@@ -136,7 +140,10 @@ func CheckDeploySubscriptionLimit(transportCtx context.Context, dynamoClient *dy
 		UpdateExpr:    aws.String("SET #limit_counter.#pipeline_deployments = :pipeline_deployments, #limit_counter.#pipeline_deployments_exp = :next_timestamp"),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to reset limit_counter: %v", err)
+		var cErr *dynamodbtypes.ConditionalCheckFailedException
+		if ok := errors.As(err, &cErr); !ok {
+			return fmt.Errorf("failed to reset limit_counter: %v", err)
+		}
 	}
 
 	updatedUserDoc, err := database.UpdateSingle[user.User](transportCtx, dynamoClient, &database.UpdateSingleInput{

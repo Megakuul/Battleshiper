@@ -274,7 +274,7 @@ func emitBuildEvent(transportCtx context.Context, routeCtx routecontext.Context,
 
 	eventEntry := eventbridgetypes.PutEventsRequestEntry{
 		Source:       aws.String(routeCtx.BuildEventOptions.Source),
-		DetailType:   aws.String(routeCtx.BuildEventOptions.Action),
+		DetailType:   aws.String(fmt.Sprintf("%s.%s", routeCtx.BuildEventOptions.Action, projectDoc.ProjectName)),
 		Detail:       aws.String(string(buildRequestRaw)),
 		EventBusName: aws.String(routeCtx.BuildEventOptions.EventBus),
 	}

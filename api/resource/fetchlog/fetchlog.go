@@ -27,8 +27,8 @@ import (
 
 const (
 	MAX_LOG_EVENTS             = 50
-	LOG_RETRIEVE_RETRY_COUNT   = 2
-	LOG_RETRIEVE_RETRY_TIMEOUT = time.Millisecond * 200
+	LOG_RETRIEVE_RETRY_COUNT   = 3
+	LOG_RETRIEVE_RETRY_TIMEOUT = time.Millisecond * 400
 )
 
 var logger = log.New(os.Stderr, "RESOURCE FETCHLOG: ", 0)
@@ -142,7 +142,7 @@ func runHandleFetchLog(request events.APIGatewayV2HTTPRequest, transportCtx cont
 	lambdaFilter := ""
 	if fetchLogInput.FilterLambda {
 		// filters out the lambda generated START, END, REPORT and INIT_START messages
-		lambdaFilter = "| filter @message not like /^(?:START|END|REPORT|INIT_START)/"
+		lambdaFilter = "| filter @message not like /^(?:START RequestId|END RequestId|REPORT RequestId|INIT_START)/"
 	}
 
 	queryRequestOutput, err := routeCtx.CloudwatchClient.StartQuery(transportCtx, &cloudwatchlogs.StartQueryInput{
