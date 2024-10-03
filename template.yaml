@@ -108,7 +108,7 @@ Resources:
             ApiId: !Ref BattleshiperRouterApi
       Environment:
         Variables:
-          STATIC_BUCKET_NAME: !Ref BattleshiperStaticBucket
+          STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
       LoggingConfig:
         LogGroup: !Ref BattleshiperRouterLogGroup 
@@ -885,7 +885,6 @@ Resources:
               - "s3:HeadObject"
               - "s3:GetObject"
               - "s3:GetObjectTagging"
-              - "s3:ListBucket"
               - "s3:PutObject"
               - "s3:PutObjectTagging"
               - "s3:DeleteObject"
@@ -1720,6 +1719,11 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub "${BattleshiperProjectStaticBucket.Arn}/*"
+          - Action:
+              - "s3:ListBucket"
+            Effect: Allow
+            Resource:
+              - !Sub "${BattleshiperProjectStaticBucket.Arn}"
       Roles:
         - !Ref BattleshiperRouterFuncRole
 
@@ -1864,7 +1868,7 @@ Resources:
             if (!host) {
               throw new Error("no host specified");
             }
-
+            
             // remove the application domain from the host
             if (!host.endsWith(domainSuffix)) {
               throw new Error("unexpected host");
@@ -1873,6 +1877,7 @@ Resources:
             
             const project = await kvsHandle.get(alias, { format: "string" });
             request.headers["battleshiper-project"] = { value: project };
+            request.headers["x-forwarded-host"] = { value: host };
 
             const prerenderedPageKey = "/" + project + request.uri;
             const prerenderedPage = await kvsHandle.get(prerenderedPageKey.replace(/\/$/, ""), { format: "string" }).catch(() => null);
@@ -1996,6 +2001,21 @@ Resources:
             - EventType: viewer-request
               FunctionARN: !GetAtt BattleshiperProjectCDNServerRouteFunc.FunctionMetadata.FunctionARN
         CacheBehaviors:
+          - PathPattern: "*/__data.json"
+            TargetOriginId: "battleshiper-project-server"
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref BattleshiperProjectCDNServerCachePolicy
+            OriginRequestPolicyId: !Ref BattleshiperProjectCDNServerOriginRequestPolicy
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt BattleshiperProjectCDNServerRouteFunc.FunctionMetadata.FunctionARN
           - PathPattern: "/_app/*"
             TargetOriginId: "battleshiper-project-static-bucket"
             AllowedMethods:

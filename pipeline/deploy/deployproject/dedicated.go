@@ -229,7 +229,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 		},
 		Handler: aws.String("index.handler"),
 		LoggingConfig: &lambda.Function_LoggingConfig{
-			LogGroup:  aws.String(SERVER_LOG_GROUP),
+			LogGroup:  aws.String(goformation.Ref(SERVER_LOG_GROUP)),
 			LogFormat: aws.String("Text"),
 		},
 	}

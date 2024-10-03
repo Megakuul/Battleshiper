@@ -13,21 +13,31 @@ export const handler = async (event, context) => {
   await server.init({ env: process.env });
 
   try {
-    const url = new URL(`https://${event.requestContext.domainName}${event.rawPath}`);
+    const method = event.requestContext.http.method;
+    const { headers, body } = event;
+
+    headers.origin = process.env.ORIGIN ?? headers.origin ?? `https://${event.requestContext.domainName}`;
+    const url = new URL(`${headers.origin}${event.rawPath}`);
     url.search = event.rawQueryString;
+
+    // Warning: This is specific to battleshiper because the proxy (edge router) is trusted.
+    // If no server explicitly sets the x-forwarded-host header, this poses a security risk (csrf).
+    if (headers["x-forwarded-host"]) {
+      headers.host = headers["x-forwarded-host"];
+    }
 
     /** @type {Request} */
     const req = new Request(url, {
-      method: event.requestContext.http.method,
+      method: method,
       headers: new Headers(event.headers),
-      body: event.body,
+      body: body,
     })
   
     /** @type {Response} */
     const res = await server.respond(req, {
       platform: { context },
       getClientAddress: (request) => {
-        return event.headers["x-forwarded-for"] || event.requestContext.http.sourceIp;
+        return headers["x-forwarded-for"] || event.requestContext.http.sourceIp;
       }
     })
 
