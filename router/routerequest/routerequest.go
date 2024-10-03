@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -37,9 +38,13 @@ func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx 
 		response, code, err := proxyStatic(request, transportCtx, routeCtx, project)
 		if err != nil {
 			return events.APIGatewayV2HTTPResponse{
-				StatusCode: code,
-				Headers:    map[string]string{"Content-Type": "text/plain"},
-				Body:       err.Error(),
+				StatusCode: http.StatusFound,
+				Headers: map[string]string{
+					"Location": fmt.Sprintf("%s?%s", routeCtx.ErrorPage, url.Values{
+						"type":    []string{"SystemRouter Error"},
+						"message": []string{err.Error()},
+					}.Encode()),
+				},
 			}, nil
 		}
 		response.StatusCode = code
@@ -49,9 +54,13 @@ func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx 
 	response, code, err := proxyServer(request, transportCtx, routeCtx, project)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{
-			StatusCode: code,
-			Headers:    map[string]string{"Content-Type": "text/plain"},
-			Body:       err.Error(),
+			StatusCode: http.StatusFound,
+			Headers: map[string]string{
+				"Location": fmt.Sprintf("%s?%s", routeCtx.ErrorPage, url.Values{
+					"type":    []string{"SystemRouter Error"},
+					"message": []string{err.Error()},
+				}.Encode()),
+			},
 		}, nil
 	}
 	response.StatusCode = code

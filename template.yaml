@@ -110,6 +110,7 @@ Resources:
         Variables:
           STATIC_BUCKET_NAME: !Ref BattleshiperProjectStaticBucket
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
+          ERROR_PAGE: !Sub "https://${ApplicationDomain}/error"
       LoggingConfig:
         LogGroup: !Ref BattleshiperRouterLogGroup 
 

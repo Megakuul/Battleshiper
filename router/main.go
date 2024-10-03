@@ -18,6 +18,7 @@ var (
 	REGION             = os.Getenv("AWS_REGION")
 	STATIC_BUCKET_NAME = os.Getenv("STATIC_BUCKET_NAME")
 	SERVER_NAME_PREFIX = os.Getenv("SERVER_NAME_PREFIX")
+	ERROR_PAGE         = os.Getenv("ERROR_PAGE")
 )
 
 func main() {
@@ -42,6 +43,7 @@ func run() error {
 		StaticBucketName: STATIC_BUCKET_NAME,
 		FunctionClient:   functionClient,
 		ServerNamePrefix: SERVER_NAME_PREFIX,
+		ErrorPage:        ERROR_PAGE,
 	}))
 
 	return nil

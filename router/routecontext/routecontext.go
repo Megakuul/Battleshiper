@@ -11,4 +11,5 @@ type Context struct {
 	StaticBucketName string
 	FunctionClient   *lambda.Client
 	ServerNamePrefix string
+	ErrorPage        string
 }
