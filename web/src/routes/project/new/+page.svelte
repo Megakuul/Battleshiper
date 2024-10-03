@@ -11,7 +11,7 @@
   import { CircleAlert } from "lucide-svelte";
   import { fade } from "svelte/transition";
   import { RepositoryInfo } from "$lib/stores";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { ListRepository } from "$lib/adapter/resource/listrepository";
   import { toast } from "svelte-sonner";
   import { CreateProject } from "$lib/adapter/resource/createproject";
@@ -37,6 +37,9 @@
   /** @type {string} */
   let Exception = "";
 
+  /** @type {number} */
+  let RepoPollingInterval = 0;
+
   onMount(async () => {
     try {
       if (!$RepositoryInfo) {
@@ -48,6 +51,19 @@
         description: "Failed to load available repositories",
       })
     }
+
+    clearInterval(RepoPollingInterval)
+    RepoPollingInterval = setInterval(async () => {
+      try {
+        $RepositoryInfo = await ListRepository();
+      } catch (/** @type {any} */ err) {
+        Exception = err.message;
+      }
+    }, 5000);
+  })
+
+  onDestroy(() => {
+    clearInterval(RepoPollingInterval)
   })
 
   // Generate a user friendly message if the exception is longer then 250 chars.

@@ -5,7 +5,7 @@
   import * as Avatar from "$lib/components/ui/avatar";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import Icon from '@iconify/svelte';
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { Authorize } from "$lib/adapter/auth/authorize";
   import { fade } from "svelte/transition";
   import BorderBeam from "$lib/components/BorderBeam.svelte";
@@ -24,6 +24,9 @@
   let Hostname = "";
   if (browser) Hostname = window.location.hostname;
 
+  /** @type {number} */
+  let ProjectPollingInterval = 0;
+
   onMount(async () => {
     try {
       if (!$ProjectInfo) {
@@ -32,6 +35,19 @@
     } catch (/** @type {any} */ err) {
       Exception = err.message;
     }
+
+    clearInterval(ProjectPollingInterval)
+    ProjectPollingInterval = setInterval(async () => {
+      try {
+        $ProjectInfo = await ListProject();
+      } catch (/** @type {any} */ err) {
+        Exception = err.message;
+      }
+    }, 5000);
+  })
+
+  onDestroy(() => {
+    clearInterval(ProjectPollingInterval)
   })
 
   // Generate a user friendly message if the exception is longer then 250 chars.

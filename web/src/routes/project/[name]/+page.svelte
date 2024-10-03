@@ -7,7 +7,7 @@
   import Icon from "@iconify/svelte";
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
   import CircleAlert from "lucide-svelte/icons/circle-alert";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { goto } from "$app/navigation";
   import StatusBar from "./StatusBar.svelte";
@@ -27,6 +27,9 @@
   let Hostname = "";
   if (browser) Hostname = window.location.hostname;
 
+  /** @type {number} */
+  let ProjectPollingInterval = 0;
+
   onMount(async () => {
     try {
       if (!$ProjectInfo) {
@@ -39,6 +42,19 @@
     } catch (/** @type {any} */ err) {
       Exception = err.message;
     }
+
+    clearInterval(ProjectPollingInterval)
+    ProjectPollingInterval = setInterval(async () => {
+      try {
+        $ProjectInfo = await ListProject();
+      } catch (/** @type {any} */ err) {
+        Exception = err.message;
+      }
+    }, 5000);
+  })
+
+  onDestroy(() => {
+    clearInterval(ProjectPollingInterval)
   })
 
   // Generate a user friendly message if the exception is longer then 250 chars.
