@@ -27,6 +27,7 @@ var (
 	PROJECTTABLE          = os.Getenv("PROJECTTABLE")
 	SUBSCRIPTIONTABLE     = os.Getenv("SUBSCRIPTIONTABLE")
 	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
+	CHANGESET_TIMEOUT     = os.Getenv("CHANGESET_TIMEOUT")
 	DEPLOYMENT_TIMEOUT    = os.Getenv("DEPLOYMENT_TIMEOUT")
 	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
 	SERVER_NAME_PREFIX    = os.Getenv("SERVER_NAME_PREFIX")
@@ -70,6 +71,11 @@ func run() error {
 		return err
 	}
 
+	changesetTimeout, err := time.ParseDuration(CHANGESET_TIMEOUT)
+	if err != nil {
+		return fmt.Errorf("failed to parse CHANGESET_TIMEOUT environment variable")
+	}
+
 	deploymentTimeout, err := time.ParseDuration(DEPLOYMENT_TIMEOUT)
 	if err != nil {
 		return fmt.Errorf("failed to parse DEPLOYMENT_TIMEOUT environment variable")
@@ -96,7 +102,8 @@ func run() error {
 		CloudwatchClient:      cloudwatchClient,
 		CloudfrontCacheClient: cloudfrontClient,
 		DeploymentConfiguration: &eventcontext.DeploymentConfiguration{
-			Timeout: deploymentTimeout,
+			ChangeSetTimeout:  changesetTimeout,
+			DeplyomentTimeout: deploymentTimeout,
 		},
 		ProjectConfiguration: &eventcontext.ProjectConfiguration{
 			ServerNamePrefix:   SERVER_NAME_PREFIX,

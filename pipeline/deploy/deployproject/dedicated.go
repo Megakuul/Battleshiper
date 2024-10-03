@@ -88,11 +88,21 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 		StackName:     aws.String(projectDoc.DedicatedInfrastructure.StackName),
 		ChangeSetName: aws.String(changeSetName),
 		TemplateBody:  aws.String(string(stackBodyRaw)),
-		Capabilities:  []cloudformationtypes.Capability{cloudformationtypes.CapabilityCapabilityIam},
+		Capabilities:  []cloudformationtypes.Capability{cloudformationtypes.CapabilityCapabilityIam, cloudformationtypes.CapabilityCapabilityNamedIam},
 		ChangeSetType: cloudformationtypes.ChangeSetTypeUpdate,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create changeset: %v", err)
+	}
+
+	waiter := cloudformation.NewChangeSetCreateCompleteWaiter(eventCtx.CloudformationClient)
+
+	err = waiter.Wait(transportCtx, &cloudformation.DescribeChangeSetInput{
+		StackName:     aws.String(projectDoc.DedicatedInfrastructure.StackName),
+		ChangeSetName: aws.String(changeSetName),
+	}, eventCtx.DeploymentConfiguration.ChangeSetTimeout)
+	if err != nil {
+		return "", fmt.Errorf("failed to wait for changeset completion: %v", err)
 	}
 
 	return changeSetName, nil
@@ -124,10 +134,10 @@ func describeChangeSet(transportCtx context.Context, eventCtx eventcontext.Conte
 		return "", fmt.Errorf("failed to describe changeset: %v", err)
 	}
 
-	changeDescription := ""
+	changeDescription := "Infrastructure Changes:"
 	for _, change := range changeSet.Changes {
 		changeDescription += fmt.Sprintf(
-			"%s: %s",
+			" [ %s: %s ] ",
 			change.ResourceChange.Action,
 			*change.ResourceChange.ResourceType,
 		)
@@ -155,7 +165,7 @@ func executeChangeSet(transportCtx context.Context, eventCtx eventcontext.Contex
 	waiter := cloudformation.NewStackUpdateCompleteWaiter(eventCtx.CloudformationClient)
 	err = waiter.Wait(transportCtx, &cloudformation.DescribeStacksInput{
 		StackName: aws.String(projectDoc.DedicatedInfrastructure.StackName),
-	}, eventCtx.DeploymentConfiguration.Timeout)
+	}, eventCtx.DeploymentConfiguration.DeplyomentTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to wait for update completion: %v", err)
 	}

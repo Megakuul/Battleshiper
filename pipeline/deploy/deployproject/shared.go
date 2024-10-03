@@ -45,6 +45,10 @@ func cleanStaticBucket(transportCtx context.Context, eventCtx eventcontext.Conte
 			})
 		}
 
+		if len(deleteObjects) < 1 {
+			continue
+		}
+
 		_, err = eventCtx.S3Client.DeleteObjects(transportCtx, &s3.DeleteObjectsInput{
 			Bucket: aws.String(bucketName),
 			Delete: &s3types.Delete{

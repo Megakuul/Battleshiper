@@ -31,7 +31,7 @@ func HandleRouteRequest(routeCtx routecontext.Context) func(context.Context, eve
 }
 
 func runHandleRouteRequest(request events.APIGatewayV2HTTPRequest, transportCtx context.Context, routeCtx routecontext.Context) (events.APIGatewayV2HTTPResponse, error) {
-	project := request.Headers["Battleshiper-Project"]
+	project := request.Headers["battleshiper-project"]
 
 	if strings.HasSuffix(request.RawPath, ".html") && request.RequestContext.HTTP.Method == "GET" {
 		response, code, err := proxyStatic(request, transportCtx, routeCtx, project)
@@ -100,10 +100,11 @@ func proxyServer(request events.APIGatewayV2HTTPRequest, transportCtx context.Co
 		InvocationType: lambdatypes.InvocationTypeRequestResponse,
 	})
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("failed to invoke origin server")
+		logger.Printf("failed to invoke origin server: %v", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to invoke origin server")
 	}
 	if result.FunctionError != nil && *result.FunctionError != "" {
-		logger.Printf("origin server failed to handle request: %v\n", err)
+		logger.Printf("origin server failed to handle request: %s\n", *result.FunctionError)
 		return nil, http.StatusInternalServerError, fmt.Errorf("origin server failed to handle request")
 	}
 

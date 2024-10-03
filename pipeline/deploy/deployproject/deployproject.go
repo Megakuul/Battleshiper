@@ -254,7 +254,6 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	cloudLogger.WriteLog("START DEPLOYMENT %s", execId)
-	cloudLogger.WriteLog("loading user subscription...")
 
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, eventCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(eventCtx.SubscriptionTable),
@@ -293,6 +292,9 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 	}
 
 	cloudLogger.WriteLog("creating stack changeset...")
+	if err := cloudLogger.PushLogs(); err != nil {
+		return err
+	}
 	changeSetName, err := createChangeSet(transportCtx, eventCtx, projectDoc, execId, buildInformation.ServerObject)
 	if err != nil {
 		cloudLogger.WriteLog(err.Error())

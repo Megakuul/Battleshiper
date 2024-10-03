@@ -12,7 +12,8 @@ import (
 )
 
 type DeploymentConfiguration struct {
-	Timeout time.Duration
+	ChangeSetTimeout  time.Duration
+	DeplyomentTimeout time.Duration
 }
 
 type ProjectConfiguration struct {

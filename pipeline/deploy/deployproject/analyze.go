@@ -16,8 +16,8 @@ import (
 
 const (
 	SERVER_PATH    = "server/handler.zip"
-	CLIENT_PATH    = "client"
-	PRERENDER_PATH = "prerendered"
+	CLIENT_PATH    = "client/"
+	PRERENDER_PATH = "prerendered/"
 )
 
 // ObjectDescription provides information about the location of an s3 object.
@@ -46,7 +46,7 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 		return nil, fmt.Errorf("failed to decode build asset bucket path")
 	}
 	bucketName := bucketPathSegments[0]
-	bucketPrefix := fmt.Sprintf("%s/", bucketPathSegments[1])
+	bucketPrefix := bucketPathSegments[1]
 
 	clientObjects, err := analyzeClientObjects(
 		transportCtx, eventCtx.S3Client, bucketName, bucketPrefix, execIdentifier, subscriptionDoc.ProjectSpecs.ClientStorage)
@@ -75,10 +75,10 @@ func analyzeBuildAssets(transportCtx context.Context, eventCtx eventcontext.Cont
 }
 
 func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, bucketName, bucketPrefix, execIdentifier string, maxBytes int64) ([]ObjectDescription, error) {
-	clientPrefix := fmt.Sprintf("%s/%s", execIdentifier, CLIENT_PATH)
+	clientPrefix := fmt.Sprintf("%s/%s/%s", bucketPrefix, execIdentifier, CLIENT_PATH)
 	paginator := s3.NewListObjectsV2Paginator(s3Client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucketName),
-		Prefix: aws.String(fmt.Sprintf("%s%s", bucketPrefix, clientPrefix)),
+		Prefix: aws.String(clientPrefix),
 	})
 
 	var clientSize int64 = 0
@@ -108,10 +108,10 @@ func analyzeClientObjects(transportCtx context.Context, s3Client *s3.Client, buc
 }
 
 func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, bucketName, bucketPrefix, execIdentifier string, maxBytes int64) ([]ObjectDescription, error) {
-	prerenderPrefix := fmt.Sprintf("%s/%s", execIdentifier, PRERENDER_PATH)
+	prerenderPrefix := fmt.Sprintf("%s/%s/%s", bucketPrefix, execIdentifier, PRERENDER_PATH)
 	paginator := s3.NewListObjectsV2Paginator(s3Client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucketName),
-		Prefix: aws.String(fmt.Sprintf("%s%s", bucketPrefix, prerenderPrefix)),
+		Prefix: aws.String(prerenderPrefix),
 	})
 
 	var prerenderSize int64 = 0
@@ -145,7 +145,7 @@ func analyzePrerenderObjects(transportCtx context.Context, s3Client *s3.Client, 
 }
 
 func analyzeServerObject(transportCtx context.Context, s3Client *s3.Client, bucketName, bucketPrefix, execIdentifier string, maxBytes int64) (*ObjectDescription, error) {
-	serverKey := fmt.Sprintf("%s%s/%s", bucketPrefix, execIdentifier, SERVER_PATH)
+	serverKey := fmt.Sprintf("%s/%s/%s", bucketPrefix, execIdentifier, SERVER_PATH)
 
 	serverObject, err := s3Client.HeadObject(transportCtx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucketName),
@@ -175,7 +175,14 @@ func extractPageKeys(prerenderObjects []ObjectDescription, projectName string) m
 	pageKeys := map[string]string{}
 	for _, object := range prerenderObjects {
 		pageKey := fmt.Sprintf("/%s/%s", projectName, object.RelativeKey)
-		pageKeys[strings.TrimSuffix(pageKey, ".html")] = fmt.Sprintf("/%s", object.RelativeKey)
+		// index key is the path that is received by cloudfront (essentially the path the user enters in the browser).
+		// if the index is /index.html it is fully trimmed, otherwise just the .html extension is trimmed.
+		if strings.HasSuffix(pageKey, "/index.html") {
+			pageKeys[strings.TrimSuffix(pageKey, "/index.html")] = fmt.Sprintf("/%s", object.RelativeKey)
+		} else {
+			pageKeys[strings.TrimSuffix(pageKey, ".html")] = fmt.Sprintf("/%s", object.RelativeKey)
+		}
+
 	}
 	return pageKeys
 }

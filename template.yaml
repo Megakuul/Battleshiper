@@ -1209,7 +1209,10 @@ Resources:
             Action:
               - "logs:CreateLogStream"
               - "logs:PutLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
+            Resource: 
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*"
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/event/*:log-stream:*"
+
       Roles:
         - !Ref BattleshiperApiResourceFuncRole
         - !Ref BattleshiperApiPipelineFuncRole
@@ -1255,7 +1258,9 @@ Resources:
             Action:
               - "logs:CreateLogStream"
               - "logs:PutLogEvents"
-            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
+            Resource: 
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*"
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/battleshiper/project/deploy/*:log-stream:*"
       Roles:
         - !Ref BattleshiperPipelineDeployFuncRole
 
@@ -1565,6 +1570,7 @@ Resources:
           PROJECTTABLE: !Ref BattleshiperProjectTable
           SUBSCRIPTIONTABLE: !Ref BattleshiperSubscriptionTable
           TICKET_CREDENTIAL_ARN: !Ref BattleshiperPipelineTicketCredentials
+          CHANGESET_TIMEOUT: "100s"
           DEPLOYMENT_TIMEOUT: "400s"
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
@@ -1866,10 +1872,10 @@ Resources:
             const alias = host.slice(0, -domainSuffix.length);
             
             const project = await kvsHandle.get(alias, { format: "string" });
-            request.headers["battleshiper-project"] = project;
+            request.headers["battleshiper-project"] = { value: project };
 
             const prerenderedPageKey = "/" + project + request.uri;
-            const prerenderedPage = await kvsHandle.get(prerenderedPageKey, { format: "string" }).catch(() => null);
+            const prerenderedPage = await kvsHandle.get(prerenderedPageKey.replace(/\/$/, ""), { format: "string" }).catch(() => null);
             if (prerenderedPage) {
               request.uri = prerenderedPage;
             }
