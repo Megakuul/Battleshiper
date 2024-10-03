@@ -2,6 +2,8 @@ package deployproject
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,7 +13,7 @@ import (
 	goformation "github.com/awslabs/goformation/v7/cloudformation"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/lambda"
-	"github.com/awslabs/goformation/v7/cloudformation/tags"
+	"github.com/awslabs/goformation/v7/intrinsics"
 
 	"github.com/megakuul/battleshiper/lib/model/project"
 	"github.com/megakuul/battleshiper/pipeline/deploy/eventcontext"
@@ -46,7 +48,30 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch stack template: %v", err)
 	}
-	stackBody, err := goform.ParseJSON([]byte(*stackTemplate.TemplateBody))
+
+	// By default goformation tries to resolve intrinsic functions (e.g. Fn::GetAtt),
+	// this process makes no sense in this usecase. Besides that, resolving "Fn::GetAtt" is currently not even supported.
+	// Therefore a custom json handler is used, which essentially just leaves the intrinsics as they where (expected behavior).
+	stackBody, err := goform.ParseJSONWithOptions([]byte(*stackTemplate.TemplateBody), &intrinsics.ProcessorOptions{
+		EvaluateConditions: false,
+		IntrinsicHandlerOverrides: map[string]intrinsics.IntrinsicHandler{
+			"Fn::Base64":      intrinsicJsonHandler,
+			"Fn::And":         intrinsicJsonHandler,
+			"Fn::Equals":      intrinsicJsonHandler,
+			"Fn::If":          intrinsicJsonHandler,
+			"Fn::Not":         intrinsicJsonHandler,
+			"Fn::Or":          intrinsicJsonHandler,
+			"Fn::FindInMap":   intrinsicJsonHandler,
+			"Fn::GetAtt":      intrinsicJsonHandler,
+			"Fn::GetAZs":      intrinsicJsonHandler,
+			"Fn::ImportValue": intrinsicJsonHandler,
+			"Fn::Join":        intrinsicJsonHandler,
+			"Fn::Select":      intrinsicJsonHandler,
+			"Fn::Split":       intrinsicJsonHandler,
+			"Fn::Sub":         intrinsicJsonHandler,
+			"Ref":             intrinsicJsonHandler,
+		},
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to parse stack template: %v", err)
 	}
@@ -56,13 +81,6 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 	stackBodyRaw, err := stackBody.JSON()
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize stack template: %v", err)
-	}
-
-	_, err = eventCtx.CloudformationClient.ValidateTemplate(transportCtx, &cloudformation.ValidateTemplateInput{
-		TemplateBody: aws.String(string(stackBodyRaw)),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to validate stack template: %v", err)
 	}
 
 	changeSetName := fmt.Sprintf("deployment-%s", execId)
@@ -78,6 +96,22 @@ func createChangeSet(transportCtx context.Context, eventCtx eventcontext.Context
 	}
 
 	return changeSetName, nil
+}
+
+// intrinsicJsonHandler is a goformation handler that does not modify intrinsic functions (like Fn::GetAtt)
+// it essentially converts the intrinsic into a json object ({"Fn::GetAtt": "Role.Arn"}).
+// The returned interface is base64 encoded as this is required by the goformation process.
+func intrinsicJsonHandler(intrinsic string, value interface{}, template interface{}) interface{} {
+	intrinsicFunc := map[string]interface{}{
+		intrinsic: value,
+	}
+	intrinsicFuncRaw, err := json.Marshal(intrinsicFunc)
+	if err != nil {
+		return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf(
+			"{\"%s\":\"%s\"}", intrinsic, "-- failed to marshal intrinsic --",
+		)))
+	}
+	return base64.StdEncoding.EncodeToString(intrinsicFuncRaw)
 }
 
 // describeChangeSet generates a informational string based on the changes done in the changeset.
@@ -136,9 +170,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 
 	const SERVER_FUNCTION_ROLE = "ServerFunctionRole"
 	stackTemplate.Resources[SERVER_FUNCTION_ROLE] = &iam.Role{
-		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.ProjectName)},
-		},
+		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-server-job-exec-role-%s", projectDoc.ProjectName)),
 		Description: aws.String("role associated with the battleshiper server function"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -154,7 +186,7 @@ func attachServerSystem(stackTemplate *goformation.Template, eventCtx eventconte
 		},
 		Policies: []iam.Role_Policy{
 			{
-				PolicyName: fmt.Sprintf("battleshiper-pipeline-build-log-%s-exec-access", projectDoc.ProjectName),
+				PolicyName: fmt.Sprintf("battleshiper-pipeline-server-log-%s-exec-access", projectDoc.ProjectName),
 				PolicyDocument: map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{

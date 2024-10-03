@@ -210,7 +210,14 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 	}
 
 	cloudLogger.WriteLog("Generating installation token...")
-	installToken, _, err := routeCtx.GithubAppClient.Apps.CreateInstallationToken(transportCtx, userDoc.InstallationId, nil)
+	appClient, err := auth.CreateGithubAppClient(transportCtx, routeCtx.GithubAppOptions)
+	if err != nil {
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to generate github app client: %v", err)
+	}
+	installToken, _, err := appClient.Apps.CreateInstallationToken(transportCtx, userDoc.InstallationId, nil)
 	if err != nil {
 		if err := cloudLogger.PushLogs(); err != nil {
 			return err

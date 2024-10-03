@@ -122,7 +122,7 @@ func run() error {
 	}
 	deleteEventOptions := pipeline.CreateEventOptions(DELETE_EVENTBUS_NAME, DELETE_EVENT_SOURCE, DELETE_EVENT_ACTION, deleteTicketOptions)
 
-	githubAppClient, err := auth.CreateGithubAppClient(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
+	githubAppOptions, err := auth.CreateGithubAppOptions(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func run() error {
 		ProjectTable:          PROJECTTABLE,
 		SubscriptionTable:     SUBSCRIPTIONTABLE,
 		CloudwatchClient:      cloudwatchClient,
-		GithubAppClient:       githubAppClient,
+		GithubAppOptions:      githubAppOptions,
 		JwtOptions:            jwtOptions,
 		EventClient:           eventClient,
 		InitEventOptions:      initEventOptions,

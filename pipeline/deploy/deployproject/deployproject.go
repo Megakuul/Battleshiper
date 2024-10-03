@@ -96,12 +96,12 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 	if strings.ToUpper(deployRequest.Status) != "SUCCEEDED" {
 		buildResult.Successful = false
 
-		buildResultAttributes, err := attributevalue.Marshal(&buildResult)
-		if err != nil {
+		buildResultAttributes, sErr := attributevalue.Marshal(&buildResult)
+		if sErr != nil {
 			return fmt.Errorf("failed to serialize buildresult")
 		}
 
-		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		_, uErr := database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -112,23 +112,23 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			},
 			AttributeValues: map[string]dynamodbtypes.AttributeValue{
 				":last_build_result": buildResultAttributes,
-				":status":            &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("BUILD FAILED: %v", err)},
+				":status":            &dynamodbtypes.AttributeValueMemberS{Value: "BUILD FAILED"},
 			},
 			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status"),
 		})
-		if err != nil {
-			return fmt.Errorf("failed to update project: %v", err)
+		if uErr != nil {
+			return fmt.Errorf("failed to update project: %v", uErr)
 		}
 		return nil
 	} else {
 		buildResult.Successful = true
 
-		buildResultAttributes, err := attributevalue.Marshal(&buildResult)
-		if err != nil {
+		buildResultAttributes, sErr := attributevalue.Marshal(&buildResult)
+		if sErr != nil {
 			return fmt.Errorf("failed to serialize buildresult")
 		}
 
-		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		_, uErr := database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -141,8 +141,8 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 			},
 			UpdateExpr: aws.String("SET #last_build_result = :last_build_result"),
 		})
-		if err != nil {
-			return fmt.Errorf("failed to update project: %v", err)
+		if uErr != nil {
+			return fmt.Errorf("failed to update project: %v", uErr)
 		}
 	}
 
@@ -161,6 +161,7 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		},
 		ConditionExpr: aws.String("#deleted = :deleted"),
 		UpdateExpr:    aws.String("SET #pipeline_lock = :pipeline_lock"),
+		ReturnOld:     true,
 	})
 	if err != nil {
 		var cErr *dynamodbtypes.ConditionalCheckFailedException
@@ -181,12 +182,12 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = false
 
-		deploymentResultAttributes, err := attributevalue.Marshal(&deploymentResult)
-		if err != nil {
+		deploymentResultAttributes, sErr := attributevalue.Marshal(&deploymentResult)
+		if sErr != nil {
 			return fmt.Errorf("failed to serialize deployresult")
 		}
 
-		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		_, uErr := database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -201,22 +202,22 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: fmt.Sprintf("DEPLOYMENT FAILED: %v", err)},
 				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			},
-			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock"),
+			UpdateExpr: aws.String("SET #last_deployment_result = :last_deployment_result, #status = :status, #pipeline_lock = :pipeline_lock"),
 		})
-		if err != nil {
-			return fmt.Errorf("failed to update project: %v", err)
+		if uErr != nil {
+			return fmt.Errorf("failed to update project: %v", uErr)
 		}
 		return nil
 	} else {
 		deploymentResult.Timepoint = time.Now().Unix()
 		deploymentResult.Successful = true
 
-		deploymentResultAttributes, err := attributevalue.Marshal(&deploymentResult)
-		if err != nil {
+		deploymentResultAttributes, sErr := attributevalue.Marshal(&deploymentResult)
+		if sErr != nil {
 			return fmt.Errorf("failed to serialize deployresult")
 		}
 
-		_, err = database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
+		_, uErr := database.UpdateSingle[project.Project](transportCtx, eventCtx.DynamoClient, &database.UpdateSingleInput{
 			Table: aws.String(eventCtx.ProjectTable),
 			PrimaryKey: map[string]dynamodbtypes.AttributeValue{
 				"project_name": &dynamodbtypes.AttributeValueMemberS{Value: projectDoc.ProjectName},
@@ -231,10 +232,10 @@ func runHandleDeployProject(request events.CloudWatchEvent, transportCtx context
 				":status":                 &dynamodbtypes.AttributeValueMemberS{Value: ""},
 				":pipeline_lock":          &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
 			},
-			UpdateExpr: aws.String("SET #last_build_result = :last_build_result, #status = :status, #pipeline_lock = :pipeline_lock"),
+			UpdateExpr: aws.String("SET #last_deployment_result = :last_deployment_result, #status = :status, #pipeline_lock = :pipeline_lock"),
 		})
-		if err != nil {
-			return fmt.Errorf("failed to update project: %v", err)
+		if uErr != nil {
+			return fmt.Errorf("failed to update project: %v", uErr)
 		}
 	}
 

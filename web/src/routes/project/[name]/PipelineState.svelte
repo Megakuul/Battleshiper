@@ -37,7 +37,7 @@
   function isDeployProcessing(project) {
     const eventExecIdentifier = project.last_event_result.execution_identifier;
     const buildExecIdentifier = project.last_build_result.execution_identifier;
-    const deployExecIdentifier = project.last_build_result.execution_identifier;
+    const deployExecIdentifier = project.last_deployment_result.execution_identifier;
     if (eventExecIdentifier != deployExecIdentifier && project.last_event_result.successful) {
       return true
     } else if (buildExecIdentifier != deployExecIdentifier && project.last_build_result.successful) {

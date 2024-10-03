@@ -18,6 +18,7 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 	"github.com/megakuul/battleshiper/api/pipeline/routecontext"
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 	"github.com/megakuul/battleshiper/lib/model/event"
@@ -154,7 +155,14 @@ func initiateProjectBuild(transportCtx context.Context, routeCtx routecontext.Co
 	}
 
 	cloudLogger.WriteLog("Generating installation token...")
-	installToken, _, err := routeCtx.GithubAppClient.Apps.CreateInstallationToken(transportCtx, userDoc.InstallationId, nil)
+	appClient, err := auth.CreateGithubAppClient(transportCtx, routeCtx.GithubAppOptions)
+	if err != nil {
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to generate github app client: %v", err)
+	}
+	installToken, _, err := appClient.Apps.CreateInstallationToken(transportCtx, userDoc.InstallationId, nil)
 	if err != nil {
 		if err := cloudLogger.PushLogs(); err != nil {
 			return err

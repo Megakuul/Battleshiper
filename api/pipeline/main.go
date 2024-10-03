@@ -80,7 +80,7 @@ func run() error {
 		return err
 	}
 
-	githubAppClient, err := auth.CreateGithubAppClient(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
+	githubAppOptions, err := auth.CreateGithubAppOptions(awsConfig, bootstrapContext, GITHUB_CLIENT_CREDENTIAL_ARN)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func run() error {
 		ProjectTable:        PROJECTTABLE,
 		SubscriptionTable:   SUBSCRIPTIONTABLE,
 		WebhookClient:       webhookClient,
-		GithubAppClient:     githubAppClient,
+		GithubAppOptions:    githubAppOptions,
 		CloudwatchClient:    cloudwatchClient,
 		EventClient:         eventbridgeClient,
 		BuildEventOptions:   buildEventOptions,

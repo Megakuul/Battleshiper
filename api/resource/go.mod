@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.8
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.35.3
-	github.com/megakuul/battleshiper/lib/helper v1.2.4
+	github.com/megakuul/battleshiper/lib/helper v1.2.5
 	github.com/megakuul/battleshiper/lib/model v1.2.1
 	github.com/megakuul/battleshiper/lib/router v0.1.0
 )
@@ -40,7 +40,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.31.3 // indirect
 	github.com/aws/smithy-go v1.21.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/google/go-github/v63 v63.0.0
+	github.com/google/go-github/v63 v63.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0
 )

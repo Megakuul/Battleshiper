@@ -1,6 +1,7 @@
 package initproject
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"github.com/awslabs/goformation/v7/cloudformation/events"
 	"github.com/awslabs/goformation/v7/cloudformation/iam"
 	"github.com/awslabs/goformation/v7/cloudformation/logs"
-	"github.com/awslabs/goformation/v7/cloudformation/tags"
 	"github.com/megakuul/battleshiper/lib/helper/database"
 
 	"github.com/megakuul/battleshiper/lib/model/event"
@@ -147,17 +147,17 @@ func attachLogSystem(stackTemplate *goformation.Template, eventCtx eventcontext.
 }
 
 type inputEnvironmentVariable struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string `json:"Name"`
+	Value string `json:"Value"`
 }
 
 type inputContainerOverrides struct {
-	Environment []inputEnvironmentVariable `json:"environment"`
+	Environment []inputEnvironmentVariable `json:"Environment"`
 }
 
 type inputTransformTemplate struct {
-	Parameters         event.DeployParameters  `json:"parameters"`
-	ContainerOverrides inputContainerOverrides `json:"containerOverrides"`
+	Parameters         event.DeployParameters  `json:"Parameters"`
+	ContainerOverrides inputContainerOverrides `json:"ContainerOverrides"`
 }
 
 // attachBuildSystem adds the project pipeline build system to the stack.
@@ -170,9 +170,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_JOB_EXEC_ROLE string = "BuildJobExecRole"
 	stackTemplate.Resources[BUILD_JOB_EXEC_ROLE] = &iam.Role{
-		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.ProjectName)},
-		},
+		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-exec-role-%s", projectDoc.ProjectName)),
 		Description: aws.String("role associated with aws batch, it is responsible to manage the running job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -198,7 +196,9 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 								"logs:CreateLogStream",
 								"logs:PutLogEvents",
 							},
-							"Resource": goformation.GetAtt(BUILD_LOG_GROUP, "Arn"),
+							"Resource": []string{
+								goformation.GetAtt(BUILD_LOG_GROUP, "Arn"),
+							},
 						},
 					},
 				},
@@ -208,9 +208,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_JOB_ROLE string = "BuildJobRole"
 	stackTemplate.Resources[BUILD_JOB_ROLE] = &iam.Role{
-		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.ProjectName)},
-		},
+		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-job-role-%s", projectDoc.ProjectName)),
 		Description: aws.String("role associated with the actual project build job"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -276,10 +274,11 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			},
 			Command: []string{
 				"/bin/sh", "-c",
-				fmt.Sprintf("%s && %s && %s && %s",
+				fmt.Sprintf("%s && %s && %s && %s && %s",
 					"echo \"START BUILD $EXECUTION_IDENTIFIER\"",
+					"mkdir -p out && cd out",
 					"git clone --branch $REPOSITORY_BRANCH $REPOSITORY_URL .",
-					"$BUILD_COMMAND",
+					"/bin/sh -c \"$BUILD_COMMAND\"",
 					"aws s3 cp $OUTPUT_DIRECTORY s3://$BUILD_ASSET_BUCKET_PATH/$EXECUTION_IDENTIFIER --recursive",
 				),
 			},
@@ -294,9 +293,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 
 	const BUILD_RULE_ROLE string = "BuildRuleRole"
 	stackTemplate.Resources[BUILD_RULE_ROLE] = &iam.Role{
-		Tags: []tags.Tag{
-			{Value: "Name", Key: fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.ProjectName)},
-		},
+		RoleName:    aws.String(fmt.Sprintf("battleshiper-project-build-rule-role-%s", projectDoc.ProjectName)),
 		Description: aws.String("role to invoke the targets specified in the associated build rule"),
 		AssumeRolePolicyDocument: map[string]interface{}{
 			"Version": "2012-10-17",
@@ -369,8 +366,10 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 			},
 		},
 	}
-	inputTemplateRaw, err := json.Marshal(inputTemplate)
-	if err != nil {
+	inputTemplateBuffer := bytes.Buffer{}
+	encoder := json.NewEncoder(&inputTemplateBuffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(inputTemplate); err != nil {
 		return err
 	}
 
@@ -403,7 +402,7 @@ func attachBuildSystem(stackTemplate *goformation.Template, eventCtx eventcontex
 				},
 				InputTransformer: &events.Rule_InputTransformer{
 					InputPathsMap: inputPathsMap,
-					InputTemplate: string(inputTemplateRaw),
+					InputTemplate: inputTemplateBuffer.String(),
 				},
 			},
 		},

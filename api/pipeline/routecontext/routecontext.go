@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	webhook "github.com/go-playground/webhooks/v6/github"
-	"github.com/google/go-github/v63/github"
+	"github.com/megakuul/battleshiper/lib/helper/auth"
 	"github.com/megakuul/battleshiper/lib/helper/pipeline"
 )
 
@@ -16,7 +16,7 @@ type Context struct {
 	ProjectTable        string
 	SubscriptionTable   string
 	WebhookClient       *webhook.Webhook
-	GithubAppClient     *github.Client
+	GithubAppOptions    *auth.GithubAppOptions
 	CloudwatchClient    *cloudwatchlogs.Client
 	EventClient         *eventbridge.Client
 	BuildEventOptions   *pipeline.EventOptions

@@ -1516,6 +1516,7 @@ Resources:
                 Action:
                   - "cloudformation:DescribeStacks"
                   - "cloudformation:GetTemplate"
+                  - "cloudformation:ValidateTemplate"
                   - "cloudformation:CreateChangeSet"
                   - "cloudformation:DescribeChangeSet"
                   - "cloudformation:ExecuteChangeSet"
@@ -1544,7 +1545,8 @@ Resources:
           Type: EventBridgeRule
           Properties:
             RuleName: "battleshiper-pipeline-deploy-rule"
-            EventBusName: !Ref BattleshiperPipelineEventBus
+            # DeployFunc rule is by design located on the default eventbus
+            # this is because aws.batch sends events ONLY to the default bus.
             Pattern:
               # Pattern accepts incomming batch events from the build queue
               # this behavior is specified here: https://docs.aws.amazon.com/batch/latest/userguide/batch_cwe_events.html
