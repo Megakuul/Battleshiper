@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} updateInput
  * @property {string} subscription_id

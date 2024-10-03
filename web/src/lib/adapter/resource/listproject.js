@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} eventResultOutput
  * @property {string} execution_identifier

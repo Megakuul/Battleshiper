@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} updateRoleInput
  * @property {string} user_id

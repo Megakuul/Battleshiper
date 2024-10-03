@@ -15,7 +15,7 @@
   import { toast } from "svelte-sonner";
   import { Logout } from "$lib/adapter/auth/logout";
   import { PUBLIC_SEO_DOMAIN } from "$env/static/public";
-    import { RegisterUser } from "$lib/adapter/user/registeruser";
+  import { RegisterUser } from "$lib/adapter/user/registeruser";
 
   /** @type {boolean} */
   let Registered = true;

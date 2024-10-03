@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} pipelineSpecsOutput
  * @property {number} daily_builds

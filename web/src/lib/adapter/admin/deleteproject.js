@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} deleteProjectInput
  * @property {string} project_name

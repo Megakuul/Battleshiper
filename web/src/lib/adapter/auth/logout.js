@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * Logout the user from the application.
  * @throws {AdapterError}

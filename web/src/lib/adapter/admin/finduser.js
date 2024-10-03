@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} findUserInput
  * @property {string} user_id
@@ -17,7 +19,6 @@
  * @property {string} message
  * @property {userOutput} user
  */
-
 
 /**
  * Find the specified user on the database.

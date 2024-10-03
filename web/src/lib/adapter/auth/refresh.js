@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * Refresh the user tokens (access_token & user_token).
  * @throws {AdapterError}

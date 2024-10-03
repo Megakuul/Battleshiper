@@ -1,4 +1,5 @@
 import { Authorize } from "../auth/authorize";
+import { AdapterError } from "../error";
 
 /**
  * Registers the user on the database.

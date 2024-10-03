@@ -1,3 +1,5 @@
+import { AdapterError } from "../error";
+
 /**
  * @typedef {Object} fetchLogInput
  * @property {string} log_type
@@ -18,7 +20,6 @@
  * @property {string} message
  * @property {eventOutput[]} events
  */
-
 
 /**
  * Fetches the logs of the battleshiper system.
