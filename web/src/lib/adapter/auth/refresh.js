@@ -1,6 +1,6 @@
 /**
  * Refresh the user tokens (access_token & user_token).
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const Refresh = async () => {
   const res = await fetch("/api/auth/refresh", {
@@ -9,6 +9,6 @@ export const Refresh = async () => {
   if (res.ok) {
     return;
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

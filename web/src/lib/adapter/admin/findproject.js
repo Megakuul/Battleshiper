@@ -32,7 +32,7 @@
  * Find the specified project on the database.
  * @param {findProjectInput} input
  * @returns {Promise<findProjectOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const FindProject = async (input) => {
   const res = await fetch(`/api/admin/findproject?${new URLSearchParams(input).toString()}`, {
@@ -41,6 +41,6 @@ export const FindProject = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

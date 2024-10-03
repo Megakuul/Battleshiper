@@ -51,7 +51,7 @@
 /**
  * Fetches all projects.
  * @returns {Promise<listProjectOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const ListProject = async () => {
   const res = await fetch("/api/resource/listproject", {
@@ -60,6 +60,6 @@ export const ListProject = async () => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

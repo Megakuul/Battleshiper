@@ -17,6 +17,7 @@
 				<a
 					href={href}
 					target={'_blank'}
+					rel="noopener noreferrer"
 					class="relative pointer-events-auto z-10 flex items-center space-x-2 rounded-full bg-zinc-950 px-4 py-0.5 ring-1 ring-white/10"
 				>
 					<span class="relative z-20 inline-block py-0.5 text-xs font-bold text-white">

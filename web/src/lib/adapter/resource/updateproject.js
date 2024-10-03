@@ -22,7 +22,7 @@
  * Updates the project.
  * @param {updateProjectInput} input
  * @returns {Promise<updateProjectOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const UpdateProject = async (input) => {
   const devUrl = import.meta.env.VITE_DEV_API_URL;
@@ -36,6 +36,6 @@ export const UpdateProject = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

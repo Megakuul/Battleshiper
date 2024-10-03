@@ -23,7 +23,7 @@
  * Creates a project.
  * @param {createProjectInput} input
  * @returns {Promise<createProjectOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const CreateProject = async (input) => {
   const res = await fetch("/api/resource/createproject", {
@@ -36,6 +36,6 @@ export const CreateProject = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

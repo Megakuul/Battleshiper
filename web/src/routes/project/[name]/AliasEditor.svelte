@@ -70,6 +70,7 @@
             description: projectOutput.message
           })
           updateAliasButtonState = false;
+          ExceptionRef = "";
         } catch (/** @type {any} */ err) {
           ExceptionRef = err.message;
           toast.error("Error", {

@@ -12,7 +12,7 @@
  * Manually triggers a project build.
  * @param {buildProjectInput} input
  * @returns {Promise<buildProjectOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const BuildProject = async (input) => {
   const res = await fetch("/api/resource/buildproject", {
@@ -25,6 +25,6 @@ export const BuildProject = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

@@ -8,17 +8,17 @@
   import * as Avatar from "$lib/components/ui/avatar";
   import Icon from '@iconify/svelte';
   import { onMount } from "svelte";
-  import { RegisterUser } from "$lib/adapter/user/registeruser";
   import { Authorize } from "$lib/adapter/auth/authorize";
   import SpecItem from "./SpecItem.svelte";
   import { fade } from "svelte/transition";
   import { UserInfo } from "$lib/stores";
-  import { 
-    PUBLIC_SEO_DOMAIN 
-  } from "$env/static/public";
-  import { Refresh } from "$lib/adapter/auth/refresh";
   import { toast } from "svelte-sonner";
   import { Logout } from "$lib/adapter/auth/logout";
+  import { PUBLIC_SEO_DOMAIN } from "$env/static/public";
+    import { RegisterUser } from "$lib/adapter/user/registeruser";
+
+  /** @type {boolean} */
+  let Registered = true;
 
   /** @type {string} */
   let Exception = "";
@@ -32,7 +32,11 @@
         $UserInfo = await FetchInfo();
       }
     } catch (/** @type {any} */ err) {
-      Exception = err.message;
+      if (err.statusCode === 404) {
+        Registered = false;
+      } else {
+        Exception = err.message;
+      }
     }
   })
 
@@ -45,7 +49,7 @@
    * @returns {number}
   */
   function bytesToGigabytes(bytes) {
-    return parseFloat((bytes / 1000000).toFixed(2))
+    return parseFloat((bytes / 1000000000).toFixed(2))
   }
 </script>
 
@@ -181,6 +185,37 @@
       {/if}
     </div>
   </div>
+{:else if !Registered}
+  <div transition:fade class="min-h-[60vh] flex justify-center items-center">
+    <h1 class="text-3xl md:text-6xl text-center opacity-80">Not so fast! Registration is required!</h1>
+  </div>
+  <div transition:fade class="m-6 flex flex-col space-y-4">
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild let:builder>
+        <Button builders={[builder]} variant="outline" class="text-2xl h-20" on:click={async () => {
+          try {
+            await RegisterUser()
+            toast.success("Success", {
+              description: "User registered"
+            })
+            Registered = true;
+            $UserInfo = await FetchInfo();
+            Exception = "";
+          } catch (/** @type {any} */ err) {
+            Exception = err.message;
+            toast.error("Error", {
+              description: "Failed register user",
+            })
+          }
+        }}>
+          REGISTER <Icon icon="line-md:person-add-twotone" class="ml-2" />
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        <p>Not registered yet? Link your Github account to get started.</p>
+      </Tooltip.Content>
+    </Tooltip.Root>
+  </div>
 {:else if Exception}
   <div transition:fade class="min-h-[60vh] flex justify-center items-center">
     <h1 class="text-3xl md:text-6xl text-center opacity-80">Oops... please log in to continue!</h1>
@@ -194,30 +229,6 @@
       </Tooltip.Trigger>
       <Tooltip.Content>
         <p>Log in with Github</p>
-      </Tooltip.Content>
-    </Tooltip.Root>
-
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild let:builder>
-        <Button builders={[builder]} variant="outline" class="text-2xl h-20" on:click={async () => {
-          try {
-            await RegisterUser()
-            toast.success("Success", {
-              description: "User registered"
-            })
-            $UserInfo = await FetchInfo();
-          } catch (/** @type {any} */ err) {
-            Exception = err.message;
-            toast.error("Error", {
-              description: "Failed register user",
-            })
-          }
-        }}>
-          REGISTER <Icon icon="line-md:person-add-twotone" class="ml-2" />
-        </Button>
-      </Tooltip.Trigger>
-      <Tooltip.Content>
-        <p>Not registered yet? Link your Github account to get started.</p>
       </Tooltip.Content>
     </Tooltip.Root>
 

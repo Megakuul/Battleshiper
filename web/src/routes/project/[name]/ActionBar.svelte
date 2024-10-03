@@ -39,6 +39,7 @@
                 description: projectOutput.message
               })
               buildButtonState = false;
+              ExceptionRef = "";
             } catch (/** @type {any} */ err) {
               ExceptionRef = err.message;
               toast.error("Error", {
@@ -74,6 +75,7 @@
                 description: projectOutput.message
               })
               deleteButtonState = false;
+              ExceptionRef = "";
             } catch (/** @type {any} */ err) {
               ExceptionRef = err.message;
               toast.error("Error", {

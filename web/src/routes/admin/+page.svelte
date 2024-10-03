@@ -73,11 +73,6 @@
         <p>Log in with Github</p>
       </Tooltip.Content>
     </Tooltip.Root>
-    <Alert.Root variant="destructive">
-      <CircleAlert class="h-4 w-4" />
-      <Alert.Title>Error</Alert.Title>
-      <Alert.Description>{Exception}</Alert.Description>
-    </Alert.Root>
   </div>
 {:else}
   <div transition:fade class="min-h-[80vh] flex justify-center items-center">

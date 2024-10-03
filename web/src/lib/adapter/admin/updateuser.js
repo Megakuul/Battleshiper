@@ -19,7 +19,7 @@
  * Updates a user.
  * @param {updateUserInput} input
  * @returns {Promise<updateUserOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const UpdateUser = async (input) => {
   const res = await fetch("/api/admin/updateuser", {
@@ -32,6 +32,6 @@ export const UpdateUser = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

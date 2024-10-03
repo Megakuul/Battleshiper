@@ -37,7 +37,7 @@
  * Upserts a subscription.
  * @param {upsertSubscriptionInput} input
  * @returns {Promise<upsertSubscriptionOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const UpsertSubscription = async (input) => {
   const res = await fetch("/api/admin/upsertsubscription", {
@@ -50,6 +50,6 @@ export const UpsertSubscription = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

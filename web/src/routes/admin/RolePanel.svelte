@@ -60,6 +60,7 @@
         toast.success("Success", {
           description: userOutput.message
         })
+        ExceptionRef = "";
       } catch (/** @type {any} */ err) {
         ExceptionRef = err.message;
         toast.error("Exception", {

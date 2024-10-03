@@ -2,7 +2,7 @@ import { Authorize } from "../auth/authorize";
 
 /**
  * Registers the user on the database.
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const RegisterUser = async () => {
   const res = await fetch("/api/user/registeruser", {
@@ -13,6 +13,6 @@ export const RegisterUser = async () => {
   } else if (res.status === 401) {
     Authorize()
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

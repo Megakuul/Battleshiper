@@ -1,8 +1,6 @@
 <script>
   import { ListProject } from "$lib/adapter/resource/listproject";
   import LoaderCircle from "lucide-svelte/icons/loader-circle";
-  import CircleAlert from "lucide-svelte/icons/circle-alert";
-  import * as Alert from "$lib/components/ui/alert/index.js";
   import { Button } from "$lib/components/ui/button";
   import * as Avatar from "$lib/components/ui/avatar";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
@@ -14,6 +12,7 @@
   import { goto } from "$app/navigation";
   import { ProjectInfo } from "$lib/stores";
   import { toast } from "svelte-sonner";
+  import { browser } from '$app/environment';
   import { 
     PUBLIC_SEO_DOMAIN 
   } from "$env/static/public";
@@ -23,10 +22,10 @@
 
   /** @type {string} */
   let Hostname = "";
+  if (browser) Hostname = window.location.hostname;
 
   onMount(async () => {
     try {
-      Hostname = window.location.hostname;
       if (!$ProjectInfo) {
         $ProjectInfo = await ListProject();
       }
@@ -140,11 +139,6 @@
         <p>Log in with Github</p>
       </Tooltip.Content>
     </Tooltip.Root>
-    <Alert.Root variant="destructive">
-      <CircleAlert class="h-4 w-4" />
-      <Alert.Title>Error</Alert.Title>
-      <Alert.Description>{Exception}</Alert.Description>
-    </Alert.Root>
   </div>
 {:else}
   <div transition:fade class="min-h-[80vh] flex justify-center items-center">

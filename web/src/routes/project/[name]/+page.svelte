@@ -14,6 +14,7 @@
   import AliasEditor from "./AliasEditor.svelte";
   import ConfigEditor from "./ConfigEditor.svelte";
   import PipelineState from "./PipelineState.svelte";
+  import { browser } from "$app/environment";
   import ActionBar from "./ActionBar.svelte";
 
   /** @type {import("$lib/adapter/resource/listproject").projectOutput|undefined}*/
@@ -24,10 +25,10 @@
 
   /** @type {string} */
   let Hostname = "";
+  if (browser) Hostname = window.location.hostname;
 
   onMount(async () => {
     try {
-      Hostname = window.location.hostname;
       if (!$ProjectInfo) {
         $ProjectInfo = await ListProject();
       }

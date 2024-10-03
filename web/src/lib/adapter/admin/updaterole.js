@@ -13,7 +13,7 @@
  * Updates the roles of a user.
  * @param {updateRoleInput} input
  * @returns {Promise<updateRoleOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const UpdateRole = async (input) => {
   const res = await fetch("/api/admin/updaterole", {
@@ -26,6 +26,6 @@ export const UpdateRole = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

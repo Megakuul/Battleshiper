@@ -24,7 +24,7 @@
  * Fetches the logs of the project server.
  * @param {fetchLogInput} input
  * @returns {Promise<fetchLogOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const FetchLog = async (input) => {
   const res = await fetch("/api/resource/fetchlog", {
@@ -37,6 +37,6 @@ export const FetchLog = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

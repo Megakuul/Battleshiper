@@ -28,7 +28,7 @@
   export let ExceptionRef;
 
   /** @type {boolean} */
-  let fetchLatest;
+  let fetchLatest = true;
 
   /** @type {boolean}*/
   let queryButtonState;
@@ -114,6 +114,7 @@
       toast.success("Success", {
         description: CurrentLogOutputRef.message
       })
+      ExceptionRef = "";
     } catch (/** @type {any} */ err) {
       ExceptionRef = err.message;
       toast.error("Exception", {

@@ -58,6 +58,7 @@
         toast.success("Success", {
           description: findUserOutput.message
         })
+        ExceptionRef = "";
       } catch (/** @type {any} */ err) {
         ExceptionRef = err.message;
         toast.error("Exception", {
@@ -103,6 +104,7 @@
                       description: userOutput.message
                     })
                     updateButtonState = false;
+                    ExceptionRef = "";
                   } catch (/** @type {any} */ err) {
                     ExceptionRef = err.message;
                     toast.error("Error", {
@@ -144,6 +146,7 @@
                         description: userOutput.message
                       })
                       deleteButtonState = false;
+                      ExceptionRef = "";
                     } catch (/** @type {any} */ err) {
                       ExceptionRef = err.message;
                       toast.error("Error", {

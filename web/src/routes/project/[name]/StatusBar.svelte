@@ -20,10 +20,10 @@
 <div class="flex flex-col md:flex-row gap-8 w-10/12">
   <div class="flex flex-col items-start gap-4 w-full md:w-1/3 p-6 rounded-lg max-h-[25vh] overflow-hidden bg-slate-700/20">
     <h1 class="text-xl md:text-2xl font-bold">{CurrentProjectRef?.name}</h1>
-    <a class="text-xs sm:text-sm font-bold underline text-slate-300" href="https://{CurrentProjectRef?.name}.{Hostname}">
+    <a class="text-xs sm:text-sm font-bold underline text-slate-300" href="https://{CurrentProjectRef?.name}.{Hostname}" target={'_blank'} rel="noopener noreferrer">
       Project Endpoint<Icon icon="line-md:external-link" class="hidden sm:inline ml-1" />
     </a>
-    <a class="text-xs sm:text-sm font-bold underline text-slate-300" href="{CurrentProjectRef?.repository.url}">
+    <a class="text-xs sm:text-sm font-bold underline text-slate-300" href="{CurrentProjectRef?.repository.url}" target={'_blank'} rel="noopener noreferrer">
       Source Repository<Icon icon="mdi:source-repository" class="hidden sm:inline ml-1" />
     </a>
     <Button class="text-sm md:text-xl mt-auto w-full" on:click={async () => {
@@ -36,6 +36,7 @@
         toast("Success", {
           description: "Projects refreshed",
         })
+        ExceptionRef = "";
       } catch (/** @type {any} */ err) {
         ExceptionRef = err.message;
         toast("Exception", {

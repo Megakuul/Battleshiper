@@ -136,6 +136,7 @@
                   description: subscriptionOutput.message
                 })
                 upsertButtonState = false;
+                ExceptionRef = "";
               } catch (/** @type {any} */ err) {
                 ExceptionRef = err.message;
                 toast.error("Error", {

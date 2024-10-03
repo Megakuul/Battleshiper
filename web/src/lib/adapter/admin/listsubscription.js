@@ -37,7 +37,7 @@
 /**
  * Lists all subscriptions that exist.
  * @returns {Promise<listSubscriptionOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const ListSubscription = async () => {
   const res = await fetch("/api/admin/listsubscription", {
@@ -46,6 +46,6 @@ export const ListSubscription = async () => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

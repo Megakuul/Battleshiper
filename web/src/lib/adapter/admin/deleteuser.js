@@ -12,7 +12,7 @@
  * Deletes a user from the database.
  * @param {deleteUserInput} input
  * @returns {Promise<deleteUserOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const DeleteUser = async (input) => {
   const res = await fetch("/api/admin/deleteuser", {
@@ -25,6 +25,6 @@ export const DeleteUser = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Logout the user from the application.
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const Logout = async () => {
   const res = await fetch("/api/auth/logout", {
@@ -9,6 +9,6 @@ export const Logout = async () => {
   if (res.ok) {
     return;
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

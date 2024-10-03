@@ -20,15 +20,11 @@
 
 <div class="app">
 	<nav class="h-24 flex flex-row w-full lg:w-auto justify-evenly items-center bg-black">
-		<div class="flex flex-row gap-2 items-center">
+		<a class="flex flex-row gap-2 items-center" href="/">
 			<img src="{BattleshiperIcon}" alt="Battleshiper Icon" class="w-10" />
 			<h1 class="text-2xl sm:text-3xl font-bold">Battleshiper</h1>
-		</div>
-
-		<a 
-			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
-			href="/">Home
 		</a>
+
 		<a 
 			class="text-2xl font-medium hidden lg:block hover:bg-white hover:bg-opacity-5 px-8 py-3 rounded-xl transition-all duration-700" 
 			href="/project">Projects

@@ -41,7 +41,7 @@
 /**
  * Fetches the user profile informations.
  * @returns {Promise<fetchInfoOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const FetchInfo = async () => {
   const res = await fetch("/api/user/fetchinfo", {
@@ -50,6 +50,6 @@ export const FetchInfo = async () => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

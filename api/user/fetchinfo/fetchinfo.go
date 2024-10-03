@@ -120,6 +120,17 @@ func runHandleFetchInfo(request events.APIGatewayV2HTTPRequest, transportCtx con
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load user from database")
 	}
 
+	if userDoc.SubscriptionId == "" {
+		return &fetchInfoOutput{
+			Id:           userToken.Id,
+			Name:         userToken.Username,
+			Roles:        userDoc.Roles,
+			Provider:     userToken.Provider,
+			AvatarURL:    userToken.AvatarURL,
+			Subscription: nil,
+		}, http.StatusOK, nil
+	}
+
 	subscriptionDoc, err := database.GetSingle[subscription.Subscription](transportCtx, routeCtx.DynamoClient, &database.GetSingleInput{
 		Table: aws.String(routeCtx.SubscriptionTable),
 		AttributeValues: map[string]dynamodbtypes.AttributeValue{

@@ -14,7 +14,7 @@
 /**
  * Fetches all repositories that battleshiper github app has access to.
  * @returns {Promise<listRepositoryOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const ListRepository = async () => {
   const res = await fetch("/api/resource/listrepository", {
@@ -23,6 +23,6 @@ export const ListRepository = async () => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }

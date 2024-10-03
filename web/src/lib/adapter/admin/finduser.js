@@ -23,7 +23,7 @@
  * Find the specified user on the database.
  * @param {findUserInput} input
  * @returns {Promise<findUserOutput>}
- * @throws {Error}
+ * @throws {AdapterError}
  */
 export const FindUser = async (input) => {
   const res = await fetch(`/api/admin/finduser?${new URLSearchParams(input).toString()}`, {
@@ -32,6 +32,6 @@ export const FindUser = async (input) => {
   if (res.ok) {
     return await res.json();
   } else {
-    throw new Error(await res.text());
+    throw new AdapterError(await res.text(), res.status);
   }
 }
