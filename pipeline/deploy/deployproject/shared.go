@@ -126,6 +126,10 @@ func updateStaticPageKeys(transportCtx context.Context, eventCtx eventcontext.Co
 		}
 	}
 
+	if len(addStaticPageKeys) < 1 && len(deleteStaticPageKeys) < 1 {
+		return nil
+	}
+
 	storeMetadata, err := eventCtx.CloudfrontCacheClient.DescribeKeyValueStore(transportCtx, &cloudfrontkeyvaluestore.DescribeKeyValueStoreInput{
 		KvsARN: aws.String(eventCtx.ProjectConfiguration.CloudfrontCacheArn),
 	})
