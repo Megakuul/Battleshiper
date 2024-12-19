@@ -4,9 +4,11 @@
 # Reason: Each sveltekit build generates a different set of asset and server outputs that must match (read more in /web/hooks/README.md).
 BOOTSTRAP_ARTIFACTS_DIR = $(ARTIFACTS_DIR)/../BattleshiperApiWebBootstrapFunc
 
+# bun commands use LD_LIBRARY_PATH="" (defaulting to system libs) instead of the "stable" sam provided libs
+# as the provided libs are sometimes outdated.
 build-BattleshiperApiWebFunc:
-	bun install
-	bun run build
+	LD_LIBRARY_PATH= bun install
+	LD_LIBRARY_PATH= bun run build
 	mkdir -p "$(BOOTSTRAP_ARTIFACTS_DIR)/prerendered" "$(BOOTSTRAP_ARTIFACTS_DIR)/client"
 	cp -r build/prerendered/* "$(BOOTSTRAP_ARTIFACTS_DIR)/prerendered"
 	cp -r build/client/* "$(BOOTSTRAP_ARTIFACTS_DIR)/client"

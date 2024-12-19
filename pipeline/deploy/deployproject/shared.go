@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	cloudfronttypes "github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	cloudfrontkeyvaluetypes "github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -105,6 +107,23 @@ func copyStaticPages(transportCtx context.Context, eventCtx eventcontext.Context
 		}
 	}
 
+	return nil
+}
+
+func invalidateStaticCache(transportCtx context.Context, eventCtx eventcontext.Context, projectDoc *project.Project, execIdentifier string) error {
+	_, err := eventCtx.CloudfrontClient.CreateInvalidation(transportCtx, &cloudfront.CreateInvalidationInput{
+		DistributionId: aws.String(eventCtx.ProjectConfiguration.CloudfrontDistributionId),
+		InvalidationBatch: &cloudfronttypes.InvalidationBatch{
+			CallerReference: aws.String(fmt.Sprintf("%s-%s", projectDoc.ProjectName, execIdentifier)),
+			Paths: &cloudfronttypes.Paths{
+				Quantity: aws.Int32(1),
+				Items:    []string{fmt.Sprintf("/%s/*", projectDoc.ProjectName)},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to invalidate cloudfront cache: %v", err)
+	}
 	return nil
 }
 

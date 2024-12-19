@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfrontkeyvaluestore"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -21,19 +22,20 @@ import (
 )
 
 var (
-	REGION                = os.Getenv("AWS_REGION")
-	BOOTSTRAP_TIMEOUT     = os.Getenv("BOOTSTRAP_TIMEOUT")
-	USERTABLE             = os.Getenv("USERTABLE")
-	PROJECTTABLE          = os.Getenv("PROJECTTABLE")
-	SUBSCRIPTIONTABLE     = os.Getenv("SUBSCRIPTIONTABLE")
-	TICKET_CREDENTIAL_ARN = os.Getenv("TICKET_CREDENTIAL_ARN")
-	CHANGESET_TIMEOUT     = os.Getenv("CHANGESET_TIMEOUT")
-	DEPLOYMENT_TIMEOUT    = os.Getenv("DEPLOYMENT_TIMEOUT")
-	CLOUDFRONT_CACHE_ARN  = os.Getenv("CLOUDFRONT_CACHE_ARN")
-	SERVER_NAME_PREFIX    = os.Getenv("SERVER_NAME_PREFIX")
-	SERVER_RUNTIME        = os.Getenv("SERVER_RUNTIME")
-	SERVER_MEMORY         = os.Getenv("SERVER_MEMORY")
-	SERVER_TIMEOUT        = os.Getenv("SERVER_TIMEOUT")
+	REGION                     = os.Getenv("AWS_REGION")
+	BOOTSTRAP_TIMEOUT          = os.Getenv("BOOTSTRAP_TIMEOUT")
+	USERTABLE                  = os.Getenv("USERTABLE")
+	PROJECTTABLE               = os.Getenv("PROJECTTABLE")
+	SUBSCRIPTIONTABLE          = os.Getenv("SUBSCRIPTIONTABLE")
+	TICKET_CREDENTIAL_ARN      = os.Getenv("TICKET_CREDENTIAL_ARN")
+	CHANGESET_TIMEOUT          = os.Getenv("CHANGESET_TIMEOUT")
+	DEPLOYMENT_TIMEOUT         = os.Getenv("DEPLOYMENT_TIMEOUT")
+	CLOUDFRONT_DISTRIBUTION_ID = os.Getenv("CLOUDFRONT_DISTRIBUTION_ID")
+	CLOUDFRONT_CACHE_ARN       = os.Getenv("CLOUDFRONT_CACHE_ARN")
+	SERVER_NAME_PREFIX         = os.Getenv("SERVER_NAME_PREFIX")
+	SERVER_RUNTIME             = os.Getenv("SERVER_RUNTIME")
+	SERVER_MEMORY              = os.Getenv("SERVER_MEMORY")
+	SERVER_TIMEOUT             = os.Getenv("SERVER_TIMEOUT")
 )
 
 func main() {
@@ -62,7 +64,9 @@ func run() error {
 
 	s3Client := s3.NewFromConfig(awsConfig)
 
-	cloudfrontClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
+	cloudfrontClient := cloudfront.NewFromConfig(awsConfig)
+
+	cloudfrontCacheClient := cloudfrontkeyvaluestore.NewFromConfig(awsConfig)
 
 	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
@@ -100,17 +104,19 @@ func run() error {
 		CloudformationClient:  cloudformationClient,
 		S3Client:              s3Client,
 		CloudwatchClient:      cloudwatchClient,
-		CloudfrontCacheClient: cloudfrontClient,
+		CloudfrontClient:      cloudfrontClient,
+		CloudfrontCacheClient: cloudfrontCacheClient,
 		DeploymentConfiguration: &eventcontext.DeploymentConfiguration{
 			ChangeSetTimeout:  changesetTimeout,
 			DeplyomentTimeout: deploymentTimeout,
 		},
 		ProjectConfiguration: &eventcontext.ProjectConfiguration{
-			ServerNamePrefix:   SERVER_NAME_PREFIX,
-			ServerRuntime:      SERVER_RUNTIME,
-			ServerMemory:       serverMemory,
-			ServerTimeout:      serverTimeout,
-			CloudfrontCacheArn: CLOUDFRONT_CACHE_ARN,
+			ServerNamePrefix:         SERVER_NAME_PREFIX,
+			ServerRuntime:            SERVER_RUNTIME,
+			ServerMemory:             serverMemory,
+			ServerTimeout:            serverTimeout,
+			CloudfrontDistributionId: CLOUDFRONT_DISTRIBUTION_ID,
+			CloudfrontCacheArn:       CLOUDFRONT_CACHE_ARN,
 		},
 	}))
 

@@ -403,6 +403,16 @@ func deployProject(transportCtx context.Context, eventCtx eventcontext.Context, 
 		return err
 	}
 
+	cloudLogger.WriteLog("invalidating static cdn cache...")
+	err = invalidateStaticCache(transportCtx, eventCtx, projectDoc, execId)
+	if err != nil {
+		cloudLogger.WriteLog(err.Error())
+		if err := cloudLogger.PushLogs(); err != nil {
+			return err
+		}
+		return err
+	}
+
 	if err := cloudLogger.PushLogs(); err != nil {
 		return err
 	}

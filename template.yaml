@@ -1573,6 +1573,7 @@ Resources:
           CHANGESET_TIMEOUT: "100s"
           DEPLOYMENT_TIMEOUT: "400s"
           CLOUDFRONT_CACHE_ARN: !GetAtt BattleshiperProjectCDNRouteStore.Arn
+          CLOUDFRONT_DISTRIBUTION_ID: !Ref BattleshiperProjectCDN
           SERVER_NAME_PREFIX: "battleshiper-project-server-"
           SERVER_RUNTIME: "nodejs20.x" # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
           SERVER_MEMORY: 128
@@ -2051,6 +2052,20 @@ Resources:
       Tags:
         - Key: "Name"
           Value: "battleshiper-project-cdn"
+
+  BattleshiperProjectCDNInvalidationExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "battleshiper-project-cdn-invalidation-exec-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudfront:CreateInvalidation"
+            Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${BattleshiperProjectCDN}'
+      Roles:
+        - !Ref BattleshiperPipelineDeployFuncRole
 
 
 Outputs:
